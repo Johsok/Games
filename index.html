@@ -10,18 +10,18 @@
         :root {
             /* === 科技山水配色 === */
             --bg-deep: #05080a;     /* 深墨色背景 */
-            --ink-black: #111518;   /* 濃墨 */
-            --mist-white: rgba(255, 255, 255, 0.03); /* 雲霧透明度 */
             --text-main: #dcdfe3;   /* 銀灰字體 */
             --jade-glow: #64ffda;   /* 青玉光 (科技主色) */
             --cyber-blue: #00b4d8;  /* 輔助科技藍 */
-            --neon-purple: #bd34fe; /* 新增：霓虹紫 (用於裝飾線) */
+            --neon-purple: #bd34fe; /* 霓虹紫 */
             --glass-bg: rgba(20, 25, 30, 0.6); /* 毛玻璃背景 */
             --glass-border: rgba(100, 255, 218, 0.2);
+            --chess-red: #ff4d4d;   /* 帥方紅 */
+            --chess-black: #00e676; /* 將方綠 (科技黑) */
         }
 
         body {
-            font-family: 'Noto Serif TC', "PingFang TC", serif; /* 主體使用宋體，營造東方感 */
+            font-family: 'Noto Serif TC', "PingFang TC", serif;
             background-color: var(--bg-deep);
             color: var(--text-main);
             margin: 0;
@@ -35,187 +35,138 @@
             position: relative;
         }
 
-        /* === 動畫定義 Keyframes === */
-        
-        /* 1. 背景網格緩慢移動 */
+        /* === 基礎動畫 === */
         @keyframes grid-drift {
             0% { background-position: 0 0; }
             100% { background-position: 0 50px; }
         }
 
-        /* 2. 線條流光特效 (加強版) */
         @keyframes scan-light {
             0% { background-position: -100% 0; }
             100% { background-position: 200% 0; }
         }
 
-        /* 3. 呼吸燈效果 */
         @keyframes border-pulse {
             0%, 100% { border-color: rgba(100, 255, 218, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
             50% { border-color: rgba(100, 255, 218, 0.5); box-shadow: 0 10px 30px rgba(100, 255, 218, 0.1); }
         }
 
-        /* 4. 帥印心跳 */
-        @keyframes heart-beat {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,0,0,0.2); }
-            50% { transform: scale(1.08); box-shadow: 0 0 35px rgba(255, 50, 50, 0.5); }
-        }
-
-        /* 5. 緩慢旋轉 */
-        @keyframes slow-rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        /* 跳棋快速旋轉特效 */
-        @keyframes fast-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* 6. 雷達波紋 */
-        @keyframes ripple {
-            0% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0.6); }
-            70% { box-shadow: 0 0 0 15px rgba(0, 180, 216, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0); }
-        }
-
-        /* 7. 五子棋跳動動畫 */
-        @keyframes gomoku-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
-        }
-
-        /* 8. 頁面載入浮現 */
         @keyframes fade-in-up {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* 9. 文字閃爍 */
+        
         @keyframes text-glitch {
             0%, 100% { opacity: 1; }
             93% { opacity: 0.6; }
             97% { opacity: 0.4; }
         }
 
-        /* === 背景視覺：數位山水 === */
+        /* === 1. 象棋動畫：互繞公轉 + 自轉抵消 === */
+        @keyframes orbit-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes counter-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-360deg); }
+        }
+        @keyframes piece-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+        }
+
+        /* === 2. 五子棋動畫：旋轉 === */
+        @keyframes gomoku-spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 五子棋展開動畫 (Entry) */
+        @keyframes stones-expand {
+            0% { transform: translate(-50%, -50%); opacity: 0; }
+            100% { opacity: 1; } /* 結束位置由各個 class 的 transform 決定 */
+        }
+
+        /* === 3. 跳棋動畫：左右跳動 + 縮放 === */
+        @keyframes checkers-jump-move {
+            0% { transform: translateX(0) scale(1); box-shadow: 0 0 15px var(--cyber-blue); }
+            25% { transform: translateX(-15px) scale(1.15); box-shadow: 0 0 30px var(--cyber-blue); } /* 左跳 */
+            50% { transform: translateX(0) scale(1); box-shadow: 0 0 15px var(--cyber-blue); } /* 回中 */
+            75% { transform: translateX(15px) scale(1.15); box-shadow: 0 0 30px var(--cyber-blue); } /* 右跳 */
+            100% { transform: translateX(0) scale(1); box-shadow: 0 0 15px var(--cyber-blue); }
+        }
+
+        /* 其他通用動畫 */
+        @keyframes slow-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* === 背景視覺 === */
         body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: 
-                radial-gradient(circle at 50% 120%, #1a2530 0%, var(--bg-deep) 70%),
-                linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%);
-            z-index: -2;
-            animation: text-glitch 10s infinite alternate;
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 120%, #1a2530 0%, var(--bg-deep) 70%),
+                        linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%);
+            z-index: -2; animation: text-glitch 10s infinite alternate;
         }
 
         body::after {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(100, 255, 218, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(100, 255, 218, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: -1;
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(100, 255, 218, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(100, 255, 218, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px; pointer-events: none; z-index: -1;
             mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
             animation: grid-drift 20s linear infinite;
         }
 
-        /* === Iframe 遊戲容器 === */
+        /* === Iframe 容器 === */
         #game-frame-container {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 9999;
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 9999;
         }
-
-        iframe {
-            width: 100%; height: 100%;
-            border: none;
-            display: block;
-        }
+        iframe { width: 100%; height: 100%; border: none; display: block; }
 
         /* === Header === */
         header {
-            padding: 70px 20px 40px;
-            text-align: center;
-            width: 100%;
-            position: relative;
-            animation: fade-in-up 1s ease-out;
+            padding: 70px 20px 40px; text-align: center; width: 100%;
+            position: relative; animation: fade-in-up 1s ease-out;
         }
 
         h1 {
-            margin: 0;
-            font-size: 3rem;
-            font-weight: 700;
-            letter-spacing: 10px;
-            color: var(--text-main);
-            text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
-            position: relative;
-            display: inline-block;
+            margin: 0; font-size: 3rem; font-weight: 700; letter-spacing: 10px;
+            color: var(--text-main); text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+            position: relative; display: inline-block;
         }
 
-        /* 需求1: 標題下方水平線顏色更鮮明 */
         h1::after {
-            content: "";
-            display: block;
-            width: 70%;
-            height: 3px; /* 加粗 */
-            /* 修改 gradient 為更鮮明的配色 (青 -> 紫 -> 青) */
+            content: ""; display: block; width: 70%; height: 3px;
             background: linear-gradient(90deg, transparent 0%, var(--jade-glow) 20%, var(--neon-purple) 50%, var(--jade-glow) 80%, transparent 100%);
-            background-size: 200% 100%;
-            margin: 18px auto 0;
-            /* 增強光暈 */
+            background-size: 200% 100%; margin: 18px auto 0;
             box-shadow: 0 0 15px var(--jade-glow), 0 0 8px var(--neon-purple);
             animation: scan-light 3s ease-in-out infinite;
         }
 
         .subtitle {
-            margin-top: 15px;
-            font-family: 'Orbitron', monospace;
-            color: var(--jade-glow);
-            font-size: 0.8rem;
-            letter-spacing: 3px;
-            opacity: 0.8;
-            text-transform: uppercase;
+            margin-top: 15px; font-family: 'Orbitron', monospace; color: var(--jade-glow);
+            font-size: 0.8rem; letter-spacing: 3px; opacity: 0.8; text-transform: uppercase;
             animation: text-glitch 5s infinite;
         }
 
         /* === Container === */
         .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* 卡片稍微變寬以容納大圖 */
-            gap: 35px;
-            width: 90%;
-            max-width: 1100px;
-            padding: 20px;
-            padding-bottom: 80px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 35px; width: 90%; max-width: 1100px; padding: 20px; padding-bottom: 80px;
         }
 
         /* === Game Card === */
         .game-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 6px;
-            padding: 40px 20px; /* 增加內距 */
-            text-align: center;
-            text-decoration: none;
-            color: var(--text-main);
+            background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border); border-radius: 6px; padding: 40px 20px;
+            text-align: center; text-decoration: none; color: var(--text-main);
             transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            cursor: pointer;
-            opacity: 0;
+            position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            cursor: pointer; opacity: 0;
             animation: fade-in-up 0.8s ease-out forwards, border-pulse 4s ease-in-out infinite;
         }
 
@@ -226,214 +177,210 @@
         .game-card:nth-child(5) { animation-delay: 0.5s, 4s; }
 
         .game-card::before, .game-card::after {
-            content: "";
-            position: absolute;
-            width: 20px; height: 20px; /* 角落裝飾變大 */
-            border: 2px solid var(--jade-glow); /* 線條加粗 */
-            transition: all 0.4s ease;
-            opacity: 0.5;
+            content: ""; position: absolute; width: 20px; height: 20px;
+            border: 2px solid var(--jade-glow); transition: all 0.4s ease; opacity: 0.5;
         }
         .game-card::before { top: 0; left: 0; border-right: none; border-bottom: none; }
         .game-card::after { bottom: 0; right: 0; border-left: none; border-top: none; }
 
         .game-card:hover {
-            opacity: 1;
-            transform: translateY(-8px) scale(1.02);
-            background: rgba(30, 40, 50, 0.8);
-            border-color: var(--jade-glow);
-            box-shadow: 0 0 35px rgba(100, 255, 218, 0.4);
-            animation: none;
+            opacity: 1; transform: translateY(-8px) scale(1.02);
+            background: rgba(30, 40, 50, 0.8); border-color: var(--jade-glow);
+            box-shadow: 0 0 35px rgba(100, 255, 218, 0.4); animation: none;
         }
-
         .game-card:hover::before, .game-card:hover::after {
-            width: 100%; height: 100%;
-            opacity: 1;
-            border-color: rgba(100, 255, 218, 0.15);
+            width: 100%; height: 100%; opacity: 1; border-color: rgba(100, 255, 218, 0.15);
         }
 
-        /* === Icon 設計 (需求2: 放大) === */
+        /* === Icon Box & 通用 Hover 發光特效 === */
         .icon-box {
-            height: 110px; /* 高度增加，容納更大的圖示 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 25px;
-            position: relative;
+            height: 110px; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 25px; position: relative;
         }
 
-        /* 1. 象棋 */
-        .icon-chess {
-            width: 75px; height: 75px; /* 放大 */
-            border: 3px solid var(--text-main);
-            border-radius: 50%;
+        /* 1. 象棋 (常駐公轉 + 懸停發光) */
+        .chess-orbit-container {
+            width: 90px; height: 90px;
+            position: relative; 
+            /* 常駐動畫 */
+            animation: orbit-rotate 5s linear infinite; 
+        }
+        .chess-piece {
+            width: 45px; height: 45px; border-radius: 50%;
+            border: 2px solid var(--text-main); position: absolute;
             display: flex; align-items: center; justify-content: center;
-            font-size: 36px; /* 字體放大 */
-            font-weight: bold;
-            box-shadow: 0 0 20px rgba(255,0,0,0.3);
-            background: radial-gradient(circle, #331111 0%, transparent 80%);
-            color: #ff6b6b;
-            font-family: 'Noto Serif TC', serif;
-            animation: heart-beat 2s infinite ease-in-out;
+            font-size: 22px; font-weight: bold; font-family: 'Noto Serif TC', serif;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            background: radial-gradient(circle, #222 0%, #000 100%);
+            /* 常駐反向自轉 */
+            animation: counter-rotate 5s linear infinite, piece-pulse 3s infinite;
+            transition: box-shadow 0.3s, border-color 0.3s;
         }
-        .game-card:hover .icon-chess { animation-duration: 0.8s; }
+        .c-shuai { color: var(--chess-red); border-color: #552222; top: 0; left: 0; z-index: 2; }
+        .c-jiang { color: var(--chess-black); border-color: #113322; bottom: 0; right: 0; z-index: 1; }
+        
+        /* HOVER GLOW */
+        .game-card:hover .chess-piece {
+            box-shadow: 0 0 25px var(--text-main);
+            border-color: #fff;
+        }
 
-        /* 2. 暗棋 */
-        .icon-dark {
-            width: 65px; height: 65px; /* 放大 */
-            background: #1a1a1a;
-            border: 2px solid var(--jade-glow);
+        /* 2. 暗棋 (JS控制翻牌 + 懸停發光) */
+        .icon-dark-box {
+            width: 80px; height: 80px; position: relative;
+        }
+        .dc-card {
+            width: 28px; height: 28px; position: absolute;
+            background: #111;
+            border: 1px solid var(--jade-glow);
             display: flex; align-items: center; justify-content: center;
-            font-size: 32px; /* 放大 */
-            color: var(--jade-glow);
-            position: relative;
-            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 加入彈性效果 */
-        }
-        .icon-dark::after {
-            content: "?";
-            font-family: 'Orbitron';
-        }
-        .icon-dark::before {
-            content: ""; position: absolute; top: -6px; left: 6px;
-            width: 100%; height: 100%; border: 2px dashed rgba(100,255,218,0.3);
-            z-index: -1;
-        }
-        .game-card:hover .icon-dark {
-            transform: rotateY(180deg) scale(1.1);
-        }
-
-        /* 3. 五子棋 (需求4: 5顆顏色鮮明棋子 + 緩慢跳動) */
-        .icon-gomoku {
-            display: flex; 
-            gap: 6px; /* 間距增加 */
-        }
-        .gomoku-dot {
-            width: 18px; height: 18px; /* 放大 */
-            border-radius: 50%;
-            transition: transform 0.3s;
-            box-shadow: 0 0 8px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 16px; font-weight: bold; font-family: 'Noto Serif TC', serif;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s, border-color 0.3s;
+            transform: scaleX(1); 
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
         }
         
-        /* 鮮明配色 */
-        .g-1 { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; } /* 紅 */
-        .g-2 { background: #ffe600; box-shadow: 0 0 10px #ffe600; } /* 黃 */
-        .g-3 { background: #00e5ff; box-shadow: 0 0 10px #00e5ff; } /* 青 */
-        .g-4 { background: #00ff6a; box-shadow: 0 0 10px #00ff6a; } /* 綠 */
-        .g-5 { background: #d500f9; box-shadow: 0 0 10px #d500f9; } /* 紫 */
-
-        /* 滑鼠移入時的跳動動畫 (依序) */
-        .game-card:hover .gomoku-dot { animation: gomoku-bounce 1s infinite ease-in-out; }
-        .game-card:hover .g-1 { animation-delay: 0.0s; }
-        .game-card:hover .g-2 { animation-delay: 0.15s; }
-        .game-card:hover .g-3 { animation-delay: 0.3s; }
-        .game-card:hover .g-4 { animation-delay: 0.45s; }
-        .game-card:hover .g-5 { animation-delay: 0.6s; }
-
-        /* 4. 黑白棋 */
-        .icon-othello {
-            width: 70px; height: 70px; /* 放大 */
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--text-main) 50%, #000 50%);
-            border: 2px solid #666;
-            box-shadow: 0 0 20px rgba(255,255,255,0.15);
-            animation: slow-rotate 10s linear infinite;
+        .dc-card.is-back {
+            background: repeating-linear-gradient(45deg, #0a0a0a, #0a0a0a 2px, #1a1a1a 2px, #1a1a1a 4px);
+            color: transparent; border-color: #333;
         }
-        .game-card:hover .icon-othello { animation-duration: 2s; }
+        .dc-card.is-front {
+            border-color: var(--jade-glow);
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+        }
 
-        /* 5. 跳棋 (需求5: 滑鼠滑過去要有動畫) */
-        .icon-checkers {
-            width: 65px; height: 65px; /* 放大 */
-            border: 3px solid var(--cyber-blue);
-            border-radius: 50%;
-            position: relative;
+        /* 佈局 */
+        .dc-c1 { top: 0; left: 0; }
+        .dc-c2 { top: 0; right: 0; }
+        .dc-c3 { top: 50%; left: 50%; transform: translate(-50%, -50%) scaleX(1); }
+        .dc-c4 { bottom: 0; left: 0; }
+        .dc-c5 { bottom: 0; right: 0; }
+
+        .dc-c3.is-flipping { transform: translate(-50%, -50%) scaleX(0); }
+        .dc-card:not(.dc-c3).is-flipping { transform: scaleX(0); }
+
+        /* HOVER GLOW */
+        .game-card:hover .dc-card {
+            box-shadow: 0 0 15px var(--jade-glow);
+            border-color: #fff;
+        }
+
+        /* 3. 五子棋 (常駐米字 + 旋轉 + 懸停發光) */
+        .icon-gomoku-container {
+            width: 100px; height: 100px; position: relative;
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.5s ease;
+            /* 常駐旋轉 */
+            animation: gomoku-spin-slow 8s linear infinite;
+        }
+        .g-stone {
+            width: 14px; height: 14px; border-radius: 50%; position: absolute;
+            transition: box-shadow 0.3s, border-color 0.3s;
+            top: 50%; left: 50%; 
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
+        .gs-black { background: #111; border: 1px solid #444; }
+        .gs-white { background: #eee; border: 1px solid #ccc; }
+
+        /* 直接定義擴散後的位置 (不再依賴 hover) */
+        .stone-c { transform: translate(-50%, -50%); } 
+        .stone-l { transform: translate(-250%, -50%); }
+        .stone-r { transform: translate(150%, -50%); }
+        .stone-t { transform: translate(-50%, -250%); }
+        .stone-b { transform: translate(-50%, 150%); }
+        .stone-tl { transform: translate(-200%, -200%); }
+        .stone-tr { transform: translate(100%, -200%); }
+        .stone-bl { transform: translate(-200%, 100%); }
+        .stone-br { transform: translate(100%, 100%); }
+
+        /* HOVER GLOW */
+        .game-card:hover .g-stone {
+            box-shadow: 0 0 12px #fff;
+            border-color: #fff;
+        }
+
+        /* 4. 黑白棋 (常駐旋轉 + 懸停發光) */
+        .icon-othello {
+            width: 70px; height: 70px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--text-main) 50%, #000 50%);
+            border: 2px solid #666; box-shadow: 0 0 20px rgba(255,255,255,0.15);
+            /* 常駐旋轉 */
+            animation: slow-rotate 10s linear infinite;
+            transition: box-shadow 0.3s;
+        }
+        /* HOVER GLOW */
+        .game-card:hover .icon-othello {
+            box-shadow: 0 0 30px rgba(255,255,255,0.8);
+            border-color: #fff;
+        }
+
+        /* 5. 跳棋 (常駐跳動 + 懸停發光) */
+        .icon-checkers {
+            width: 65px; height: 65px; border: 3px solid var(--cyber-blue);
+            border-radius: 50%; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            /* 常駐跳動 */
+            animation: checkers-jump-move 2s infinite ease-in-out;
+            transition: box-shadow 0.3s, border-color 0.3s;
         }
         .icon-checkers::after {
-            content: ""; width: 30px; height: 30px; /* 中心變大 */
-            background: var(--cyber-blue);
-            border-radius: 50%;
-            box-shadow: 0 0 15px var(--cyber-blue);
-            transition: transform 0.5s ease;
+            content: ""; width: 30px; height: 30px; background: var(--cyber-blue);
+            border-radius: 50%; box-shadow: 0 0 15px var(--cyber-blue);
+            transition: background 0.3s, box-shadow 0.3s;
         }
         .icon-checkers::before {
-            content: "";
-            position: absolute;
-            width: 100%; height: 100%;
-            border-radius: 50%;
-            border: 2px solid var(--cyber-blue);
-            animation: ripple 2.5s infinite cubic-bezier(0, 0.2, 0.8, 1);
+            content: ""; position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; border: 1px solid var(--cyber-blue); opacity: 0.5;
         }
         
-        /* 懸停動畫：整體旋轉 + 放大，中心點脈衝 */
-        .game-card:hover .icon-checkers {
-            transform: rotate(180deg) scale(1.1);
+        /* HOVER GLOW */
+        .game-card:hover .icon-checkers { 
+            box-shadow: 0 0 30px var(--cyber-blue);
             border-color: #fff;
-            box-shadow: 0 0 20px var(--cyber-blue);
         }
         .game-card:hover .icon-checkers::after {
-            transform: scale(0.8);
             background: #fff;
+            box-shadow: 0 0 40px var(--cyber-blue);
         }
 
         /* 文字樣式 */
         .game-title {
-            font-size: 1.4rem; /* 放大 */
-            font-weight: 700;
-            letter-spacing: 5px;
-            display: block;
-            margin-top: 10px;
+            font-size: 1.4rem; font-weight: 700; letter-spacing: 5px;
+            display: block; margin-top: 10px;
         }
-        
         .game-en-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.8rem; /* 放大 */
-            color: var(--jade-glow);
-            opacity: 0.6;
-            letter-spacing: 2px;
-            margin-top: 8px;
-            display: block;
-            transition: opacity 0.3s;
+            font-family: 'Orbitron', monospace; font-size: 0.8rem;
+            color: var(--jade-glow); opacity: 0.6; letter-spacing: 2px;
+            margin-top: 8px; display: block; transition: opacity 0.3s;
         }
-
-        .game-card:hover .game-en-title {
-            opacity: 1;
-            text-shadow: 0 0 8px var(--jade-glow);
-        }
+        .game-card:hover .game-en-title { opacity: 1; text-shadow: 0 0 8px var(--jade-glow); }
 
         /* === Footer === */
         .footer {
-            margin-top: auto;
-            padding: 30px;
-            font-size: 0.75rem;
-            font-family: 'Orbitron', monospace;
-            color: #666;
-            text-align: center;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            width: 100%;
+            margin-top: auto; padding: 30px; font-size: 0.75rem;
+            font-family: 'Orbitron', monospace; color: #666; text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05); width: 100%;
             background: linear-gradient(to top, #000, transparent);
         }
 
-        /* === 需求3: 手機/PWA 適配調整 === */
+        /* === 手機適配 === */
         @media (max-width: 480px) {
             h1 { font-size: 2.2rem; }
             h1::after { width: 80%; }
-            
-            /* 在小螢幕上，grid 為單欄，但圖示大小稍微收斂以免太過巨大 */
-            .container { 
-                grid-template-columns: 1fr; 
-                width: 85%; 
-                gap: 25px;
-            }
-            
-            /* Icon 在手機上稍微縮小一點點，保持比例但仍比原版大 */
+            .container { grid-template-columns: 1fr; width: 85%; gap: 25px; }
             .icon-box { height: 90px; }
-            .icon-chess { width: 60px; height: 60px; font-size: 30px; }
-            .icon-dark { width: 55px; height: 55px; font-size: 26px; }
+            
+            /* 圖示微調 */
+            .chess-orbit-container { width: 80px; height: 80px; }
+            .chess-piece { width: 38px; height: 38px; font-size: 18px; }
+            
+            .icon-dark-box { width: 70px; height: 70px; }
+            .dc-card { width: 24px; height: 24px; font-size: 14px; }
+            
             .icon-othello { width: 60px; height: 60px; }
             .icon-checkers { width: 55px; height: 55px; }
             .icon-checkers::after { width: 24px; height: 24px; }
-            .gomoku-dot { width: 15px; height: 15px; }
+            .icon-gomoku-container { width: 80px; height: 80px; }
+            .g-stone { width: 12px; height: 12px; }
             
             .game-card { padding: 30px 15px; }
         }
@@ -450,7 +397,10 @@
     <div class="container">
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Chinese_Chess.html')">
             <div class="icon-box">
-                <div class="icon-chess">帥</div>
+                <div class="chess-orbit-container">
+                    <div class="chess-piece c-shuai">帥</div>
+                    <div class="chess-piece c-jiang">將</div>
+                </div>
             </div>
             <span class="game-title">象棋</span>
             <span class="game-en-title">CHINESE CHESS</span>
@@ -458,7 +408,13 @@
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/chinese_chess_dark.html')">
             <div class="icon-box">
-                <div class="icon-dark"></div>
+                <div class="icon-dark-box" id="dark-chess-container">
+                    <div class="dc-card dc-c1 is-back"></div>
+                    <div class="dc-card dc-c2 is-back"></div>
+                    <div class="dc-card dc-c3 is-back"></div>
+                    <div class="dc-card dc-c4 is-back"></div>
+                    <div class="dc-card dc-c5 is-back"></div>
+                </div>
             </div>
             <span class="game-title">暗棋</span>
             <span class="game-en-title">DARK CHESS</span>
@@ -466,12 +422,16 @@
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Gomoku.html')">
             <div class="icon-box">
-                <div class="icon-gomoku">
-                    <div class="gomoku-dot g-1"></div>
-                    <div class="gomoku-dot g-2"></div>
-                    <div class="gomoku-dot g-3"></div>
-                    <div class="gomoku-dot g-4"></div>
-                    <div class="gomoku-dot g-5"></div>
+                <div class="icon-gomoku-container">
+                    <div class="g-stone gs-black stone-c"></div>
+                    <div class="g-stone gs-white stone-t"></div>
+                    <div class="g-stone gs-white stone-b"></div>
+                    <div class="g-stone gs-white stone-l"></div>
+                    <div class="g-stone gs-white stone-r"></div>
+                    <div class="g-stone gs-black stone-tl"></div>
+                    <div class="g-stone gs-black stone-tr"></div>
+                    <div class="g-stone gs-black stone-bl"></div>
+                    <div class="g-stone gs-black stone-br"></div>
                 </div>
             </div>
             <span class="game-title">五子棋</span>
@@ -496,7 +456,6 @@
     </div>
 
     <div class="footer">
-        SYSTEM SECURE. <br>
         © 2026 Johsok's Games. All rights reserved.
     </div>
 </div>
@@ -506,58 +465,94 @@
 </div>
 
 <script>
-    // === 控制遊戲視窗開關 ===
     function openGame(url) {
         const lobby = document.getElementById('lobby');
         const container = document.getElementById('game-frame-container');
         const iframe = document.getElementById('game-iframe');
-
-        iframe.src = url; // 設定遊戲網址
-        lobby.style.display = 'none'; // 隱藏大廳
-        container.style.display = 'block'; // 顯示遊戲容器
+        iframe.src = url;
+        lobby.style.display = 'none';
+        container.style.display = 'block';
     }
 
-    // 這個函式保留，供 iframe 內部的遊戲呼叫
     function closeGame() {
         const lobby = document.getElementById('lobby');
         const container = document.getElementById('game-frame-container');
         const iframe = document.getElementById('game-iframe');
-
-        iframe.src = ""; // 清空網址（這樣音樂才會停止）
-        container.style.display = 'none'; // 隱藏遊戲容器
-        lobby.style.display = 'flex'; // 顯示大廳 (flex 確保排版正確)
-        lobby.style.flexDirection = 'column'; // 確保 flex 方向正確
+        iframe.src = "";
+        container.style.display = 'none';
+        lobby.style.display = 'flex';
+        lobby.style.flexDirection = 'column';
     }
 
-    // === 安全防護腳本 (保留原有設定) ===
-    
-    // 禁用右鍵選單
-    document.addEventListener('contextmenu', event => {
-        event.preventDefault();
-    });
+    // === 暗棋動畫邏輯 ===
+    (function startDarkChessAnimation() {
+        const cards = document.querySelectorAll('.dc-card');
+        const pieces = [
+            { t: '帥', c: 'red' }, { t: '將', c: 'black' },
+            { t: '仕', c: 'red' }, { t: '士', c: 'black' },
+            { t: '相', c: 'red' }, { t: '象', c: 'black' },
+            { t: '俥', c: 'red' }, { t: '車', c: 'black' },
+            { t: '傌', c: 'red' }, { t: '馬', c: 'black' },
+            { t: '炮', c: 'red' }, { t: '包', c: 'black' },
+            { t: '兵', c: 'red' }, { t: '卒', c: 'black' }
+        ];
 
-    // 監控鍵盤事件：禁用開發者常用快捷鍵
+        function flipSequence() {
+            cards.forEach(card => card.classList.add('is-flipping'));
+
+            setTimeout(() => {
+                cards.forEach(card => {
+                    card.classList.remove('is-front');
+                    card.classList.add('is-back');
+                    card.innerText = '';
+                    card.style.color = 'transparent';
+                });
+
+                const shuffled = [...pieces].sort(() => 0.5 - Math.random());
+                const selected = shuffled.slice(0, 5);
+
+                cards.forEach((card, index) => {
+                    card.dataset.char = selected[index].t;
+                    card.dataset.color = selected[index].c;
+                });
+
+                setTimeout(() => {
+                    cards.forEach((card, index) => {
+                        card.classList.remove('is-back');
+                        card.classList.add('is-front');
+                        card.innerText = card.dataset.char;
+                        card.style.color = (card.dataset.color === 'red') ? '#ff4d4d' : '#00e676';
+                        card.classList.remove('is-flipping');
+                    });
+                }, 100);
+
+            }, 300);
+
+            setTimeout(() => {
+                 cards.forEach(card => card.classList.add('is-flipping'));
+                 setTimeout(() => {
+                    cards.forEach(card => {
+                        card.classList.remove('is-front');
+                        card.classList.add('is-back');
+                        card.innerText = '';
+                        card.style.color = 'transparent';
+                        card.classList.remove('is-flipping');
+                    });
+                 }, 300);
+            }, 2500); 
+        }
+        setInterval(flipSequence, 3500);
+        flipSequence();
+    })();
+
+    // 安全防護
+    document.addEventListener('contextmenu', event => event.preventDefault());
     document.onkeydown = function(e) {
-        // 禁止 F12 (123)
         if (e.keyCode == 123) return false;
-        
-        // 禁止 Ctrl+Shift+I, C, J
-        if (e.ctrlKey && e.shiftKey && (
-            e.keyCode == 'I'.charCodeAt(0) || 
-            e.keyCode == 'C'.charCodeAt(0) || 
-            e.keyCode == 'J'.charCodeAt(0)
-        )) return false;
-
-        // 禁止 Ctrl+U, S
-        if (e.ctrlKey && (
-            e.keyCode == 'U'.charCodeAt(0) || 
-            e.keyCode == 'S'.charCodeAt(0)
-        )) return false;
+        if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+        if (e.ctrlKey && (e.keyCode == 'U'.charCodeAt(0) || e.keyCode == 'S'.charCodeAt(0))) return false;
     };
-
-    // 額外防護提示
     console.log("%c系統安全監控中", "color: #64ffda; font-size: 30px; font-weight: bold; background: #000; padding: 10px;");
-    console.log("%c未經授權禁止查看程式碼!！", "color: gray; font-size: 20px;");
 </script>
 
 </body>
