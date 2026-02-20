@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>暗棋大師 2026</title>
+    <style>
+        :root {
+            --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%);
+            --board-bg: #deb887;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: #5d4037;
+            --piece-bg: radial-gradient(circle at 35% 35%, #fff8dc, #deb887);
+            --piece-border: #8b5a2b;
+            --piece-shadow: 2px 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.1);
+            --red-c: #b71c1c;
+            --black-c: #212121;
+            --border-style: 10px ridge #6d4c41;
+            --text-engrave: 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1);
+            --back-bg: #8d6e63;
+            --back-pattern: #5d4037;
+            
+            /* Highlights */
+            --selected-glow: rgba(255, 111, 0, 1);
+            --last-move-glow: rgba(0, 229, 255, 1);
+            --target-glow: rgba(255, 23, 68, 1);
+            --origin-blue: rgba(0, 140, 255, 0.8);
+        }
+        
+        /* === 主題風格定義 === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --piece-bg: radial-gradient(circle at 35% 35%, #fff8dc, #deb887); --piece-border: #8b5a2b; --red-c: #b71c1c; --black-c: #212121; --border-style: 10px ridge #6d4c41; --back-bg: #8d6e63; --back-pattern: #4e342e; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --piece-bg: radial-gradient(circle at 30% 30%, #ffffff, #eeeeee); --piece-border: #666; --piece-shadow: 2px 3px 5px rgba(0,0,0,0.2); --red-c: #b71c1c; --black-c: #111; --border-style: 8px double #424242; --text-engrave: none; --back-bg: #ddd; --back-pattern: #bbb; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --piece-bg: radial-gradient(circle at 30% 30%, #555, #222); --piece-border: #888; --red-c: #ff5252; --black-c: #000; --text-engrave: 0 0 5px rgba(255,255,255,0.3); --border-style: 8px solid #555; --back-bg: #444; --back-pattern: #222; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --piece-bg: radial-gradient(circle at 30% 30%, #e0f2f1, #80cbc4); --piece-border: #00695c; --red-c: #d32f2f; --black-c: #004d40; --border-style: 10px inset #00695c; --back-bg: #2e7d32; --back-pattern: #1b5e20; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: #3e2723; --piece-bg: radial-gradient(circle at 30% 30%, #d7ccc8, #8d6e63); --piece-border: #3e2723; --red-c: #5d4037; --black-c: #212121; --border-style: 10px groove #4e342e; --back-bg: #5d4037; --back-pattern: #3e2723; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: #ffd700; --piece-bg: radial-gradient(circle at 30% 30%, #fffacd, #ffd700); --piece-border: #b8860b; --red-c: #c00; --black-c: #000; --border-style: 8px solid #ffd700; --text-engrave: 0 1px 2px rgba(0,0,0,0.5); --back-bg: #333; --back-pattern: #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: #bbdefb; --piece-bg: radial-gradient(circle at 30% 30%, #e3f2fd, #90caf9); --piece-border: #0d47a1; --red-c: #ff1744; --black-c: #01579b; --border-style: 8px double #90caf9; --back-bg: #1565c0; --back-pattern: #0d47a1; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: #e1bee7; --piece-bg: radial-gradient(circle at 30% 30%, #f3e5f5, #e1bee7); --piece-border: #4a0072; --red-c: #d50000; --black-c: #311b92; --border-style: 8px solid #4a0072; --back-bg: #6a1b9a; --back-pattern: #4a0072; }
+        body.t-cyber { --bg-grad: linear-gradient(135deg, #0f0c29, #302b63, #24243e); --board-bg: #000; --line-color: #0ff; --piece-bg: radial-gradient(circle at 30% 30%, #222, #000); --piece-border: #0ff; --red-c: #ff00de; --black-c: #00e5ff; --border-style: 8px solid #ff00de; --text-engrave: 0 0 5px rgba(255,255,255,0.8); --back-bg: #111; --back-pattern: #333; --piece-shadow: 0 0 10px rgba(0,255,255,0.3); --selected-glow: #ffff00; }
+        body.t-sakura { --bg-grad: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%); --board-bg: #fff0f5; --line-color: #ffb7b2; --piece-bg: radial-gradient(circle at 30% 30%, #fff, #ffebee); --piece-border: #ff80ab; --red-c: #e91e63; --black-c: #880e4f; --border-style: 10px double #ff80ab; --back-bg: #f8bbd0; --back-pattern: #f48fb1; --text-engrave: none; }
+        body.t-vintage { --bg-grad: radial-gradient(circle, #5d4037, #3e2723); --board-bg: #d7ccc8; --line-color: #3e2723; --piece-bg: #efebe9; --piece-border: #5d4037; --red-c: #bf360c; --black-c: #3e2723; --border-style: 10px dashed #4e342e; --back-bg: #a1887f; --back-pattern: #8d6e63; --text-engrave: none; box-shadow: inset 0 0 100px rgba(0,0,0,0.5); }
+        body.t-ice { --bg-grad: linear-gradient(to bottom, #e0f7fa, #80deea); --board-bg: #b2ebf2; --line-color: #0097a7; --piece-bg: radial-gradient(circle at 30% 30%, #fff, #e0f7fa); --piece-border: #00acc1; --red-c: #d84315; --black-c: #006064; --border-style: 10px ridge #ffffff; --back-bg: #4dd0e1; --back-pattern: #26c6da; --text-engrave: 0 0 2px #fff; }
+        body.t-stone { --bg-grad: linear-gradient(135deg, #434343, #000000); --board-bg: #7f8c8d; --line-color: #2c3e50; --piece-bg: radial-gradient(circle at 30% 30%, #bdc3c7, #95a5a6); --piece-border: #34495e; --red-c: #c0392b; --black-c: #2c3e50; --border-style: 10px inset #34495e; --back-bg: #7f8c8d; --back-pattern: #555; --text-engrave: 1px 1px 0 rgba(255,255,255,0.5), -1px -1px 0 rgba(0,0,0,0.5); }
+        body.t-minimal { --bg-grad: #f0f0f0; --board-bg: #fff; --line-color: #ccc; --piece-bg: #fff; --piece-border: #999; --red-c: #ff3b30; --black-c: #1d1d1f; --border-style: 4px solid #ddd; --back-bg: #eee; --back-pattern: #ddd; --text-engrave: none; --piece-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        /* === 30種 現代質感棋子背圖 (CSS Override) === */
+        
+        /* A. 現代極簡 & 材質 (Modern) */
+        /* 1. 磨砂黑 Matte Black */
+        body[data-back="matte-black"] .piece.back { background: radial-gradient(150% 150% at 30% 30%, #333 0%, #000 100%); border: 3px solid #111; box-shadow: inset 0 0 10px rgba(255,255,255,0.1); }
+        /* 2. 毛玻璃 Frosted */
+        body[data-back="frosted"] .piece.back { background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.6); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        /* 3. 碳纖維 Carbon */
+        body[data-back="carbon"] .piece.back { background: radial-gradient(black 15%, transparent 16%) 0 0, radial-gradient(black 15%, transparent 16%) 8px 8px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 0 1px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 8px 9px; background-color: #282828; background-size: 16px 16px; border-color: #111; }
+        /* 4. 髮絲銀 Brushed Metal */
+        body[data-back="brushed"] .piece.back { background: repeating-linear-gradient(90deg, #ccc 0, #ccc 1px, #bbb 1px, #bbb 2px, #ddd 2px, #ddd 4px); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); border-color: #999; }
+        /* 5. 新擬態 Neumorphism */
+        body[data-back="neumorphism"] .piece.back { background: #e0e5ec; border: none; box-shadow: 6px 6px 12px #a3b1c6, -6px -6px 12px #ffffff; }
+        /* 6. 皮革縫線 Leather */
+        body[data-back="leather"] .piece.back { background: #5d4037; border: 3px dashed #8d6e63; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 4px 4px; }
+
+        /* B. 科幻與賽博 (Sci-Fi) */
+        /* 7. 反應堆 Arc Reactor */
+        body[data-back="reactor"] .piece.back { background: radial-gradient(circle, #0ff 0%, #00bcd4 20%, #000 30%, #000 50%, #006064 60%, #000 70%); border: 2px solid #0ff; box-shadow: 0 0 10px #0ff; }
+        /* 8. 故障藝術 Glitch */
+        body[data-back="glitch"] .piece.back { background: #000; background-image: linear-gradient(90deg, rgba(255,0,0,0.5) 25%, transparent 25%), linear-gradient(90deg, transparent 75%, rgba(0,0,255,0.5) 75%); background-size: 4px 4px; border: 2px solid #0f0; }
+        /* 9. 全息網格 Hologram */
+        body[data-back="hologram"] .piece.back { background: rgba(0, 30, 255, 0.2); border: 2px solid rgba(0,200,255,0.6); background-image: linear-gradient(rgba(0,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.2) 1px, transparent 1px); background-size: 10px 10px; box-shadow: inset 0 0 15px rgba(0,200,255,0.4); }
+        /* 10. 駭客代碼 Matrix */
+        body[data-back="matrix"] .piece.back { background: #000; color: #0f0; border: 2px solid #006400; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, #003300 2px, #003300 4px); }
+        /* 11. 霓虹邊框 Neon */
+        body[data-back="neon"] .piece.back { background: #111; border: 3px solid #ff00ff; box-shadow: 0 0 10px #ff00ff, inset 0 0 10px #ff00ff; }
+        
+        /* C. 奢華與寶石 (Luxury) */
+        /* 12. 黑金大理石 Black Marble */
+        body[data-back="marble"] .piece.back { background: #000; background-image: linear-gradient(135deg, #000 0%, #222 50%, #000 100%), radial-gradient(circle at 20% 80%, rgba(212,175,55,0.6) 0%, transparent 10%); border-color: #d4af37; }
+        /* 13. 玫瑰金 Rose Gold */
+        body[data-back="rosegold"] .piece.back { background: linear-gradient(135deg, #eec0c6 0%, #e6a7b1 50%, #d88996 100%); border: 2px solid #fff; box-shadow: inset 0 0 10px rgba(255,255,255,0.5); }
+        /* 14. 鑽石切面 Diamond */
+        body[data-back="diamond"] .piece.back { background: conic-gradient(from 45deg, #e0f7fa, #b2ebf2, #80deea, #e0f7fa); border: 2px solid #fff; opacity: 0.9; }
+        /* 15. 液態水銀 Liquid Chrome */
+        body[data-back="chrome"] .piece.back { background: linear-gradient(135deg, #ccc, #fff, #999, #fff); background-size: 400% 400%; animation: glow-blue 10s ease infinite; border-color: #eee; }
+        /* 16. 黑曜石 Obsidian */
+        body[data-back="obsidian"] .piece.back { background: radial-gradient(circle at 40% 40%, #555, #000 60%); border: 1px solid #333; box-shadow: inset 0 0 20px #000; }
+
+        /* D. 東方與禪意 (Eastern) */
+        /* 17. 水墨暈染 Ink Wash */
+        body[data-back="inkwash"] .piece.back { background: #eee; background-image: radial-gradient(circle at 50% 50%, #111 0%, rgba(0,0,0,0.6) 30%, transparent 60%); border-color: #333; }
+        /* 18. 青花瓷 Porcelain */
+        body[data-back="porcelain"] .piece.back { background: #fff; background-image: radial-gradient(circle at 50% 50%, transparent 40%, #1565c0 41%, #1565c0 45%, transparent 46%); border: 3px solid #1565c0; }
+        /* 19. 朱漆金粉 Lacquer */
+        body[data-back="lacquer"] .piece.back { background: #8b0000; background-image: radial-gradient(#ffd700 1px, transparent 1px); background-size: 10px 10px; border-color: #550000; }
+        /* 20. 枯山水 Zen Garden */
+        body[data-back="zen"] .piece.back { background: #e0e0e0; background-image: repeating-radial-gradient(circle at center, #ddd 0, #ddd 2px, #ccc 3px, #ccc 5px); border-color: #bbb; }
+        /* 21. 青海波 Seigaiha */
+        body[data-back="seigaiha"] .piece.back { background: #1a237e; background-image: radial-gradient(circle at 50% 100%, transparent 10px, #ffd700 11px, #ffd700 12px, transparent 13px); background-size: 20px 20px; border-color: #ffd700; }
+
+        /* E. 自然與元素 (Nature) */
+        /* 22. 深海光點 Bio-Lumi */
+        body[data-back="biolumi"] .piece.back { background: #001f3f; background-image: radial-gradient(circle, #7fdbff 1px, transparent 2px); background-size: 15px 15px; box-shadow: 0 0 10px #001f3f; border-color: #0074d9; }
+        /* 23. 岩漿裂變 Magma */
+        body[data-back="magma"] .piece.back { background: #222; background-image: linear-gradient(45deg, transparent 40%, #f00 45%, #ff0 50%, #f00 55%, transparent 60%); border-color: #333; }
+        /* 24. 星空 Galaxy */
+        body[data-back="galaxy"] .piece.back { background: radial-gradient(circle at 30% 70%, #4a148c, #000); background-image: radial-gradient(#fff 1px, transparent 1px), radial-gradient(#fff 0.5px, transparent 0.5px); background-size: 20px 20px, 10px 10px; border-color: #7b1fa2; }
+        /* 25. 極光 Aurora */
+        body[data-back="aurora"] .piece.back { background: linear-gradient(135deg, #004d40, #69f0ae, #7c4dff); border-color: #00bfa5; opacity: 0.9; }
+        /* 26. 水磨石 Terrazzo */
+        body[data-back="terrazzo"] .piece.back { background: #fff; background-image: radial-gradient(#f44336 2px, transparent 3px), radial-gradient(#2196f3 2px, transparent 3px), radial-gradient(#ffeb3b 2px, transparent 3px); background-size: 15px 15px, 20px 20px, 18px 18px; background-position: 0 0, 10px 10px, 5px 15px; border-color: #ddd; }
+
+        /* F. 潮流與藝術 (Trend) */
+        /* 27. 迷幻漸層 Acid */
+        body[data-back="acid"] .piece.back { background: linear-gradient(45deg, #ff00cc, #3333ff); border: 2px solid #fff; }
+        /* 28. 歐普藝術 Op Art */
+        body[data-back="opart"] .piece.back { background: repeating-conic-gradient(#000 0deg 10deg, #fff 10deg 20deg); border-color: #000; }
+        /* 29. 孟菲斯 Memphis */
+        body[data-back="memphis"] .piece.back { background: #fffde7; background-image: linear-gradient(45deg, #ff4081 25%, transparent 25%), linear-gradient(-45deg, #00e5ff 25%, transparent 25%); background-size: 10px 10px; border: 3px solid #333; }
+        /* 30. 紙藝層疊 Paper */
+        body[data-back="paper"] .piece.back { background: #b3e5fc; box-shadow: inset 5px 5px 0 rgba(0,0,0,0.1), inset -5px -5px 0 rgba(255,255,255,0.4); border: 1px solid #81d4fa; }
+
+        /* 31. 預設 */
+        /* data-back="default" uses default styles defined in root themes */
+
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: var(--bg-grad); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; color: white; transition: background 0.5s; touch-action: none; box-sizing: border-box; }
+
+        header { 
+            width: 100%; height: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; z-index: 100; 
+            padding-top: calc(8px + env(safe-area-inset-top)); 
+            padding-bottom: 8px;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; transition: all 0.3s; display: flex; gap: 10px; }
+        
+        #msg { 
+            font-size: 0.85rem; color:#fff; margin-bottom:4px; 
+            height: 24px; line-height: 24px; overflow: hidden; white-space: nowrap;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        #settings { display: none; position: absolute; top: 70px; z-index: 2000; background: rgba(30, 30, 30, 0.95); color: #fff; width: 280px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Grid Layout for Settings */
+        .set-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .set-item { width: 100%; }
+        
+        .set-item label { display: block; font-weight: bold; font-size: 0.8rem; margin-bottom: 6px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        select, input[type=range] { width: 100%; padding: 6px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.85rem; outline: none; }
+
+        .toggle-btn { 
+            width: 100%; height: 36px; 
+            display: flex; align-items: center; justify-content: center; 
+            background: #222; 
+            border: 1px solid #555; 
+            border-radius: 8px; cursor: pointer;
+            font-size: 0.8rem;
+            color: #fff; 
+            font-weight: bold;
+        }
+        .toggle-btn:active { background: #333; }
+        
+        .checkbox-wrap { display: flex; align-items: center; justify-content: space-between; height: 36px; background: #222; border:1px solid #555; border-radius: 8px; padding: 0 10px; box-sizing: border-box;}
+        .checkbox-wrap label { margin: 0; cursor: pointer; color: #fff; font-size: 0.8rem; font-weight: bold; }
+
+        #rules-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; 
+            backdrop-filter: blur(5px);
+        }
+        .rules-box { 
+            background: #2c2c2c; width: 85%; max-width: 500px; max-height: 85vh; 
+            border-radius: 16px; border: 1px solid #555; padding: 25px; 
+            overflow-y: auto; color: #eee; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            font-size: 0.95rem; line-height: 1.6;
+        }
+        .rules-box h3 { text-align: center; color: #f1c40f; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        .rules-box h4 { color: #00e5ff; margin: 15px 0 8px 0; font-size: 1rem; }
+        .rules-box ul { margin: 0; padding-left: 20px; }
+        .rules-box li { margin-bottom: 4px; }
+        .rules-box strong { color: #ff9; }
+
+        #game-container { 
+            flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; 
+            overflow: hidden; position: relative; padding: 0; box-sizing: border-box; 
+        }
+        .board-wrap { 
+            position: relative; background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            padding: 0.5%; 
+            box-sizing: border-box; 
+            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(8, 1fr); gap: 2px;
+            overflow: visible !important;
+        }
+        .cell { 
+            position: relative; 
+            border: 1px solid rgba(0,0,0,0.1); 
+            display: flex; justify-content: center; align-items: center; 
+            width: 100%; height: 100%; 
+            min-width: 0; min-height: 0;
+            overflow: visible !important; 
+            z-index: auto; 
+        }
+        
+        .piece { 
+            position: relative; 
+            width: 95%; 
+            height: 95%;
+            aspect-ratio: 1 / 1; 
+            border-radius: 50% !important; 
+            
+            background: var(--piece-bg); border: 3px solid var(--piece-border); box-shadow: var(--piece-shadow); 
+            display: flex; justify-content: center; align-items: center; 
+            
+            font-family: "Microsoft JhengHei", "Heiti TC", "KaiTi", sans-serif; 
+            font-weight: 900; 
+            font-size: 0.65em; 
+
+            cursor: pointer; 
+            z-index: 50; 
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; -webkit-tap-highlight-color: transparent; text-shadow: var(--text-engrave); 
+            box-sizing: border-box;
+        }
+        
+        .piece.red { color: var(--red-c); border-color: var(--red-c); }
+        .piece.black { color: var(--black-c); border-color: var(--black-c); }
+        
+        .piece.back { 
+            background: var(--back-bg); 
+            border-color: rgba(0,0,0,0.2); 
+            color: transparent; 
+            text-shadow: none; 
+            background-image: repeating-radial-gradient(
+                circle at center, 
+                var(--back-pattern) 0, 
+                var(--back-pattern) 3px, 
+                var(--back-bg) 3.5px, 
+                var(--back-bg) 6.5px
+            );
+        }
+        .piece.back::before { content: ''; } 
+
+        @keyframes glow-orange {
+            0%, 100% { box-shadow: 0 0 2px 2.6px var(--selected-glow), 0 0 10px 4px var(--selected-glow); }
+            50%      { box-shadow: 0 0 2px 2.6px var(--selected-glow), 0 0 20px 8px var(--selected-glow); }
+        }
+        .piece.selected { z-index: 100 !important; border-color: var(--selected-glow); animation: glow-orange 2s infinite ease-in-out; }
+        
+        @keyframes glow-blue {
+            0%, 100% { box-shadow: 0 0 2px 3px var(--last-move-glow), 0 0 10px 4px var(--last-move-glow); }
+            50%      { box-shadow: 0 0 2px 3px var(--last-move-glow), 0 0 20px 8px var(--last-move-glow); }
+        }
+        .piece.last-move { z-index: 90 !important; animation: glow-blue 2s infinite ease-in-out; }
+        
+        @keyframes glow-red-pulse {
+            0%, 100% { transform: scale(1);    box-shadow: 0 0 2px 3px var(--target-glow), 0 0 10px 3px var(--target-glow); }
+            50%      { transform: scale(1.15); box-shadow: 0 0 2px 3px var(--target-glow), 0 0 20px 8px var(--target-glow); }
+        }
+        .piece.can-eat { animation: glow-red-pulse 1.5s infinite ease-in-out; z-index: 95 !important; border-color: var(--target-glow) !important; opacity: 1 !important; }
+
+        .piece.ghost { opacity: 0.6; pointer-events: none; filter: none; z-index: 5 !important; box-shadow: none !important; border: 3px dashed #111 !important; background: transparent; }
+        .piece.ghost.red { color: rgba(183, 28, 28, 0.7); border-color: #111 !important; }
+        .piece.ghost.black { color: rgba(33, 33, 33, 0.7); border-color: #111 !important; }
+        .piece.last-move.selected { animation: glow-orange 2s infinite ease-in-out; z-index: 101 !important; }
+
+        .origin-mark { width: 70%; height: 70%; border-radius: 50%; border: 4px solid var(--origin-blue); box-shadow: 0 0 10px var(--origin-blue), inset 0 0 10px var(--origin-blue); opacity: 0.6; pointer-events: none; position: absolute; top: 15%; left: 15%; z-index: 10; }
+        .dragging-piece { position: fixed !important; pointer-events: none !important; z-index: 9999 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.5) !important; transform: translate(-50%, -50%) scale(1.15); opacity: 0.95; }
+        .animating-piece { position: fixed !important; z-index: 9999 !important; transition: top 0.6s ease-in-out, left 0.6s ease-in-out; pointer-events: none; box-shadow: 0 10px 20px rgba(0,0,0,0.5) !important; }
+
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            pointer-events: none; opacity: 0; z-index: 1000; 
+            width: 80%; /* Width is 80% of board */
+            display: flex; justify-content: center; align-items: center;
+            font: 900 0.85em "Microsoft JhengHei", sans-serif;
+            color: #fff; -webkit-text-stroke: 1px #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            /* Horizontal settings */
+            writing-mode: horizontal-tb;
+            text-orientation: mixed;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+        }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite, hue 4s linear infinite; }
+        
+        @keyframes win { 
+            0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
+            20%, 100% { transform: translate(-50%,-50%) rotate(-3deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) rotate(3deg); } 
+        }
+        @keyframes hue { to { filter: hue-rotate(360deg); } }
+        
+        @media screen and (orientation:landscape) and (max-width:1024px){
+            body { position:absolute; top:50%; left:50%; width:100vh; height:100vw; transform:translate(-50%,-50%) rotate(-90deg); transform-origin:center; overflow:hidden }
+            .piece { transform: rotate(90deg); } 
+            .dragging-piece, .animating-piece { transform: translate(-50%, -50%) scale(1.15) rotate(90deg) !important; }
+            .piece.selected { transform: rotate(90deg) scale(1.15) translateY(-4px) !important; }
+            #win-overlay { 
+                /* In landscape mobile (body rotated), rotate text to appear horizontal to viewer */
+                transform: translate(-50%, -50%) rotate(90deg); 
+                opacity: 0; 
+            }
+            #win-overlay.show { opacity: 1; animation: win-land 2.5s ease-in-out infinite, hue 4s linear infinite; }
+            @keyframes win-land {
+                0% { transform: translate(-50%,-50%) rotate(90deg) scale(0.5); opacity: 0; }
+                20%, 100% { transform: translate(-50%,-50%) rotate(87deg); opacity: 1; } 
+                60% { transform: translate(-50%,-52%) rotate(93deg); }
+            }
+            header { padding-top: calc(8px + max(env(safe-area-inset-left), env(safe-area-inset-right))) !important; }
+        }
+        .player-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid #fff; margin-right: 4px;}
+        .dot-red { background: var(--red-c); }
+        .dot-black { background: var(--black-c); }
+        .dot-unk { background: #999; border-style: dashed;}
+    </style>
+</head>
+<body class="t-classic" data-back="default">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="txt-title">暗棋大師 2026</h2>
+        <div class="status" id="status-bar"><span id="p1-status"><i class="player-dot dot-unk"></i>我方</span><span id="p2-status"><i class="player-dot dot-unk"></i>對手</span></div>
+    </div>
+    <div id="msg">請翻牌決定顏色</div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-grid-2">
+        <div class="set-item">
+            <label id="lbl-mode">對戰模式</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="pve" id="opt-pve">💻 單人</option>
+                <option value="pvp" id="opt-pvp">👥 雙人</option>
+            </select>
+        </div>
+        <div class="set-item">
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic" id="opt-t-classic">💎 經典</option>
+                <option value="t-ink" id="opt-t-ink">🏔️ 水墨</option>
+                <option value="t-dark" id="opt-t-dark">🌃 暗黑</option>
+                <option value="t-jade" id="opt-t-jade">📿 翡翠</option>
+                <option value="t-wood" id="opt-t-wood">🪵 紅木</option>
+                <option value="t-gold" id="opt-t-gold">👑 黑金</option>
+                <option value="t-ocean" id="opt-t-ocean">🌊 深海</option>
+                <option value="t-royal" id="opt-t-royal">🏛️ 紫禁</option>
+                <option value="t-cyber" id="opt-t-cyber">🤖 賽博</option>
+                <option value="t-sakura" id="opt-t-sakura">🌸 櫻花</option>
+                <option value="t-vintage" id="opt-t-vintage">📜 復古</option>
+                <option value="t-ice" id="opt-t-ice">❄️ 冰雪</option>
+                <option value="t-stone" id="opt-t-stone">🗿 巨石</option>
+                <option value="t-minimal" id="opt-t-minimal">⬜ 極簡</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-grid-2">
+        <div class="set-item">
+            <label id="lbl-diff">電腦難度</label>
+            <select id="diff-sel">
+                <option value="easy" id="opt-easy">簡單 (菜鳥)</option>
+                <option value="medium" id="opt-medium">中等 (正常)</option>
+                <option value="hard" id="opt-hard">困難 (高手)</option>
+                <option value="expert" id="opt-expert" selected>專家 (職業)</option>
+                <option value="master" id="opt-master">大師 (宗師)</option>
+                <option value="god" id="opt-god">神 (不可戰勝)</option>
+            </select>
+        </div>
+        <div class="set-item">
+            <label id="lbl-back">棋子背圖</label>
+            <select id="back-sel" onchange="changeBack()">
+                <option value="default" id="opt-b-default" selected>✨ 預設 (Default)</option>
+                <optgroup label="A. 現代質感 (Modern)">
+                    <option value="matte-black" id="opt-b-1">1. 磨砂黑</option>
+                    <option value="frosted" id="opt-b-2">2. 毛玻璃</option>
+                    <option value="carbon" id="opt-b-3">3. 碳纖維</option>
+                    <option value="brushed" id="opt-b-4">4. 髮絲銀</option>
+                    <option value="neumorphism" id="opt-b-5">5. 新擬態</option>
+                    <option value="leather" id="opt-b-6">6. 皮革縫線</option>
+                </optgroup>
+                <optgroup label="B. 科幻賽博 (Sci-Fi)">
+                    <option value="reactor" id="opt-b-7">7. 反應堆</option>
+                    <option value="glitch" id="opt-b-8">8. 故障藝術</option>
+                    <option value="hologram" id="opt-b-9">9. 全息網格</option>
+                    <option value="matrix" id="opt-b-10">10. 駭客代碼</option>
+                    <option value="neon" id="opt-b-11">11. 霓虹邊框</option>
+                </optgroup>
+                <optgroup label="C. 奢華寶石 (Luxury)">
+                    <option value="marble" id="opt-b-12">12. 黑金大理石</option>
+                    <option value="rosegold" id="opt-b-13">13. 玫瑰金</option>
+                    <option value="diamond" id="opt-b-14">14. 鑽石切面</option>
+                    <option value="chrome" id="opt-b-15">15. 液態水銀</option>
+                    <option value="obsidian" id="opt-b-16">16. 黑曜石</option>
+                </optgroup>
+                <optgroup label="D. 東方禪意 (Eastern)">
+                    <option value="inkwash" id="opt-b-17">17. 水墨暈染</option>
+                    <option value="porcelain" id="opt-b-18">18. 青花瓷</option>
+                    <option value="lacquer" id="opt-b-19">19. 朱漆金粉</option>
+                    <option value="zen" id="opt-b-20">20. 枯山水</option>
+                    <option value="seigaiha" id="opt-b-21">21. 青海波</option>
+                </optgroup>
+                <optgroup label="E. 自然元素 (Nature)">
+                    <option value="biolumi" id="opt-b-22">22. 深海光點</option>
+                    <option value="magma" id="opt-b-23">23. 岩漿裂變</option>
+                    <option value="galaxy" id="opt-b-24">24. 星空星雲</option>
+                    <option value="aurora" id="opt-b-25">25. 極光</option>
+                    <option value="terrazzo" id="opt-b-26">26. 水磨石</option>
+                </optgroup>
+                <optgroup label="F. 潮流藝術 (Art)">
+                    <option value="acid" id="opt-b-27">27. 迷幻漸層</option>
+                    <option value="opart" id="opt-b-28">28. 歐普藝術</option>
+                    <option value="memphis" id="opt-b-29">29. 孟菲斯</option>
+                    <option value="paper" id="opt-b-30">30. 紙藝層疊</option>
+                </optgroup>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-grid-2">
+        <div class="set-item">
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none" id="opt-mute">🔇 靜音</option>
+                <option value="01" id="opt-m-01" selected>🎵 樂曲 01</option>
+                <option value="02" id="opt-m-02">🎵 樂曲 02</option>
+                <option value="03" id="opt-m-03">🎵 樂曲 03</option>
+                <option value="04" id="opt-m-04">🎵 樂曲 04</option>
+                <option value="05" id="opt-m-05">🎵 樂曲 05</option>
+                <option value="06" id="opt-m-06">🎵 樂曲 06</option>
+                <option value="07" id="opt-m-07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div class="set-item">
+            <label id="lbl-lang">語言 (Lang)</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="zh-TW" selected>繁中</option>
+                <option value="zh-CN">簡中</option>
+                <option value="en">英文</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-grid-2">
+        <div class="set-item">
+            <label id="lbl-vol-music">音樂 (20%)</label>
+            <input type="range" id="vol-range" min="0" max="100" value="20" oninput="adjMusicVol()">
+        </div>
+        <div class="set-item">
+            <label id="lbl-vol-sfx">音效 (70%)</label>
+            <input type="range" id="sfx-vol-range" min="0" max="100" value="70" oninput="adjSfxVol()">
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; align-items: center;">
+        <div class="set-item checkbox-wrap" style="flex: 3;">
+            <label for="ghost-check" id="lbl-ghost" style="font-size:0.75rem;">👻 提示</label>
+            <input type="checkbox" id="ghost-check" checked onchange="toggleGhost()" style="width:16px; height:16px; accent-color:#f1c40f;">
+        </div>
+        <div class="set-item" style="flex: 3;">
+            <button class="toggle-btn" id="btn-rules" onclick="toggleRules()" style="font-size:0.8rem; padding:0;">📜 規則</button>
+        </div>
+        <div class="set-item" style="flex: 4;">
+            <button class="toggle-btn" id="btn-home" onclick="goHome()" style="background:#c0392b; font-size:0.8rem; padding:0;">🏠 回首頁</button>
+        </div>
+    </div>
+
+    <button class="btn" style="width:100%; background:#444; padding: 10px; margin-top:5px;" onclick="toggleSet()" id="btn-done">完成設定</button>
+</div>
+
+<div id="rules-overlay" onclick="toggleRules()">
+    <div class="rules-box" onclick="event.stopPropagation()" id="rules-content">
+        </div>
+</div>
+
+<div id="game-container"><div class="board-wrap" id="board-wrap"><div id="win-overlay">You Win</div></div></div>
+<audio id="bgm" loop></audio>
+
+<script id="worker-script" type="javascript/worker">
+    const SCORES = { 
+        7: 1500, // 帥/將
+        6: 600,  // 士/仕
+        5: 500,  // 相/象
+        4: 400,  // 俥/車
+        3: 300,  // 傌/馬
+        2: 1000, // 炮/包
+        1: 200   // 兵/卒
+    };
+    
+    const PIECES_DEF = [
+        { name: '帥', rank: 7, color: 'red', count: 1 }, { name: '仕', rank: 6, color: 'red', count: 2 }, { name: '相', rank: 5, color: 'red', count: 2 }, { name: '俥', rank: 4, color: 'red', count: 2 }, { name: '傌', rank: 3, color: 'red', count: 2 }, { name: '炮', rank: 2, color: 'red', count: 2 }, { name: '兵', rank: 1, color: 'red', count: 5 },
+        { name: '將', rank: 7, color: 'black', count: 1 }, { name: '士', rank: 6, color: 'black', count: 2 }, { name: '象', rank: 5, color: 'black', count: 2 }, { name: '車', rank: 4, color: 'black', count: 2 }, { name: '馬', rank: 3, color: 'black', count: 2 }, { name: '包', rank: 2, color: 'black', count: 2 }, { name: '卒', rank: 1, color: 'black', count: 5 }
+    ];
+
+    self.onmessage = function(e) {
+        const { board, aiColor, config, hiddenIndices } = e.data;
+        const result = runAI(board, aiColor, config, hiddenIndices);
+        self.postMessage(result);
+    };
+
+    function runAI(board, aiColor, config, hiddenIndices) {
+        let bestM = null;
+        let poolScore = 0;
+        if (config.expect) poolScore = calcHiddenPool(board, aiColor);
+        const start = Date.now();
+        let depth = 1;
+        
+        try {
+            while (depth <= config.depth) {
+                let m = abRoot(board, depth, aiColor, start, config.time, config, poolScore, hiddenIndices.length);
+                if (m) bestM = m; 
+                if (m && m.score > 20000) break;
+                if (Date.now() - start > config.time - 50) break;
+                depth++;
+            }
+        } catch(err) {}
+
+        if (config.errorRate > 0 && Math.random() < config.errorRate) {
+            let rnds = genMoves(aiColor, board);
+            if (hiddenIndices.length) rnds.push({ type: 'flip', from: hiddenIndices[0] });
+            if (rnds.length) bestM = rnds[Math.floor(Math.random() * rnds.length)];
+        }
+        return bestM;
+    }
+
+    function calcHiddenPool(b, ac) {
+        let val = 0;
+        PIECES_DEF.forEach(d => {
+            let seen = 0; b.forEach(p => { if(p && !p.hidden && p.name===d.name && p.color===d.color) seen++; });
+            let rem = d.count - seen;
+            if(rem > 0) val += (d.color===ac ? SCORES[d.rank] : -SCORES[d.rank]) * rem;
+        });
+        return val;
+    }
+
+    function abRoot(b, d, c, st, lim, cfg, ps, hCnt) {
+        let ms = genMoves(c, b);
+        let bestScore = -Infinity, bestMove = null;
+        let killerFound = false;
+        if(ms.length > 0) {
+            if(ms[0].score > 50000) killerFound = true;
+        }
+
+        if (hCnt > 0 && !killerFound) {
+            let cands = [];
+            let strategicIdx = [9, 10, 21, 22, 5, 6, 25, 26]; 
+            let preferred = strategicIdx.filter(idx => b[idx] && b[idx].hidden);
+            
+            if (preferred.length > 0 && hCnt > 20) { cands = preferred; } 
+            else { for(let i=0; i<32; i++) if(b[i] && b[i].hidden) cands.push(i); }
+            
+            let tryCnt = Math.min(5, cands.length);
+            for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+
+            let baseFlip = cfg.expect ? (ps / hCnt) : 10;
+            let currentEval = evalBd(c, b, true);
+            if(currentEval < -500) baseFlip += 150;
+
+            for(let k=0; k<tryCnt; k++) {
+                let idx = cands[k];
+                let score = baseFlip;
+                let neighbors = getNeighbors(idx);
+                neighbors.forEach(n => {
+                    let np = b[n];
+                    if(np && !np.hidden && np.color === c) {
+                        if(np.rank === 7) { score -= 300; }
+                        if(np.rank === 2) { score -= 100; }
+                    }
+                });
+
+                ms.push({type:'flip', from:idx, score: score});
+            }
+        }
+
+        ms.sort((x,y)=>y.score-x.score);
+
+        let alpha = -Infinity;
+        let beta = Infinity;
+
+        for(let m of ms) {
+            if(Date.now()-st > lim) throw "TO"; 
+            let v;
+            
+            if(m.type==='flip') {
+                v = evalBd(c, b, cfg.enhanced) + m.score; 
+            } else {
+                let cap = b[m.to];
+                b[m.to]=b[m.from]; b[m.from]=null;
+                v = -ab(d-1, -beta, -alpha, c==='red'?'black':'red', st, lim, b, cfg);
+                b[m.from]=b[m.to]; b[m.to]=cap;
+            }
+
+            if(v > bestScore) {
+                bestScore = v;
+                bestMove = m;
+            }
+            alpha = Math.max(alpha, v);
+        }
+        return bestMove;
+    }
+
+    function ab(d, alf, bet, c, st, lim, b, cfg) {
+        if(Date.now()-st > lim) throw "TO";
+        if(d===0) return cfg.qs ? quiesce(alf, bet, c, b, cfg) : evalBd(c, b, cfg.enhanced);
+
+        let ms = genMoves(c, b);
+        if(ms.length===0) return -30000; 
+        ms.sort((x,y)=>y.score-x.score);
+
+        let bestVal = -Infinity;
+        for(let m of ms) {
+            let cap = b[m.to];
+            b[m.to]=b[m.from]; b[m.from]=null;
+            let v = -ab(d-1, -bet, -alf, c==='red'?'black':'red', st, lim, b, cfg);
+            b[m.from]=b[m.to]; b[m.to]=cap;
+            if(v > bestVal) bestVal = v;
+            alf = Math.max(alf, v);
+            if(alf >= bet) break;
+        }
+        return bestVal;
+    }
+
+    function quiesce(alf, bet, c, b, cfg) {
+        let stand = evalBd(c, b, cfg.enhanced);
+        if(stand >= bet) return bet;
+        if(stand > alf) alf = stand;
+
+        let ms = genMoves(c, b).filter(m => b[m.to]); 
+        ms.sort((x,y)=>y.score-x.score);
+
+        for(let m of ms) {
+            let cap = b[m.to];
+            b[m.to]=b[m.from]; b[m.from]=null;
+            let v = -quiesce(-bet, -alf, c==='red'?'black':'red', b, cfg);
+            b[m.from]=b[m.to]; b[m.to]=cap;
+            if(v >= bet) return bet;
+            if(v > alf) alf = v;
+        }
+        return alf;
+    }
+
+    function evalBd(c, b, enh) {
+        let score = 0;
+        let myP = [], opP = [];
+        let myLive = 0, opLive = 0;
+
+        for(let i=0; i<32; i++) {
+            const p = b[i];
+            if(p && !p.hidden) {
+                if(p.color === c) { myP.push({p, i}); myLive++; } 
+                else { opP.push({p, i}); opLive++; }
+                let v = SCORES[p.rank];
+                if(enh) {
+                    if((i%4)>=1 && (i%4)<=2 && Math.floor(i/4)>=2 && Math.floor(i/4)<=5) v += 10;
+                }
+                score += (p.color === c ? v : -v);
+            }
+        }
+        
+        if(myLive === 0) return -30000;
+        if(opLive === 0) return 30000;
+
+        if(!enh) return score;
+
+        myP.forEach(item => { if(item.p.rank === 2) score += scanCannonPotency(item.i, b, c); });
+        opP.forEach(item => { if(item.p.rank === 2) score -= scanCannonPotency(item.i, b, item.p.color); });
+
+        myP.forEach(item => { let moves = getMovesCnt(item.i, b, item.p); score += moves * 3; });
+        opP.forEach(item => { let moves = getMovesCnt(item.i, b, item.p); score -= moves * 3; });
+
+        let opHasKing = opP.some(x => x.p.rank === 7);
+        let myHasKing = myP.some(x => x.p.rank === 7);
+        
+        if(myHasKing) {
+            myP.filter(x => x.p.rank === 7).forEach(k => {
+                getNeighbors(k.i).forEach(nIdx => {
+                    let nP = b[nIdx];
+                    if(nP && !nP.hidden && nP.color !== c && nP.rank === 1) score -= 800; 
+                    if(nP && nP.hidden) score -= 50; 
+                });
+            });
+        }
+        if(opHasKing) {
+            opP.filter(x => x.p.rank === 7).forEach(k => {
+                getNeighbors(k.i).forEach(nIdx => {
+                    let nP = b[nIdx];
+                    if(nP && !nP.hidden && nP.color === c && nP.rank === 1) score += 800;
+                });
+            });
+        }
+        return score;
+    }
+
+    function scanCannonPotency(idx, b, color) {
+        let val = 0;
+        const directions = [[1,0],[-1,0],[0,1],[0,-1]];
+        directions.forEach(([dx, dy]) => {
+            let cx = (idx % 4) + dx, cy = Math.floor(idx / 4) + dy, count = 0, target = null;
+            while(cx >= 0 && cx < 4 && cy >= 0 && cy < 8) {
+                let ci = cy * 4 + cx;
+                if (b[ci]) { 
+                    count++; 
+                    if (count === 2) { target = b[ci]; break; } 
+                }
+                cx += dx; cy += dy;
+            }
+            if (count === 1) val += 20; 
+            if (count === 2 && target && !target.hidden && target.color !== color) {
+                val += SCORES[target.rank] * 0.6;
+            }
+        });
+        return val;
+    }
+
+    function getMovesCnt(i, b, p) {
+        let cnt = 0;
+        if(p.rank !== 2) getNeighbors(i).forEach(t => { if(isValidMove(i, t, b)) cnt++; });
+        else cnt += 4; 
+        return cnt;
+    }
+
+    function genMoves(c, b) {
+        let ms = [];
+        for(let i=0; i<32; i++) {
+            const p = b[i];
+            if(p && !p.hidden && p.color===c) {
+                if(p.rank!==2) {
+                    getNeighbors(i).forEach(t => {
+                        if(isValidMove(i, t, b)) {
+                            pushMoveWithScore(i, t, b, ms, p);
+                        }
+                    });
+                } else {
+                    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy]) => {
+                        if(dx!==0) { 
+                            let r = Math.floor(i/4)*4; 
+                            for(let k=r; k<r+4; k++) if(k!==i && isValidMove(i, k, b)) pushMoveWithScore(i, k, b, ms, p); 
+                        } else { 
+                            let col = i%4; 
+                            for(let k=col; k<32; k+=4) if(k!==i && isValidMove(i, k, b)) pushMoveWithScore(i, k, b, ms, p); 
+                        }
+                    });
+                }
+            }
+        }
+        return ms;
+    }
+    
+    function pushMoveWithScore(f, t, b, arr, attacker) { 
+        let s = 0; 
+        const victim = b[t];
+        if(victim) {
+            s = SCORES[victim.rank] * 10 - SCORES[attacker.rank] + 10000;
+            if(victim.rank === 7) s += 50000; 
+            else if(victim.rank === 2) s += 20000;
+            else if(victim.rank === 4) s += 5000;
+        } else {
+            s = 10;
+            if(attacker.rank === 1) s += 20;
+        }
+        arr.push({type:'move', from:f, to:t, score:s}); 
+    }
+
+    function isValidMove(f, t, b) {
+        const p1 = b[f], p2 = b[t], x1=f&3, y1=f>>2, x2=t&3, y2=t>>2, d=Math.abs(x1-x2)+Math.abs(y1-y2);
+        if(p2 && !p2.hidden && p1.color===p2.color) return false;
+        
+        if(p1.rank===2) { 
+            if(!p2) return d===1;
+            
+            if(p2.hidden) return false; 
+            if(x1!==x2 && y1!==y2) return false;
+            let c=0, s=Math.min(f,t)+(y1===y2?1:4), e=Math.max(f,t), st=y1===y2?1:4;
+            for(let k=s; k<e; k+=st) if(b[k]) c++;
+            return c===1; 
+        } else {
+            if(d!==1) return false; 
+            if(!p2) return true; 
+            if(p2.hidden) return false; 
+            if(p1.rank===1 && p2.rank===7) return true; 
+            if(p1.rank===7 && p2.rank===1) return false;
+            return p1.rank >= p2.rank;
+        }
+    }
+
+    function getNeighbors(i) { const x=i&3, y=i>>2; let n=[]; if(x>0)n.push(i-1); if(x<3)n.push(i+1); if(y>0)n.push(i-4); if(y<7)n.push(i+4); return n; }
+</script>
+
+<script>
+// === Text & Language Data ===
+const TRANSLATIONS = {
+    "zh-TW": {
+        title: "暗棋大師 2026",
+        p1_name_pvp: "玩家1", p1_name_pve: "玩家", p2_name_pvp: "玩家2", p2_name_pve: "電腦",
+        my_turn: "輪到你", pc_thinking: "電腦思考中...",
+        flip_card_pvp1: "玩家1 翻牌", flip_card_pvp2: "玩家2 翻牌", flip_card_pve: "請翻牌", flip_card_pc: "電腦翻牌",
+        move_pvp1: "玩家1 走棋", move_pvp2: "玩家2 走棋",
+        btn_settings: "⚙️ 設定", btn_undo: "↩️ 悔棋", btn_restart: "🔄 重開",
+        lbl_mode: "對戰模式", opt_pve: "💻 單人 (挑戰電腦)", opt_pvp: "👥 雙人 (同機對奕)",
+        lbl_theme: "視覺風格",
+        opt_t_classic: "💎 經典", opt_t_ink: "🏔️ 水墨", opt_t_dark: "🌃 暗黑", opt_t_jade: "📿 翡翠",
+        opt_t_wood: "🪵 紅木", opt_t_gold: "👑 黑金", opt_t_ocean: "🌊 深海", opt_t_royal: "🏛️ 紫禁",
+        opt_t_cyber: "🤖 賽博", opt_t_sakura: "🌸 櫻花", opt_t_vintage: "📜 復古",
+        opt_t_ice: "❄️ 冰雪", opt_t_stone: "🗿 巨石", opt_t_minimal: "⬜ 極簡",
+        lbl_diff: "電腦難度 (AI 等級)", opt_easy: "簡單 (菜鳥)", opt_medium: "中等 (正常)", opt_hard: "困難 (高手)", opt_expert: "專家 (職業)", opt_master: "大師 (宗師)", opt_god: "神 (不可戰勝)",
+        lbl_music: "背景音樂", opt_mute: "🔇 靜音",
+        "opt_m_01": "🎵 樂曲 01", "opt_m_02": "🎵 樂曲 02", "opt_m_03": "🎵 樂曲 03", "opt_m_04": "🎵 樂曲 04", "opt_m_05": "🎵 樂曲 05", "opt_m_06": "🎵 樂曲 06", "opt_m_07": "🎵 樂曲 07",
+        lbl_lang: "語言 (Language)",
+        lbl_vol_music: "音樂音量", lbl_vol_sfx: "音效音量",
+        lbl_ghost: "👻 提示", btn_rules: "📜 規則", btn_home: "🏠 回首頁", btn_done: "完成設定",
+        
+        // Dynamic Win Messages
+        msg_win: "You Win", msg_lose: "You Lose",
+        msg_red_win: "紅方獲勝!", msg_black_win: "黑方獲勝!",
+
+        rules_html: `<h3>暗棋規則說明</h3><p style="text-align:center; color:#ccc; margin-top:-10px;">暗象棋 / 翻棋</p><h4>1. 遊戲性質</h4><p>運氣 ＋ 策略</p><h4>2. 棋盤與初始</h4><ul><li><strong>棋盤：</strong>4 × 8 (共32格)。</li><li><strong>棋子：</strong>完整象棋32子 (紅黑各16)。</li><li><strong>初始：</strong>所有棋子蓋牌混洗，隨機擺滿。</li></ul><h4>3. 行動規則</h4><p>每回合玩家可執行下列<strong>其中一項</strong>：</p><ul><li>翻開一顆暗棋。</li><li>移動一顆己方棋子 (上下左右一格)。</li><li>吃掉敵方棋子。</li></ul><h4>4. 吃子大小 (大吃小)</h4><p><strong>將(帥) > 士(仕) > 象(相) > 車(俥) > 馬(傌) > 包(炮) > 兵(卒)</strong></p><p><strong>特例：</strong></p><ul><li><strong>兵(卒)</strong> 可以吃 <strong>將(帥)</strong>。</li><li><strong>包(炮)</strong> 不看大小，需<strong>隔一顆棋子</strong>跳吃任何敵子。</li></ul><h4>5. 勝利條件</h4><ul><li>吃光對方所有棋子。</li><li>或者讓對方無路可走 (困斃)。</li></ul><button class="btn btn-red" style="width:100%; margin-top:20px; padding:10px;" onclick="toggleRules()">關閉說明</button>`,
+        // New Back Styles translations
+        lbl_back: "棋子背圖",
+        "opt-b-default": "✨ 預設 (Default)",
+        "opt-b-1": "1. 磨砂黑", "opt-b-2": "2. 毛玻璃", "opt-b-3": "3. 碳纖維", "opt-b-4": "4. 髮絲銀", "opt-b-5": "5. 新擬態", "opt-b-6": "6. 皮革縫線",
+        "opt-b-7": "7. 反應堆", "opt-b-8": "8. 故障藝術", "opt-b-9": "9. 全息網格", "opt-b-10": "10. 駭客代碼", "opt-b-11": "11. 霓虹邊框",
+        "opt-b-12": "12. 黑金大理石", "opt-b-13": "13. 玫瑰金", "opt-b-14": "14. 鑽石切面", "opt-b-15": "15. 液態水銀", "opt-b-16": "16. 黑曜石",
+        "opt-b-17": "17. 水墨暈染", "opt-b-18": "18. 青花瓷", "opt-b-19": "19. 朱漆金粉", "opt-b-20": "20. 枯山水", "opt-b-21": "21. 青海波",
+        "opt-b-22": "22. 深海光點", "opt-b-23": "23. 岩漿裂變", "opt-b-24": "24. 星空星雲", "opt-b-25": "25. 極光", "opt-b-26": "26. 水磨石",
+        "opt-b-27": "27. 迷幻漸層", "opt-b-28": "28. 歐普藝術", "opt-b-29": "29. 孟菲斯", "opt-b-30": "30. 紙藝層疊"
+    },
+    "zh-CN": {
+        title: "暗棋大师 2026",
+        p1_name_pvp: "玩家1", p1_name_pve: "玩家", p2_name_pvp: "玩家2", p2_name_pve: "电脑",
+        my_turn: "轮到你", pc_thinking: "电脑思考中...",
+        flip_card_pvp1: "玩家1 翻牌", flip_card_pvp2: "玩家2 翻牌", flip_card_pve: "请翻牌", flip_card_pc: "电脑翻牌",
+        move_pvp1: "玩家1 走棋", move_pvp2: "玩家2 走棋",
+        btn_settings: "⚙️ 设置", btn_undo: "↩️ 悔棋", btn_restart: "🔄 重开",
+        lbl_mode: "对战模式", opt_pve: "💻 单人 (挑战电脑)", opt_pvp: "👥 双人 (同机对弈)",
+        lbl_theme: "视觉风格",
+        opt_t_classic: "💎 经典", opt_t_ink: "🏔️ 水墨", opt_t_dark: "🌃 暗黑", opt_t_jade: "📿 翡翠",
+        opt_t_wood: "🪵 红木", opt_t_gold: "👑 黑金", opt_t_ocean: "🌊 深海", opt_t_royal: "🏛️ 紫禁",
+        opt_t_cyber: "🤖 赛博", opt_t_sakura: "🌸 樱花", opt_t_vintage: "📜 复古",
+        opt_t_ice: "❄️ 冰雪", opt_t_stone: "🗿 巨石", opt_t_minimal: "⬜ 极简",
+        lbl_diff: "电脑难度 (AI 等级)", opt_easy: "简单 (菜鸟)", opt_medium: "中等 (正常)", opt_hard: "困难 (高手)", opt_expert: "专家 (职业)", opt_master: "大师 (宗师)", opt_god: "神 (不可战胜)",
+        lbl_music: "背景音乐", opt_mute: "🔇 静音",
+        "opt_m_01": "🎵 乐曲 01", "opt_m_02": "🎵 乐曲 02", "opt_m_03": "🎵 乐曲 03", "opt_m_04": "🎵 乐曲 04", "opt_m_05": "🎵 乐曲 05", "opt_m_06": "🎵 乐曲 06", "opt_m_07": "🎵 乐曲 07",
+        lbl_lang: "语言 (Language)",
+        lbl_vol_music: "音乐音量", lbl_vol_sfx: "音效音量",
+        lbl_ghost: "👻 提示", btn_rules: "📜 规则", btn_home: "🏠 回首页", btn_done: "完成设置",
+        
+        msg_win: "恭喜胜利!", msg_lose: "可惜败北...",
+        msg_red_win: "红方获胜!", msg_black_win: "黑方获胜!",
+
+        rules_html: `<h3>暗棋规则说明</h3><p style="text-align:center; color:#ccc; margin-top:-10px;">暗象棋 / 翻棋</p><h4>1. 游戏性质</h4><p>运气 ＋ 策略</p><h4>2. 棋盘与初始</h4><ul><li><strong>棋盘：</strong>4 × 8 (共32格)。</li><li><strong>棋子：</strong>完整象棋32子 (红黑各16)。</li><li><strong>初始：</strong>所有棋子盖牌混洗，随机摆满。</li></ul><h4>3. 行动规则</h4><p>每回合玩家可执行下列<strong>其中一项</strong>：</p><ul><li>翻开一颗暗棋。</li><li>移动一颗己方棋子 (上下左右一格)。</li><li>吃掉敌方棋子。</li></ul><h4>4. 吃子大小 (大吃小)</h4><p><strong>将(帅) > 士(仕) > 象(相) > 車(俥) > 马(傌) > 包(炮) > 兵(卒)</strong></p><p><strong>特例：</strong></p><ul><li><strong>兵(卒)</strong> 可以吃 <strong>将(帅)</strong>。</li><li><strong>包(炮)</strong> 不看大小，需<strong>隔一颗棋子</strong>跳吃任何敌子。</li></ul><h4>5. 胜利条件</h4><ul><li>吃光对方所有棋子。</li><li>或者让对方无路可走 (困毙)。</li></ul><button class="btn btn-red" style="width:100%; margin-top:20px; padding:10px;" onclick="toggleRules()">关闭说明</button>`,
+        lbl_back: "棋子背图",
+        "opt-b-default": "✨ 预设 (Default)",
+        "opt-b-1": "1. 磨砂黑", "opt-b-2": "2. 毛玻璃", "opt-b-3": "3. 碳纤维", "opt-b-4": "4. 髮丝银", "opt-b-5": "5. 新拟态", "opt-b-6": "6. 皮革缝线",
+        "opt-b-7": "7. 反应堆", "opt-b-8": "8. 故障艺术", "opt-b-9": "9. 全息網格", "opt-b-10": "10. 黑客代码", "opt-b-11": "11. 霓虹边框",
+        "opt-b-12": "12. 黑金大理石", "opt-b-13": "13. 玫瑰金", "opt-b-14": "14. 钻石切面", "opt-b-15": "15. 液态水银", "opt-b-16": "16. 黑曜石",
+        "opt-b-17": "17. 水墨晕染", "opt-b-18": "18. 青花瓷", "opt-b-19": "19. 朱漆金粉", "opt-b-20": "20. 枯山水", "opt-b-21": "21. 青海波",
+        "opt-b-22": "22. 深海光点", "opt-b-23": "23. 岩浆裂变", "opt-b-24": "24. 星空星云", "opt-b-25": "25. 极光", "opt-b-26": "26. 水磨石",
+        "opt-b-27": "27. 迷幻渐层", "opt-b-28": "28. 欧普艺术", "opt-b-29": "29. 孟菲斯", "opt-b-30": "30. 纸艺层叠"
+    },
+    "en": {
+        title: "Dark Chess 2026",
+        p1_name_pvp: "Player 1", p1_name_pve: "You", p2_name_pvp: "Player 2", p2_name_pve: "CPU",
+        my_turn: "Your Turn", pc_thinking: "CPU Thinking...",
+        flip_card_pvp1: "P1 Flip", flip_card_pvp2: "P2 Flip", flip_card_pve: "Flip a Piece", flip_card_pc: "CPU Flip",
+        move_pvp1: "P1 Move", move_pvp2: "P2 Move",
+        btn_settings: "⚙️ Settings", btn_undo: "↩️ Undo", btn_restart: "🔄 Restart",
+        lbl_mode: "Game Mode", opt_pve: "💻 1 Player (PvE)", opt_pvp: "👥 2 Players (PvP)",
+        lbl_theme: "Visual Style",
+        opt_t_classic: "💎 Classic", opt_t_ink: "🏔️ Ink", opt_t_dark: "🌃 Dark", opt_t_jade: "📿 Jade",
+        opt_t_wood: "🪵 Wood", opt_t_gold: "👑 Gold", opt_t_ocean: "🌊 Ocean", opt_t_royal: "🏛️ Royal",
+        opt_t_cyber: "🤖 Cyber", opt_t_sakura: "🌸 Sakura", opt_t_vintage: "📜 Vintage",
+        opt_t_ice: "❄️ Ice", opt_t_stone: "🗿 Stone", opt_t_minimal: "⬜ Minimal",
+        lbl_diff: "AI Difficulty", opt_easy: "Easy (Novice)", opt_medium: "Medium (Normal)", opt_hard: "Hard (Advanced)", opt_expert: "Expert (Pro)", opt_master: "Master (Grand)", opt_god: "God (Invincible)",
+        lbl_music: "BGM", opt_mute: "🔇 Mute",
+        "opt_m_01": "🎵 Track 01", "opt_m_02": "🎵 Track 02", "opt_m_03": "🎵 Track 03", "opt_m_04": "🎵 Track 04", "opt_m_05": "🎵 Track 05", "opt_m_06": "🎵 Track 06", "opt_m_07": "🎵 Track 07",
+        lbl_lang: "Language",
+        lbl_vol_music: "Music Vol", lbl_vol_sfx: "SFX Vol",
+        lbl_ghost: "👻 Hints", btn_rules: "📜 Rules", btn_home: "🏠 Home", btn_done: "Done",
+        
+        msg_win: "You Win!", msg_lose: "You Lose...",
+        msg_red_win: "Red Wins!", msg_black_win: "Black Wins!",
+
+        rules_html: `<h3>Game Rules</h3><p style="text-align:center; color:#ccc; margin-top:-10px;">Dark Chess / Blind Chess</p><h4>1. Game Type</h4><p>Luck + Strategy</p><h4>2. Board & Pieces</h4><ul><li><strong>Board:</strong> 4 × 8 (32 grids).</li><li><strong>Pieces:</strong> Chinese Chess set (32 total).</li><li><strong>Start:</strong> All pieces hidden & shuffled.</li></ul><h4>3. Actions</h4><p>One action per turn:</p><ul><li>Flip a hidden piece.</li><li>Move a piece (1 step adjacent).</li><li>Capture an enemy piece.</li></ul><h4>4. Rank (Capture)</h4><p><strong>King > Advisor > Elephant > Rook > Horse > Cannon > Pawn</strong></p><p><strong>Exceptions:</strong></p><ul><li><strong>Pawn</strong> can capture <strong>King</strong>.</li><li><strong>Cannon</strong> captures by <strong>jumping over exactly one piece</strong>.</li></ul><h4>5. Victory</h4><ul><li>Capture all enemy pieces.</li><li>Or stalemate the opponent.</li></ul><button class="btn btn-red" style="width:100%; margin-top:20px; padding:10px;" onclick="toggleRules()">Close</button>`,
+        lbl_back: "Card Back",
+        "opt-b-default": "✨ Default",
+        "opt-b-1": "1. Matte Black", "opt-b-2": "2. Frosted", "opt-b-3": "3. Carbon", "opt-b-4": "4. Brushed Metal", "opt-b-5": "5. Neumorphism", "opt-b-6": "6. Leather",
+        "opt-b-7": "7. Arc Reactor", "opt-b-8": "8. Glitch", "opt-b-9": "9. Hologram", "opt-b-10": "10. Matrix", "opt-b-11": "11. Neon Border",
+        "opt-b-12": "12. Black Marble", "opt-b-13": "13. Rose Gold", "opt-b-14": "14. Diamond", "opt-b-15": "15. Liquid Chrome", "opt-b-16": "16. Obsidian",
+        "opt-b-17": "17. Ink Wash", "opt-b-18": "18. Porcelain", "opt-b-19": "19. Lacquer", "opt-b-20": "20. Zen Garden", "opt-b-21": "21. Seigaiha",
+        "opt-b-22": "22. Bio-Lumi", "opt-b-23": "23. Magma", "opt-b-24": "24. Galaxy", "opt-b-25": "25. Aurora", "opt-b-26": "26. Terrazzo",
+        "opt-b-27": "27. Acid", "opt-b-28": "28. Op Art", "opt-b-29": "29. Memphis", "opt-b-30": "30. Paper Cutout"
+    }
+};
+
+// === Main UI Thread ===
+const PIECES_DEF = [
+    { name: '帥', rank: 7, color: 'red', count: 1 }, { name: '仕', rank: 6, color: 'red', count: 2 }, { name: '相', rank: 5, color: 'red', count: 2 }, { name: '俥', rank: 4, color: 'red', count: 2 }, { name: '傌', rank: 3, color: 'red', count: 2 }, { name: '炮', rank: 2, color: 'red', count: 2 }, { name: '兵', rank: 1, color: 'red', count: 5 },
+    { name: '將', rank: 7, color: 'black', count: 1 }, { name: '士', rank: 6, color: 'black', count: 2 }, { name: '象', rank: 5, color: 'black', count: 2 }, { name: '車', rank: 4, color: 'black', count: 2 }, { name: '馬', rank: 3, color: 'black', count: 2 }, { name: '包', rank: 2, color: 'black', count: 2 }, { name: '卒', rank: 1, color: 'black', count: 5 }
+];
+const SCORES = { 
+    7: 1500, 6: 600, 5: 500, 4: 400, 3: 300, 2: 1000, 1: 200 
+};
+const LEVELS = {
+    'easy':   { time: 500,  depth: 6, errorRate: 0.25, expect: false, enhanced: false, qs: false },
+    'medium': { time: 1000, depth: 9, errorRate: 0.1, expect: false, enhanced: false, qs: true },
+    'hard':   { time: 2000, depth: 15, errorRate: 0.0, expect: true,  enhanced: true, qs: true },
+    'expert': { time: 3000, depth: 25, errorRate: 0.0, expect: true,  enhanced: true,  qs: true },
+    'master': { time: 4000, depth: 40, errorRate: 0.0, expect: true,  enhanced: true,  qs: true },
+    'god':    { time: 7000, depth: 99, errorRate: 0.0, expect: true,  enhanced: true,  qs: true } 
+};
+
+const audio = document.getElementById('bgm');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let userInteracted = false;
+let bd = [], myColor = null, turn = 1, curTurnColor = null, sel = -1, lastMove = -1, historyStack = [], over = false, isPVP = false, isAiThinking = false;
+let showGhost = true;
+let ghostPos = -1;
+let ghostPiece = null;
+let currentLang = 'zh-TW';
+let isAnimating = false;
+let dragEl = null;
+
+let worker = null;
+let timerInterval = null;
+let initialResizeDone = false;
+let mouseX = 0, mouseY = 0;
+
+/* --- GitHub Music Logic (From Gomoku) --- */
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    const baseUrl = "https://johsok.github.io/Games/MP3/";
+    return `${baseUrl}${val}.mp3`;
+}
+
+function initWorker() {
+    const blob = new Blob([document.getElementById('worker-script').textContent], {type: 'application/javascript'});
+    worker = new Worker(URL.createObjectURL(blob));
+    
+    worker.onmessage = function(e) {
+        setTimeout(() => {
+            clearInterval(timerInterval);
+            isAiThinking = false;
+            const bestM = e.data;
+            const aiC = getTurnColor(), opC = aiC==='red'?'black':'red';
+            const hid = bd.filter(p => p && p.hidden);
+            
+            if(!bestM && hid.length > 0) {
+                let idxs = bd.map((p,i)=>p&&p.hidden?i:-1).filter(i=>i!==-1);
+                actionFlip(idxs[Math.floor(Math.random() * idxs.length)]);
+            } else if(bestM) {
+                if(bestM.type === 'flip') actionFlip(bestM.from);
+                else actionMove(bestM.from, bestM.to);
+            } else {
+                // AI has no moves -> AI loses. Player wins.
+                const t = TRANSLATIONS[currentLang];
+                endGame(isPVP ? (opC==='red' ? t.msg_red_win : t.msg_black_win) : t.msg_win);
+            }
+            updateUI(); 
+        }, 500); 
+    };
+}
+
+window.onload = () => { 
+    resizeBoard(); 
+    setTimeout(resizeBoard, 300); 
+    
+    // Init Audio with new logic
+    audio.src = getMp3Path(document.getElementById('music-sel').value);
+    
+    // Init Volumes
+    adjMusicVol();
+    adjSfxVol();
+    updateText(); // Apply language
+    
+    document.addEventListener('visibilitychange', () => {
+        const musicSetting = document.getElementById('music-sel').value;
+        if (document.hidden) {
+            audio.pause();
+        } else {
+            if (musicSetting !== 'none' && userInteracted && audio.volume > 0) {
+                audio.play().catch(()=>{});
+            }
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (!initialResizeDone || Math.abs(window.innerWidth - lastWinW) > 20) {
+            resizeBoard();
+        }
+    }); 
+
+    // Global Mouse tracking for drag
+    window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        updateDragPos();
+    });
+    window.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) {
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+            updateDragPos();
+        }
+    }, {passive: false});
+
+    document.body.addEventListener('click', unlockAudio, {once:true}); 
+    document.body.addEventListener('touchstart', unlockAudio, {once:true}); 
+    initWorker();
+    restart(); 
+    audio.addEventListener('ended', () => { 
+        if(userInteracted && document.getElementById('music-sel').value !== 'none' && audio.volume > 0) audio.play().catch(()=>{}); 
+    }); 
+};
+
+function updateDragPos() {
+    if (dragEl) {
+        dragEl.style.left = mouseX + 'px';
+        dragEl.style.top = mouseY + 'px';
+    }
+}
+
+function unlockAudio() { 
+    userInteracted = true; 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    
+    // Update Volume logic based on range input
+    audio.volume = document.getElementById('vol-range').value / 100;
+    
+    if (!audio.src || audio.src === "") {
+        const val = document.getElementById('music-sel').value;
+        if(val !== 'none') audio.src = getMp3Path(val);
+    }
+    
+    if(document.getElementById('music-sel').value !== 'none' && audio.volume > 0) {
+        audio.play().catch(()=>{}); 
+    }
+}
+
+let lastWinW = 0;
+function resizeBoard() { 
+    const isMobileLandscape = window.matchMedia("(orientation: landscape)").matches && window.innerWidth < 1024;
+    const winW = isMobileLandscape ? window.outerHeight : window.innerWidth;
+    const winH = isMobileLandscape ? window.innerWidth : window.innerHeight;
+    lastWinW = window.innerWidth;
+
+    const h = document.getElementById('main-header').offsetHeight;
+    const w = winW; 
+    const ah = winH - h - 5; 
+    
+    const r = 4/8; 
+    let fw = w, fh = fw/r; 
+    if(fh > ah) { fh = ah; fw = fh * r; } 
+    
+    const bw = document.getElementById('board-wrap'); 
+    bw.style.width = fw + "px"; 
+    bw.style.height = fh + "px"; 
+    bw.style.fontSize = (fw / 4) + "px"; 
+    initialResizeDone = true;
+}
+
+function restart() {
+    let pool = [], id = 0;
+    PIECES_DEF.forEach(p => { for(let i=0; i<p.count; i++) pool.push({ ...p, id: id++, hidden: true }); });
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    bd = pool; myColor = null; curTurnColor = null; turn = 1; sel = -1; lastMove = -1; historyStack = []; over = false; isAiThinking = false; isAnimating = false;
+    ghostPos = -1; ghostPiece = null;
+    if(dragEl) { dragEl.remove(); dragEl = null; }
+    isPVP = document.getElementById('mode-sel').value === 'pvp';
+    clearInterval(timerInterval);
+    document.getElementById('win-overlay').classList.remove('show'); updateUI(); render();
+}
+
+function render() {
+    const w = document.getElementById('board-wrap'), ov = document.getElementById('win-overlay'); w.innerHTML = ''; w.appendChild(ov);
+    
+    // Manage dragging element
+    if (sel !== -1 && bd[sel] && !bd[sel].hidden) {
+        if (!dragEl) {
+            dragEl = document.createElement('div');
+            let classes = ['piece', 'dragging-piece', bd[sel].color];
+            dragEl.className = classes.join(' ');
+            dragEl.innerText = bd[sel].name;
+            dragEl.style.fontSize = (parseFloat(w.style.fontSize) * 0.65) + "px"; 
+            dragEl.style.width = (parseFloat(w.style.fontSize) * 0.95) + "px"; 
+            dragEl.style.height = (parseFloat(w.style.fontSize) * 0.95) + "px";
+            document.body.appendChild(dragEl);
+            updateDragPos();
+        }
+    } else {
+        if (dragEl) { dragEl.remove(); dragEl = null; }
+    }
+
+    bd.forEach((p, i) => {
+        const c = document.createElement('div'); c.className = 'cell'; c.onclick = () => handleClick(i);
+        
+        if(p) {
+            if (i === sel && !p.hidden) {
+                const mark = document.createElement('div');
+                mark.className = 'origin-mark';
+                c.appendChild(mark);
+            } else {
+                const el = document.createElement('div');
+                let classes = ['piece'];
+                classes.push(p.hidden ? 'back' : p.color);
+                
+                if (!p.hidden) {
+                     if (sel !== -1 && i !== sel && isValidMove(sel, i)) {
+                         classes.push('can-eat');
+                     }
+                }
+                if (i === lastMove) classes.push('last-move');
+                
+                el.className = classes.join(' ');
+                if (!p.hidden) el.innerText = p.name;
+                c.appendChild(el);
+            }
+        } 
+        else if (showGhost && i === ghostPos && ghostPiece) {
+            const el = document.createElement('div');
+            let classes = ['piece', 'ghost', ghostPiece.color];
+            el.className = classes.join(' ');
+            el.innerText = ghostPiece.name;
+            c.appendChild(el);
+        }
+
+        w.appendChild(c);
+    });
+}
+
+function updateUI() {
+    const t = TRANSLATIONS[currentLang];
+    const p1 = document.getElementById('p1-status'), p2 = document.getElementById('p2-status'), msg = document.getElementById('msg'), ub = document.getElementById('btn-undo');
+    
+    if(!myColor) { 
+        p1.innerHTML = `<i class="player-dot dot-unk"></i> ${isPVP ? t.p1_name_pvp : t.p1_name_pve}`; 
+        p2.innerHTML = `<i class="player-dot dot-unk"></i> ${isPVP ? t.p2_name_pvp : t.p2_name_pve}`; 
+    } else {
+        const c1 = myColor, c2 = myColor==='red'?'black':'red';
+        const colorName1 = c1==='red' ? '🔴' : '⚫';
+        const colorName2 = c2==='red' ? '🔴' : '⚫';
+        p1.innerHTML = `<i class="player-dot dot-${c1}"></i> ${isPVP ? t.p1_name_pvp : t.p1_name_pve} (${colorName1})`;
+        p2.innerHTML = `<i class="player-dot dot-${c2}"></i> ${isPVP ? t.p2_name_pvp : t.p2_name_pve} (${colorName2})`;
+    }
+    
+    if(over) return;
+    let txt = "";
+    if(!myColor) {
+        if(isPVP) txt = turn===1 ? t.flip_card_pvp1 : t.flip_card_pvp2;
+        else txt = turn===1 ? t.flip_card_pve : t.flip_card_pc;
+    } else { 
+        if(isPVP) txt = turn===1 ? t.move_pvp1 : t.move_pvp2; 
+        else txt = turn===1 ? t.my_turn : t.pc_thinking; 
+    }
+    
+    if(!isAiThinking && !isAnimating) {
+        msg.innerText = txt; msg.style.color = turn===1?"#f1c40f":"#ccc";
+        if(turn===-1 && !isPVP) msg.style.color = "#e74c3c";
+    }
+    ub.disabled = (historyStack.length===0 || over || (!isPVP && turn===-1) || isAnimating);
+}
+
+function handleClick(i) {
+    if(over || isAiThinking || isAnimating || (!isPVP && turn===-1)) return;
+    const p = bd[i];
+    
+    if(p && p.hidden) { saveState(); actionFlip(i); return; }
+    
+    if(p && !p.hidden) {
+        if (i === sel) {
+            sel = -1;
+            render();
+            playSfx(100, "tap"); 
+            return;
+        }
+
+        if(curTurnColor && p.color !== getTurnColor()) {
+            if(sel !== -1 && isValidMove(sel, i)) { saveState(); actionMove(sel, i); } 
+            else playSfx(150, "tap");
+            return;
+        }
+        sel = i; render(); playSfx(300, "tap"); return;
+    }
+    if(!p && sel !== -1 && isValidMove(sel, i)) { saveState(); actionMove(sel, i); }
+}
+
+function getTurnColor() { return !myColor ? null : (turn===1 ? myColor : (myColor==='red'?'black':'red')); }
+
+function actionFlip(i) {
+    playSfx(600, "flip"); 
+    bd[i].hidden = false; 
+    lastMove = i;
+    sel = -1;
+    ghostPos = -1;
+    ghostPiece = null;
+
+    if(!myColor) { const c = bd[i].color; if(turn===1) myColor=c; else myColor=(c==='red'?'black':'red'); curTurnColor=c; }
+    endTurn();
+}
+
+function actionMove(f, t) { 
+    const isAiMove = (!isPVP && turn === -1);
+    if (isAiMove) {
+        animateAiMove(f, t);
+    } else {
+        executeMove(f, t);
+    }
+}
+
+function animateAiMove(f, t) {
+    isAnimating = true;
+    updateUI();
+    const cells = document.getElementsByClassName('cell');
+    if (!cells[f] || !cells[t] || !bd[f]) { executeMove(f, t); return; }
+
+    const startRect = cells[f].getBoundingClientRect();
+    const endRect = cells[t].getBoundingClientRect();
+    const fontSize = document.getElementById('board-wrap').style.fontSize;
+
+    const animEl = document.createElement('div');
+    const p = bd[f];
+    let classes = ['piece', 'animating-piece', p.color];
+    animEl.className = classes.join(' ');
+    animEl.innerText = p.name;
+    animEl.style.fontSize = (parseFloat(fontSize) * 0.65) + "px";
+    animEl.style.width = (parseFloat(fontSize) * 0.95) + "px"; 
+    animEl.style.height = (parseFloat(fontSize) * 0.95) + "px";
+    
+    animEl.style.top = (startRect.top + startRect.height/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+    animEl.style.left = (startRect.left + startRect.width/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+    
+    document.body.appendChild(animEl);
+
+    const originalPiece = cells[f].querySelector('.piece');
+    if(originalPiece) originalPiece.style.opacity = 0;
+
+    requestAnimationFrame(() => {
+        animEl.style.top = (endRect.top + endRect.height/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+        animEl.style.left = (endRect.left + endRect.width/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+    });
+
+    setTimeout(() => {
+        animEl.remove();
+        executeMove(f, t);
+        isAnimating = false;
+        updateUI();
+    }, 600);
+}
+
+function executeMove(f, t) {
+    const k = bd[t]!==null; 
+    playSfx(k?800:400, k?"kill":"move"); 
+
+    ghostPos = f;
+    ghostPiece = { ...bd[f] };
+
+    bd[t]=bd[f]; bd[f]=null; 
+    sel=-1; 
+    lastMove=t; 
+    checkWin(); 
+    if(!over) endTurn(); 
+}
+
+function endTurn() {
+    turn = -turn; if(myColor) curTurnColor = (curTurnColor==='red'?'black':'red');
+    render(); updateUI();
+    if(!isPVP && turn===-1 && !over) { 
+        isAiThinking = true; 
+        aiRun(); 
+    }
+}
+
+function isValidMove(f, t, b=bd) {
+    const p1 = b[f], p2 = b[t], x1=f&3, y1=f>>2, x2=t&3, y2=t>>2, d=Math.abs(x1-x2)+Math.abs(y1-y2);
+    if(p2 && !p2.hidden && p1.color===p2.color) return false;
+    
+    if(p1.rank===2) { 
+        if(!p2) return d===1;
+        if(p2.hidden) return false; 
+        if(x1!==x2 && y1!==y2) return false;
+        let c=0, s=Math.min(f,t)+(y1===y2?1:4), e=Math.max(f,t), st=y1===y2?1:4;
+        for(let k=s; k<e; k+=st) if(b[k]) c++;
+        return c===1; 
+    } else {
+        if(d!==1) return false; 
+        if(!p2) return true; 
+        if(p2.hidden) return false; 
+        if(p1.rank===1 && p2.rank===7) return true; 
+        if(p1.rank===7 && p2.rank===1) return false;
+        return p1.rank >= p2.rank;
+    }
+}
+
+function checkWin() {
+    const t = TRANSLATIONS[currentLang];
+    // Calculate pieces count
+    const rCnt = bd.filter(p=>p && p.color==='red').length;
+    const bCnt = bd.filter(p=>p && p.color==='black').length;
+
+    let winner = null;
+    if (rCnt === 0) winner = 'black';
+    else if (bCnt === 0) winner = 'red';
+
+    if (winner) {
+        if (isPVP) {
+            endGame(winner === 'red' ? t.msg_red_win : t.msg_black_win);
+        } else {
+            // PvE: Compare winner with player's color
+            // myColor is set when player flips the first piece
+            if (winner === myColor) {
+                endGame(t.msg_win);
+            } else {
+                endGame(t.msg_lose);
+            }
+        }
+    }
+}
+
+function endGame(txt){
+    over=true;render();updateUI();
+    setTimeout(()=>{
+        playWinSfx();
+        const o=document.getElementById('win-overlay');
+        o.innerText=txt;
+        o.classList.add('show');
+    },500);
+}
+
+function aiRun() {
+    if(over) return;
+    const levelKey = document.getElementById('diff-sel').value;
+    const config = LEVELS[levelKey];
+    const aiColor = getTurnColor();
+    const msgEl = document.getElementById('msg');
+    
+    let aiBd = bd.map(p=>p?{...p}:null);
+    let hid = []; for(let i=0; i<32; i++) if(aiBd[i] && aiBd[i].hidden) hid.push(i);
+    let myP = aiBd.filter(p=>p && !p.hidden && p.color===aiColor);
+
+    if(myP.length === 0 && hid.length > 0) {
+        setTimeout(() => {
+            actionFlip(hid[Math.floor(Math.random() * hid.length)]);
+            isAiThinking = false;
+            updateUI(); 
+        }, 800); 
+        return;
+    }
+
+    worker.postMessage({ board: aiBd, aiColor: aiColor, config: config, hiddenIndices: hid });
+
+    const startTime = Date.now();
+    msgEl.style.color = "#e74c3c";
+    clearInterval(timerInterval);
+    
+    const updateTimer = () => {
+        const elapsed = Date.now() - startTime;
+        const remain = Math.max(0, (config.time - elapsed) / 1000).toFixed(1);
+        msgEl.innerText = `${TRANSLATIONS[currentLang].pc_thinking} (${remain}s)`;
+    };
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 100); 
+}
+
+function saveState() { historyStack.push({ bd: bd.map(p=>p?{...p}:null), turn, myColor, curTurnColor, lastMove, over }); }
+function undo() {
+    if(!historyStack.length || over || isAiThinking || isAnimating) return;
+    let s = isPVP ? 1 : 2; if(historyStack.length<s) s=historyStack.length;
+    let st=null; for(let i=0; i<s; i++) st=historyStack.pop();
+    if(st) { 
+        bd=st.bd; turn=st.turn; myColor=st.myColor; curTurnColor=st.curTurnColor; lastMove=st.lastMove; over=st.over; sel=-1; 
+        ghostPos = -1; ghostPiece = null;
+        if(dragEl) { dragEl.remove(); dragEl = null; }
+        document.getElementById('win-overlay').classList.remove('show'); updateUI(); render(); 
+    }
+}
+function toggleSet() { const s=document.getElementById('settings'); s.style.display=s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r=document.getElementById('rules-overlay'); r.style.display=r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function changeBack() { document.body.setAttribute('data-back', document.getElementById('back-sel').value); }
+function changeMode() { isPVP = document.getElementById('mode-sel').value === 'pvp'; restart(); }
+
+function updateText() {
+    const t = TRANSLATIONS[currentLang];
+    // Static IDs
+    document.getElementById('txt-title').innerText = t.title;
+    document.getElementById('btn-settings').innerText = t.btn_settings;
+    document.getElementById('btn-undo').innerText = t.btn_undo;
+    document.getElementById('btn-restart').innerText = t.btn_restart;
+    document.getElementById('lbl-mode').innerText = t.lbl_mode;
+    document.getElementById('opt-pve').innerText = t.opt_pve;
+    document.getElementById('opt-pvp').innerText = t.opt_pvp;
+    document.getElementById('lbl-theme').innerText = t.lbl_theme;
+    
+    // Themes options
+    document.getElementById('opt-t-classic').innerText = t.opt_t_classic;
+    document.getElementById('opt-t-ink').innerText = t.opt_t_ink;
+    document.getElementById('opt-t-dark').innerText = t.opt_t_dark;
+    document.getElementById('opt-t-jade').innerText = t.opt_t_jade;
+    document.getElementById('opt-t-wood').innerText = t.opt_t_wood;
+    document.getElementById('opt-t-gold').innerText = t.opt_t_gold;
+    document.getElementById('opt-t-ocean').innerText = t.opt_t_ocean;
+    document.getElementById('opt-t-royal').innerText = t.opt_t_royal;
+    // New Themes
+    document.getElementById('opt-t-cyber').innerText = t.opt_t_cyber;
+    document.getElementById('opt-t-sakura').innerText = t.opt_t_sakura;
+    document.getElementById('opt-t-vintage').innerText = t.opt_t_vintage;
+    document.getElementById('opt-t-ice').innerText = t.opt_t_ice;
+    document.getElementById('opt-t-stone').innerText = t.opt_t_stone;
+    document.getElementById('opt-t-minimal').innerText = t.opt_t_minimal;
+
+    document.getElementById('lbl-diff').innerText = t.lbl_diff;
+    document.getElementById('opt-easy').innerText = t.opt_easy;
+    document.getElementById('opt-medium').innerText = t.opt_medium;
+    document.getElementById('opt-hard').innerText = t.opt_hard;
+    document.getElementById('opt-expert').innerText = t.opt_expert;
+    document.getElementById('opt-master').innerText = t.opt_master;
+    document.getElementById('opt-god').innerText = t.opt_god;
+    document.getElementById('lbl-music').innerText = t.lbl_music;
+    document.getElementById('opt-mute').innerText = t.opt_mute;
+    
+    // Music options (New logic: 01-07)
+    document.getElementById('opt-m-01').innerText = t["opt_m_01"];
+    document.getElementById('opt-m-02').innerText = t["opt_m_02"];
+    document.getElementById('opt-m-03').innerText = t["opt_m_03"];
+    document.getElementById('opt-m-04').innerText = t["opt_m_04"];
+    document.getElementById('opt-m-05').innerText = t["opt_m_05"];
+    document.getElementById('opt-m-06').innerText = t["opt_m_06"];
+    document.getElementById('opt-m-07').innerText = t["opt_m_07"];
+
+    document.getElementById('lbl-lang').innerText = t.lbl_lang;
+    document.getElementById('lbl-ghost').innerText = t.lbl_ghost;
+    document.getElementById('btn-rules').innerText = t.btn_rules;
+    document.getElementById('btn-home').innerText = t.btn_home;
+    document.getElementById('btn-done').innerText = t.btn_done;
+    document.getElementById('rules-content').innerHTML = t.rules_html;
+    
+    // New Back Styles
+    document.getElementById('lbl-back').innerText = t.lbl_back;
+    document.getElementById('opt-b-default').innerText = t["opt-b-default"];
+    
+    // Update all 30 options
+    for(let i=1; i<=30; i++) {
+        const key = "opt-b-" + i;
+        if(document.getElementById(key)) document.getElementById(key).innerText = t[key];
+    }
+
+    // Dynamic Labels handled by adj functions
+    adjMusicVol();
+    adjSfxVol();
+    updateUI(); // Refresh Status Bar
+}
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value;
+    updateText();
+}
+
+function adjMusicVol() { 
+    const v = document.getElementById('vol-range').value; 
+    document.getElementById('lbl-vol-music').innerText = `${TRANSLATIONS[currentLang].lbl_vol_music} (${v}%)`;
+    audio.volume = v / 100;
+}
+
+function adjSfxVol() {
+    const v = document.getElementById('sfx-vol-range').value;
+    document.getElementById('lbl-vol-sfx').innerText = `${TRANSLATIONS[currentLang].lbl_vol_sfx} (${v}%)`;
+}
+
+function changeMusic() {
+    if(!userInteracted) unlockAudio();
+    const val = document.getElementById('music-sel').value; 
+    
+    if(val === 'none') { 
+        audio.pause(); 
+        audio.src = ""; 
+    } else { 
+        const newPath = getMp3Path(val);
+        if (audio.src !== newPath) {
+            audio.src = newPath;
+            audio.load();
+            audio.play().catch(e => {
+                console.log("自動播放被攔截，等待使用者點擊", e);
+            });
+        }
+    } 
+}
+
+function toggleGhost() { showGhost = document.getElementById('ghost-check').checked; render(); }
+
+function playSfx(f,t) { 
+    if(audioCtx.state==='suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol-range').value / 100; 
+    if(v<=0.01) return;
+    
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
+    const n=audioCtx.currentTime;
+    if(t==="tap") { o.type="sine"; o.frequency.setValueAtTime(800,n); g.gain.setValueAtTime(v*0.5,n); g.gain.exponentialRampToValueAtTime(0.001,n+0.05); o.start(); o.stop(n+0.05); }
+    else if(t==="flip") { o.type="triangle"; o.frequency.setValueAtTime(300,n); o.frequency.linearRampToValueAtTime(600,n+0.1); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(0.001,n+0.15); o.start(); o.stop(n+0.15); }
+    else if(t==="kill") { o.type="square"; o.frequency.setValueAtTime(150,n); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(0.001,n+0.2); o.start(); o.stop(n+0.2); }
+    else { o.frequency.setValueAtTime(f,n); o.frequency.exponentialRampToValueAtTime(f/2,n+0.1); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(0.001,n+0.15); o.start(); o.stop(n+0.15); }
+}
+
+function playWinSfx() { if(audioCtx.state==='suspended') audioCtx.resume(); const v=document.getElementById('sfx-vol-range').value/100; if(v<=0.01) return; const ns=[523.25,659.25,783.99,1046.50,1318.51,1567.98]; const n=audioCtx.currentTime; ns.forEach((x,i)=>{ const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type="triangle"; o.connect(g); g.connect(audioCtx.destination); o.frequency.value=x; g.gain.setValueAtTime(0,n+i*0.1); g.gain.linearRampToValueAtTime(v*0.5,n+i*0.1+0.05); g.gain.exponentialRampToValueAtTime(0.001,n+i*0.1+0.3); o.start(n+i*0.1); o.stop(n+i*0.1+0.3); }); }
+
+// Feature: Go Home
+function goHome() {
+    try {
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+             console.log("No parent detected or standalone mode");
+             // window.history.back(); 
+        }
+    } catch (e) {
+        console.error("Cross-origin restriction or error:", e);
+    }
+}
+
+// 1. 禁用右鍵選單
+    document.addEventListener('contextmenu', event => {
+        event.preventDefault();
+    });
+
+    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
+    document.onkeydown = function(e) {
+        // 禁止 F12 (123)
+        if (e.keyCode == 123) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+I (檢查元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+C (選取元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+J (開發者主控台)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+U (查看網頁原始碼)
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+S (存檔)
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
+            return false;
+        }
+    };
+
+    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
+    // 雖然無法阻止高手，但對普通人很有效
+    console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+    console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+</script>
+</body>
+</html>
