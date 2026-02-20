@@ -4,38 +4,129 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Johsok's Games</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --accent-color: #f1c40f; /* 金色 */
-            --hover-bg: #282828;
+            /* === 科技山水配色 === */
+            --bg-deep: #05080a;     /* 深墨色背景 */
+            --ink-black: #111518;   /* 濃墨 */
+            --mist-white: rgba(255, 255, 255, 0.03); /* 雲霧透明度 */
+            --text-main: #dcdfe3;   /* 銀灰字體 */
+            --jade-glow: #64ffda;   /* 青玉光 (科技主色) */
+            --cyber-blue: #00b4d8;  /* 輔助科技藍 */
+            --glass-bg: rgba(20, 25, 30, 0.6); /* 毛玻璃背景 */
+            --glass-border: rgba(100, 255, 218, 0.2);
         }
 
         body {
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Noto Serif TC', "PingFang TC", serif; /* 主體使用宋體，營造東方感 */
+            background-color: var(--bg-deep);
+            color: var(--text-main);
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
             overflow-x: hidden;
-            /* 禁止文字選取，增加防範感 */
             user-select: none;
             -webkit-user-select: none;
+            position: relative;
         }
 
-        /* === Iframe 遊戲容器樣式 === */
+        /* === 動畫定義 Keyframes === */
+        
+        /* 1. 背景網格緩慢移動 (數位巡航感) */
+        @keyframes grid-drift {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 50px; }
+        }
+
+        /* 2. 線條流光特效 */
+        @keyframes scan-light {
+            0% { background-position: -100% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* 3. 呼吸燈效果 (邊框與陰影) */
+        @keyframes border-pulse {
+            0%, 100% { border-color: rgba(100, 255, 218, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            50% { border-color: rgba(100, 255, 218, 0.5); box-shadow: 0 10px 30px rgba(100, 255, 218, 0.1); }
+        }
+
+        /* 4. 帥印心跳 */
+        @keyframes heart-beat {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255,0,0,0.2); }
+            50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 50, 50, 0.4); }
+        }
+
+        /* 5. 緩慢旋轉 */
+        @keyframes slow-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 6. 雷達波紋 */
+        @keyframes ripple {
+            0% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 180, 216, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0); }
+        }
+
+        /* 7. 頁面載入浮現 */
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 8. 文字閃爍 (故障風) */
+        @keyframes text-glitch {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.6; }
+            94% { opacity: 1; }
+            96% { opacity: 1; }
+            97% { opacity: 0.4; }
+            98% { opacity: 1; }
+        }
+
+        /* === 背景視覺：數位山水 === */
+        /* 1. 遠山漸層 (加入緩慢脈動) */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 50% 120%, #1a2530 0%, var(--bg-deep) 70%),
+                linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%);
+            z-index: -2;
+            animation: text-glitch 10s infinite alternate; /* 極度微弱的背景閃爍 */
+        }
+
+        /* 2. 科技網格 + 噪點紋理 (加入移動動畫) */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(100, 255, 218, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 255, 218, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            animation: grid-drift 20s linear infinite; /* 網格緩慢下移 */
+        }
+
+        /* === Iframe 遊戲容器 === */
         #game-frame-container {
-            display: none; /* 預設隱藏 */
+            display: none;
             position: fixed;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
-            background: #121212;
-            z-index: 9999; /* 確保在最上層 */
+            background: #000;
+            z-index: 9999;
         }
 
         iframe {
@@ -44,96 +135,263 @@
             display: block;
         }
 
-        /* === 原有樣式 === */
+        /* === Header === */
         header {
-            padding: 50px 20px;
+            padding: 70px 20px 40px;
             text-align: center;
-            background: linear-gradient(to bottom, #1a1a1a, #121212);
             width: 100%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: relative;
+            animation: fade-in-up 1s ease-out; /* 標題入場動畫 */
         }
 
         h1 {
             margin: 0;
-            font-size: 2.2rem;
-            letter-spacing: 6px;
-            color: var(--accent-color);
-            text-shadow: 0 0 15px rgba(241, 196, 15, 0.3);
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: 10px;
+            color: var(--text-main);
+            text-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+            position: relative;
+            display: inline-block;
+        }
+
+        /* 標題下方的科技裝飾線 (加入流光動畫) */
+        h1::after {
+            content: "";
+            display: block;
+            width: 60%;
+            height: 2px;
+            /* 修改 gradient 以支援動畫 */
+            background: linear-gradient(90deg, transparent 0%, var(--jade-glow) 50%, transparent 100%);
+            background-size: 200% 100%; /* 拉大背景以進行移動 */
+            margin: 15px auto 0;
+            box-shadow: 0 0 10px var(--jade-glow);
+            animation: scan-light 4s ease-in-out infinite; /* 流光動畫 */
         }
 
         .subtitle {
-            margin-top: 10px;
-            color: #888;
-            font-size: 0.9rem;
+            margin-top: 15px;
+            font-family: 'Orbitron', monospace;
+            color: var(--jade-glow);
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            animation: text-glitch 5s infinite; /* 副標題微弱閃爍 */
         }
 
+        /* === Container === */
         .container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 30px;
             width: 90%;
-            max-width: 900px;
-            padding: 40px 20px;
+            max-width: 1100px;
+            padding: 20px;
+            padding-bottom: 80px;
         }
 
+        /* === Game Card (玻璃擬態 + 科技邊框 + 動畫) === */
         .game-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 25px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            padding: 30px 20px;
             text-align: center;
             text-decoration: none;
-            color: white;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-main);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
             position: relative;
             overflow: hidden;
-            cursor: pointer; /* 讓滑鼠變手型 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            cursor: pointer;
+            
+            /* 入場動畫與持續呼吸 */
+            opacity: 0; /* 初始隱藏，由動畫顯示 */
+            animation: fade-in-up 0.8s ease-out forwards, border-pulse 4s ease-in-out infinite;
         }
 
-        .game-card::before {
-            content: '';
+        /* 卡片依序入場 */
+        .game-card:nth-child(1) { animation-delay: 0.1s, 0s; }
+        .game-card:nth-child(2) { animation-delay: 0.2s, 1s; }
+        .game-card:nth-child(3) { animation-delay: 0.3s, 2s; }
+        .game-card:nth-child(4) { animation-delay: 0.4s, 3s; }
+        .game-card:nth-child(5) { animation-delay: 0.5s, 4s; }
+
+        /* 卡片角落裝飾 */
+        .game-card::before, .game-card::after {
+            content: "";
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 3px;
-            background: var(--accent-color);
-            transform: scaleX(0);
+            width: 15px; height: 15px;
+            border: 1px solid var(--jade-glow);
+            transition: all 0.4s ease;
+            opacity: 0.5;
+        }
+        .game-card::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+        .game-card::after { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+        /* 卡片懸停特效 */
+        .game-card:hover {
+            opacity: 1; /* 【修正點】強制不透明，防止 animation: none 時變回 opacity: 0 */
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(30, 40, 50, 0.7);
+            border-color: var(--jade-glow);
+            box-shadow: 0 0 25px rgba(100, 255, 218, 0.3); /* 增強光暈 */
+            animation: none; /* 懸停時暫停呼吸動畫，專注於高亮 */
+        }
+
+        .game-card:hover::before, .game-card:hover::after {
+            width: 100%; height: 100%;
+            opacity: 1;
+            border-color: rgba(100, 255, 218, 0.1);
+        }
+
+        /* === 全新 Icon 設計 (CSS 繪製) === */
+        .icon-box {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* 象棋：圓形帥印 (加入心跳) */
+        .icon-chess {
+            width: 50px; height: 50px;
+            border: 2px solid var(--text-main);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold;
+            box-shadow: 0 0 15px rgba(255,0,0,0.2);
+            background: radial-gradient(circle, #331111 0%, transparent 80%);
+            color: #ff6b6b;
+            font-family: 'Noto Serif TC', serif;
+            animation: heart-beat 2s infinite ease-in-out;
+        }
+        /* 懸停時加速心跳 */
+        .game-card:hover .icon-chess { animation-duration: 0.8s; }
+
+        /* 暗棋：翻轉方塊 (加入搖晃或旋轉) */
+        .icon-dark {
+            width: 40px; height: 40px;
+            background: #1a1a1a;
+            border: 1px solid var(--jade-glow);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            color: var(--jade-glow);
+            position: relative;
+            transition: transform 0.5s;
+        }
+        .icon-dark::after {
+            content: "?";
+            font-family: 'Orbitron';
+        }
+        .icon-dark::before {
+            content: ""; position: absolute; top: -5px; left: 5px;
+            width: 100%; height: 100%; border: 1px dashed rgba(100,255,218,0.3);
+            z-index: -1;
+        }
+        .game-card:hover .icon-dark {
+            transform: rotateY(180deg); /* 懸停時翻轉 */
+        }
+
+        /* 五子棋：連珠 */
+        .icon-gomoku {
+            display: flex; gap: 4px;
+        }
+        .gomoku-dot {
+            width: 12px; height: 12px; border-radius: 50%;
             transition: transform 0.3s;
         }
+        .g-black { background: var(--text-main); box-shadow: 0 0 5px var(--text-main); }
+        .g-white { border: 1px solid var(--text-main); }
+        .g-accent { background: var(--jade-glow); box-shadow: 0 0 10px var(--jade-glow); }
+        
+        .game-card:hover .gomoku-dot:nth-child(1) { transform: translateY(-3px); }
+        .game-card:hover .gomoku-dot:nth-child(2) { transform: translateY(3px); }
+        .game-card:hover .gomoku-dot:nth-child(3) { transform: translateY(-3px); }
+        .game-card:hover .gomoku-dot:nth-child(4) { transform: translateY(3px); }
 
-        .game-card:hover {
-            background: var(--hover-bg);
-            transform: translateY(-8px);
-            box-shadow: 0 12px 25px rgba(0,0,0,0.6);
-            border-color: rgba(241, 196, 15, 0.4);
+        /* 黑白棋：太極感圓形 (加入自轉) */
+        .icon-othello {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--text-main) 50%, #111 50%);
+            border: 1px solid #555;
+            box-shadow: 0 0 15px rgba(255,255,255,0.1);
+            animation: slow-rotate 10s linear infinite; /* 緩慢自轉 */
+        }
+        .game-card:hover .icon-othello { animation-duration: 2s; } /* 懸停加速 */
+
+        /* 跳棋：六角星或標靶 (加入雷達波) */
+        .icon-checkers {
+            width: 40px; height: 40px;
+            border: 2px solid var(--cyber-blue);
+            border-radius: 50%;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .icon-checkers::after {
+            content: ""; width: 20px; height: 20px;
+            background: var(--cyber-blue);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--cyber-blue);
+        }
+        /* 增加雷達波偽元素 */
+        .icon-checkers::before {
+            content: "";
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 1px solid var(--cyber-blue);
+            animation: ripple 2s infinite cubic-bezier(0, 0.2, 0.8, 1);
         }
 
-        .game-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .icon {
-            font-size: 45px;
-            margin-bottom: 15px;
-            display: block;
-        }
-
+        /* 文字樣式 */
         .game-title {
             font-size: 1.2rem;
-            font-weight: bold;
-            letter-spacing: 2px;
+            font-weight: 400;
+            letter-spacing: 4px;
+            display: block;
+        }
+        
+        .game-en-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            color: var(--jade-glow);
+            opacity: 0.6;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            display: block;
+            transition: opacity 0.3s;
         }
 
+        .game-card:hover .game-en-title {
+            opacity: 1;
+            text-shadow: 0 0 5px var(--jade-glow);
+        }
+
+        /* === Footer === */
         .footer {
             margin-top: auto;
-            padding: 40px;
-            font-size: 0.75rem;
-            color: #444;
+            padding: 30px;
+            font-size: 0.7rem;
+            font-family: 'Orbitron', monospace;
+            color: #555;
             text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            width: 100%;
+            background: linear-gradient(to top, #000, transparent);
         }
 
         /* 手機適配 */
         @media (max-width: 480px) {
-            .container { grid-template-columns: 1fr 1fr; gap: 15px; }
-            h1 { font-size: 1.6rem; }
+            h1 { font-size: 2rem; }
+            .container { grid-template-columns: 1fr; width: 85%; }
+            .icon-box { height: 60px; }
         }
     </style>
 </head>
@@ -141,39 +399,59 @@
 
 <div id="lobby">
     <header>
-        <h1>Johsok 棋類大廳</h1>
-        <div class="subtitle">Johsok's Games 2026</div>
+        <h1>傑斯克的遊戲世界</h1>
+        <div class="subtitle">JOHSOK'S GAMES 2026</div>
     </header>
 
     <div class="container">
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Chinese_Chess.html')">
-            <span class="icon">🏮</span>
+            <div class="icon-box">
+                <div class="icon-chess">帥</div>
+            </div>
             <span class="game-title">象棋</span>
+            <span class="game-en-title">CHINESE CHESS</span>
         </a>
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/chinese_chess_dark.html')">
-            <span class="icon">🎭</span>
+            <div class="icon-box">
+                <div class="icon-dark"></div>
+            </div>
             <span class="game-title">暗棋</span>
+            <span class="game-en-title">DARK CHESS</span>
         </a>
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Gomoku.html')">
-            <span class="icon">⚪</span>
+            <div class="icon-box">
+                <div class="icon-gomoku">
+                    <div class="gomoku-dot g-black"></div>
+                    <div class="gomoku-dot g-white"></div>
+                    <div class="gomoku-dot g-black"></div>
+                    <div class="gomoku-dot g-accent"></div>
+                </div>
+            </div>
             <span class="game-title">五子棋</span>
+            <span class="game-en-title">GOMOKU</span>
         </a>
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Othello.html')">
-            <span class="icon">🌓</span>
+            <div class="icon-box">
+                <div class="icon-othello"></div>
+            </div>
             <span class="game-title">黑白棋</span>
+            <span class="game-en-title">OTHELLO</span>
         </a>
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('./checkers/index.html')">
-            <span class="icon">⭐</span>
+            <div class="icon-box">
+                <div class="icon-checkers"></div>
+            </div>
             <span class="game-title">跳棋</span>
+            <span class="game-en-title">CHECKERS</span>
         </a>
     </div>
 
     <div class="footer">
-        此頁面僅供娛樂使用，受系統保護禁止未經授權之複製；盜用必究。<br>
+        SYSTEM SECURE. <br>
         © 2026 Johsok's Games. All rights reserved.
     </div>
 </div>
@@ -233,7 +511,7 @@
     };
 
     // 額外防護提示
-    console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+    console.log("%c系統安全監控中", "color: #64ffda; font-size: 30px; font-weight: bold; background: #000; padding: 10px;");
     console.log("%c未經授權禁止查看程式碼!！", "color: gray; font-size: 20px;");
 </script>
 
