@@ -28,6 +28,45 @@
             -webkit-user-select: none;
         }
 
+        /* === Iframe 遊戲容器樣式 (新增部分) === */
+        #game-frame-container {
+            display: none; /* 預設隱藏 */
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #121212;
+            z-index: 9999; /* 確保在最上層 */
+        }
+
+        iframe {
+            width: 100%; height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* 回大廳按鈕樣式 */
+        .back-btn {
+            position: absolute;
+            top: 15px; right: 15px; /* 右上角 */
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 10000;
+            font-size: 0.9rem;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.3s;
+        }
+        .back-btn:hover {
+            background: rgba(241, 196, 15, 0.8);
+            color: #000;
+            border-color: var(--accent-color);
+        }
+
+        /* === 原有樣式 === */
         header {
             padding: 50px 20px;
             text-align: center;
@@ -70,6 +109,7 @@
             border: 1px solid rgba(255,255,255,0.05);
             position: relative;
             overflow: hidden;
+            cursor: pointer; /* 讓滑鼠變手型 */
         }
 
         .game-card::before {
@@ -121,78 +161,99 @@
 </head>
 <body>
 
-<header>
-    <h1>Johsok 棋類大廳</h1>
-    <div class="subtitle">Johsok's Games 2026</div>
-</header>
+<div id="lobby">
+    <header>
+        <h1>Johsok 棋類大廳</h1>
+        <div class="subtitle">Johsok's Games 2026</div>
+    </header>
 
-<div class="container">
-    <a href="./chinese_chess/index.html" class="game-card">
-        <span class="icon">🏮</span>
-        <span class="game-title">象棋</span>
-    </a>
+    <div class="container">
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('./chinese_chess/index.html')">
+            <span class="icon">🏮</span>
+            <span class="game-title">象棋</span>
+        </a>
 
-    <a href="./dark_chess/index.html" class="game-card">
-        <span class="icon">🎭</span>
-        <span class="game-title">暗棋</span>
-    </a>
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('./dark_chess/index.html')">
+            <span class="icon">🎭</span>
+            <span class="game-title">暗棋</span>
+        </a>
 
-    <a href="/Gomoku.html" class="game-card">
-        <span class="icon">⚪</span>
-        <span class="game-title">五子棋</span>
-    </a>
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('./Games/Gomoku.html')">
+            <span class="icon">⚪</span>
+            <span class="game-title">五子棋</span>
+        </a>
 
-    <a href="./othello/index.html" class="game-card">
-        <span class="icon">🌓</span>
-        <span class="game-title">黑白棋</span>
-    </a>
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('./othello/index.html')">
+            <span class="icon">🌓</span>
+            <span class="game-title">黑白棋</span>
+        </a>
 
-    <a href="./checkers/index.html" class="game-card">
-        <span class="icon">⭐</span>
-        <span class="game-title">跳棋</span>
-    </a>
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('./checkers/index.html')">
+            <span class="icon">⭐</span>
+            <span class="game-title">跳棋</span>
+        </a>
+    </div>
+
+    <div class="footer">
+        此頁面僅供娛樂使用，受系統保護禁止未經授權之複製
+    </div>
 </div>
 
-<div class="footer">
-    此頁面僅供娛樂使用，受系統保護禁止未經授權之複製
+<div id="game-frame-container">
+    <div class="back-btn" onclick="closeGame()">↩ 回大廳</div>
+    <iframe id="game-iframe" src=""></iframe>
 </div>
 
 <script>
-    // 1. 禁用右鍵選單
+    // === 控制遊戲視窗開關 ===
+    function openGame(url) {
+        const lobby = document.getElementById('lobby');
+        const container = document.getElementById('game-frame-container');
+        const iframe = document.getElementById('game-iframe');
+
+        iframe.src = url; // 設定遊戲網址
+        lobby.style.display = 'none'; // 隱藏大廳
+        container.style.display = 'block'; // 顯示遊戲容器
+    }
+
+    function closeGame() {
+        const lobby = document.getElementById('lobby');
+        const container = document.getElementById('game-frame-container');
+        const iframe = document.getElementById('game-iframe');
+
+        iframe.src = ""; // 清空網址（這樣音樂才會停止）
+        container.style.display = 'none'; // 隱藏遊戲容器
+        lobby.style.display = 'flex'; // 顯示大廳 (flex 確保排版正確)
+        lobby.style.flexDirection = 'column'; // 確保 flex 方向正確
+    }
+
+    // === 安全防護腳本 (保留原有設定) ===
+    
+    // 禁用右鍵選單
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
     });
 
-    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
+    // 監控鍵盤事件：禁用開發者常用快捷鍵
     document.onkeydown = function(e) {
         // 禁止 F12 (123)
-        if (e.keyCode == 123) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+I (檢查元件)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+C (選取元件)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+J (開發者主控台)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+U (查看網頁原始碼)
-        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+S (存檔)
-        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
-            return false;
-        }
+        if (e.keyCode == 123) return false;
+        
+        // 禁止 Ctrl+Shift+I, C, J
+        if (e.ctrlKey && e.shiftKey && (
+            e.keyCode == 'I'.charCodeAt(0) || 
+            e.keyCode == 'C'.charCodeAt(0) || 
+            e.keyCode == 'J'.charCodeAt(0)
+        )) return false;
+
+        // 禁止 Ctrl+U, S
+        if (e.ctrlKey && (
+            e.keyCode == 'U'.charCodeAt(0) || 
+            e.keyCode == 'S'.charCodeAt(0)
+        )) return false;
     };
 
-    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
-    // 雖然無法阻止高手，但對普通人很有效
+    // 額外防護提示
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
 </script>
