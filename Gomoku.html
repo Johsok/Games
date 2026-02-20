@@ -265,7 +265,11 @@
         </div>
     </div>
     
-    <button class="btn" id="btn-rules" style="width:100%; background:#2c3e50; padding: 10px; margin-top:10px;" onclick="toggleRules()">📖 遊戲規則</button>
+    <div class="set-row flex-split" style="margin-top:10px;">
+        <button class="btn" onclick="toggleRules()" style="flex:1; background:#2c3e50; padding: 10px;">📖 遊戲規則</button>
+        <button class="btn" onclick="goHome()" style="flex:1; background:#c0392b; padding: 10px;">🏠 回首頁</button>
+    </div>
+
     <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
 </div>
 
@@ -714,7 +718,22 @@ function changeLang() {
     if(!isAiThinking) updateStatus();
 }
 
-
+// 新增功能：回首頁
+function goHome() {
+    try {
+        // 嘗試呼叫父視窗的關閉函數 (針對 iframe 架構)
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+            // 如果不是在 iframe 中開啟，則嘗試回上一頁或重新載入
+             console.log("No parent detected or standalone mode");
+             // 視需求可取消下面註解
+             // window.history.back(); 
+        }
+    } catch (e) {
+        console.error("Cross-origin restriction or error:", e);
+    }
+}
 
 // 1. 禁用右鍵選單
     document.addEventListener('contextmenu', event => {

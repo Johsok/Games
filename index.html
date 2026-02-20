@@ -28,7 +28,7 @@
             -webkit-user-select: none;
         }
 
-        /* === Iframe 遊戲容器樣式 (新增部分) === */
+        /* === Iframe 遊戲容器樣式 === */
         #game-frame-container {
             display: none; /* 預設隱藏 */
             position: fixed;
@@ -42,28 +42,6 @@
             width: 100%; height: 100%;
             border: none;
             display: block;
-        }
-
-        /* 回大廳按鈕樣式 */
-        .back-btn {
-            position: absolute;
-            top: 15px; right: 15px; /* 右上角 */
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
-            cursor: pointer;
-            z-index: 10000;
-            font-size: 0.9rem;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: background 0.3s;
-        }
-        .back-btn:hover {
-            background: rgba(241, 196, 15, 0.8);
-            color: #000;
-            border-color: var(--accent-color);
         }
 
         /* === 原有樣式 === */
@@ -200,7 +178,6 @@
 </div>
 
 <div id="game-frame-container">
-    <div class="back-btn" onclick="closeGame()">↩ 回大廳</div>
     <iframe id="game-iframe" src=""></iframe>
 </div>
 
@@ -216,6 +193,7 @@
         container.style.display = 'block'; // 顯示遊戲容器
     }
 
+    // 這個函式保留，供 iframe 內部的遊戲呼叫
     function closeGame() {
         const lobby = document.getElementById('lobby');
         const container = document.getElementById('game-frame-container');
@@ -259,5 +237,4 @@
 </script>
 
 </body>
-
 </html>
