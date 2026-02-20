@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>象棋大師 2026</title>
+    <style>
+        :root {
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: #5d4037;
+            --piece-bg: #fdf5e6;
+            --piece-border: #8b4513;
+            --piece-shadow: 2px 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.1);
+            --red-c: #cc0000;
+            --black-c: #111; 
+            --kill-color: #ff0000;
+            --border-style: 8px solid #5d4037;
+            --text-engrave: 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1);
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+
+        /* === 風格定義 (共12種) === */
+        /* 1. 經典 */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --piece-bg: radial-gradient(circle at 35% 35%, #fff8dc, #deb887); --piece-border: #8b5a2b; --red-c: #b71c1c; --black-c: #212121; --border-style: 10px ridge #6d4c41; }
+        /* 2. 水墨 */
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --piece-bg: radial-gradient(circle at 30% 30%, #ffffff, #eeeeee); --piece-border: #666; --piece-shadow: 2px 3px 5px rgba(0,0,0,0.2); --red-c: #b71c1c; --black-c: #111; --border-style: 8px double #424242; --text-engrave: none; }
+        /* 3. 翡翠 */
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --piece-bg: radial-gradient(circle at 30% 30%, #e0f2f1, #80cbc4); --piece-border: #00695c; --red-c: #d32f2f; --black-c: #004d40; --border-style: 10px inset #00695c; }
+        /* 4. 紅木 */
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: #3e2723; --piece-bg: radial-gradient(circle at 30% 30%, #d7ccc8, #8d6e63); --piece-border: #3e2723; --red-c: #5d4037; --black-c: #212121; --border-style: 10px groove #4e342e; }
+        /* 5. 黑金 */
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: #ffd700; --piece-bg: radial-gradient(circle at 30% 30%, #fffacd, #ffd700); --piece-border: #b8860b; --red-c: #c00; --black-c: #000; --border-style: 8px solid #ffd700; --text-engrave: 0 1px 2px rgba(0,0,0,0.5); }
+        /* 6. 深海 */
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: #bbdefb; --piece-bg: radial-gradient(circle at 30% 30%, #e3f2fd, #90caf9); --piece-border: #0d47a1; --red-c: #ff1744; --black-c: #01579b; --border-style: 8px double #90caf9; }
+        /* 7. 紫禁 */
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: #e1bee7; --piece-bg: radial-gradient(circle at 30% 30%, #f3e5f5, #e1bee7); --piece-border: #4a0072; --red-c: #d50000; --black-c: #311b92; --border-style: 8px solid #4a0072; }
+        
+        /* === 新增風格 === */
+        /* 8. 野獸 (Beast) - 狂野橘紫 */
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: #5e3105; --piece-bg: radial-gradient(circle at 30% 30%, #f1c40f, #d35400); --piece-border: #5e3105; --red-c: #c0392b; --black-c: #2c3e50; --border-style: 10px dashed #8e44ad; }
+        /* 9. 俏皮 (Playful) - 粉嫩現代 */
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --piece-bg: radial-gradient(circle at 30% 30%, #fff, #ffe4e1); --piece-border: #ff1493; --red-c: #ff1493; --black-c: #00bfff; --border-style: 8px dotted #ff69b4; --text-engrave: none; --piece-shadow: 2px 2px 0px rgba(255,105,180,0.4); }
+        /* 10. 山水 (Landscape/Shan) - 藝術青藍 */
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: #5d6d7e; --piece-bg: radial-gradient(circle at 30% 30%, #fdfefe, #d5d8dc); --piece-border: #34495e; --red-c: #922b21; --black-c: #1f618d; --border-style: 8px double #5d6d7e; }
+        /* 11. 可愛 (Cute) - 粉彩糖果 */
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --piece-bg: #ffffff; --piece-border: #b39ddb; --red-c: #ff8a80; --black-c: #80cbc4; --border-style: 10px solid #b39ddb; --piece-shadow: 0 4px 6px rgba(179,157,219,0.5); border-radius: 12px; }
+        /* 12. 賽博 (Cyber) - 霓虹 */
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: #0ff; --piece-bg: #000; --piece-border: #0ff; --piece-shadow: 0 0 8px #0ff, inset 0 0 5px #0ff; --red-c: #f0f; --black-c: #0ff; --border-style: 8px solid #0ff; --text-engrave: 0 0 5px currentColor; }
+        /* 13. 素描 (Sketch) - 黑白 */
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --piece-bg: #fff; --piece-border: #222; --piece-shadow: 4px 4px 0 #bbb; --red-c: #444; --black-c: #000; --border-style: 6px solid #222; --text-engrave: none; }
+
+        /* 最後：暗黑 (Dark) */
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --piece-bg: radial-gradient(circle at 30% 30%, #555, #222); --piece-border: #888; --red-c: #ff5252; --black-c: #000; --text-engrave: 0 0 5px rgba(255,255,255,0.3); --border-style: 8px solid #555; }
+
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            color: white; 
+            transition: background 0.5s; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+
+        /* === Header === */
+        header { 
+            width: 100%; 
+            height: auto; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 4px; 
+            flex-shrink: 0; 
+            z-index: 100; 
+            padding: calc(var(--safe-top) + 8px) 0 8px 0; 
+            background: rgba(0,0,0,0.3); 
+            backdrop-filter: blur(8px); 
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            transition: all 0.3s ease;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; transition: all 0.3s; }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* === 橫向模式 (Mobile Landscape Only) === */
+        body.is-landscape {
+            flex-direction: row; 
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            justify-content: center;
+        }
+        
+        body.is-landscape header {
+            width: 130px; 
+            height: 100vh; 
+            padding: 0;
+            border-bottom: none;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            justify-content: center; 
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0,0,0,0.4);
+            box-shadow: 4px 0 10px rgba(0,0,0,0.3);
+        }
+
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { font-size: 1.1rem; white-space: normal; text-align: center; }
+        body.is-landscape .status { font-size: 1rem; margin-bottom: 10px; text-align: center; }
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+        body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; font-size: 0.9rem; }
+
+        /* Settings Panel */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); color: #fff; width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        
+        .set-row label { display: block; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .check-container {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #222; padding: 8px 10px; border-radius: 8px; border: 1px solid #555; height: 38px; box-sizing: border-box;
+        }
+        .check-container label { margin: 0; color: #fff; cursor: pointer; }
+        .check-container input { width: auto; transform: scale(1.2); cursor: pointer; margin: 0; }
+
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
+
+        /* === 遊戲容器 === */
+        #game-container { 
+            flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; 
+            overflow: hidden; position: relative; box-sizing: border-box; 
+        }
+        body.is-landscape #game-container { width: auto; height: 100vh; padding: 0; flex-grow: 0; justify-content: center; }
+        
+        .board-wrap { 
+            position: relative; background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            padding: 6.5%; box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+        }
+        
+        .board-inner { position: relative; width: 100%; height: 100%; }
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.8; }
+        line { stroke: var(--line-color); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: square; }
+        
+        .river-text { 
+            position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-around; 
+            color: var(--line-color); font-size: 0.5em; font-family: "KaiTi", "BiauKai", serif; font-weight: bold; opacity: 0.75; pointer-events: none; user-select: none; 
+        }
+
+        .piece { 
+            position: absolute; width: 11%; height: 10%; margin: 0; transform: translate(-50%, -50%); 
+            border-radius: 50%; background: var(--piece-bg); border: 3px solid var(--piece-border); box-shadow: var(--piece-shadow); 
+            display: flex; justify-content: center; align-items: center; font-size: 0.65em; 
+            font-family: "Microsoft JhengHei", "Heiti TC", "KaiTi", sans-serif; font-weight: 900; 
+            cursor: pointer; z-index: 10; transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            user-select: none; -webkit-tap-highlight-color: transparent; text-shadow: var(--text-engrave); 
+            will-change: top, left, transform;
+        }
+        .piece.red { color: var(--red-c); border-color: var(--red-c); }
+        .piece.black { color: var(--black-c); border-color: var(--black-c); }
+        .piece.selected { transform: translate(-50%, -50%) scale(1.15) translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.4); z-index: 20; filter: brightness(1.15); }
+        
+        /* 拖曳狀態樣式 */
+        .piece.dragging { transition: none !important; z-index: 100; pointer-events: none; box-shadow: 0 20px 40px rgba(0,0,0,0.5); transform: translate(-50%, -50%) scale(1.15); }
+
+        /* 電腦移動動畫樣式 */
+        .piece.moving { transition: top 0.65s cubic-bezier(0.4, 0, 0.2, 1), left 0.65s cubic-bezier(0.4, 0, 0.2, 1) !important; z-index: 50; }
+
+        .piece.last-move { filter: brightness(1.1); }
+        .piece.last-move::before { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; border: 5px solid #0055ff; border-radius: 50%; box-shadow: 0 0 10px rgba(0,85,255,0.5); }
+        .piece.ghost { opacity: 0.45; z-index: 5; pointer-events: none; filter: grayscale(0.2); border-style: dashed; }
+
+        .dot { position: absolute; width: 11%; height: 10%; margin: 0; transform: translate(-50%, -50%); z-index: 50; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .dot::after { content: ''; width: 25%; height: 25%; background: rgba(46, 204, 113, 0.9); border-radius: 50%; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); }
+        @keyframes shine-kill { 0% { opacity: 0.3; transform: scale(0.85); border-width: 4px; } 50% { opacity: 1; transform: scale(1.05); border-width: 6px; } 100% { opacity: 0.3; transform: scale(0.85); border-width: 4px; } }
+        .dot.kill::after { content: ''; width: 100%; height: 100%; background: transparent; border-radius: 50%; border: 6px solid #ff0000; box-sizing: border-box; box-shadow: 0 0 15px rgba(255, 0, 0, 0.7); display: block; animation: shine-kill 1.0s infinite ease-in-out; }
+
+        /* 藍色閃爍圓圈 (原位標記) */
+        .marker {
+            position: absolute; width: 11%; height: 10%;
+            transform: translate(-50%, -50%);
+            border: 4px solid #00aaff;
+            border-radius: 50%;
+            z-index: 5;
+            pointer-events: none;
+            animation: pulse-blue 1s infinite;
+        }
+        @keyframes pulse-blue {
+            0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
+        }
+
+        #win-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; opacity: 0; z-index: 1000; white-space: nowrap; font: 900 1.5em "Microsoft JhengHei", sans-serif; letter-spacing: 6px; color: #fff; -webkit-text-stroke: 1px #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite, hue 4s linear infinite; }
+        @keyframes win { 0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 20%, 100% { transform: translate(-50%,-50%) rotate(-3deg); opacity: 1; } 60% { transform: translate(-50%,-52%) rotate(3deg); } }
+        @keyframes hue { to { filter: hue-rotate(360deg); } }
+
+        /* Rules Modal */
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; max-height: 80%; border-radius: 12px; border: 1px solid #555; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow-y: auto; color: #ddd; line-height: 1.6; }
+        .rules-content h3 { color: #f1c40f; border-bottom: 1px solid #555; padding-bottom: 10px; margin-top: 0; text-align: center; }
+        .rules-content h4 { color: #fff; margin: 15px 0 5px 0; border-left: 4px solid #cc0000; padding-left: 8px; }
+        .rules-content ul { padding-left: 20px; margin: 5px 0; }
+        .rules-content li { margin-bottom: 4px; font-size: 0.95rem; }
+        .rules-content p { white-space: pre-line; }
+        .close-rules { display: block; width: 100%; padding: 10px; background: #cc0000; color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
+
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">象棋大師 2026</h2>
+        <div class="status" id="msg">紅方走棋</div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-mode">對戰模式</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="pve" selected>💻 單人</option>
+                <option value="pvp">👥 雙人</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-diff">電腦難度 (單人)</label>
+            <select id="diff-sel">
+                <option value="easy">簡單 (菜鳥)</option>
+                <option value="medium">中等 (正常)</option>
+                <option value="hard">困難 (高手)</option>
+                <option value="expert" selected>專家 (職業)</option>
+                <option value="master">大師 (宗師)</option>
+                <option value="god">神 (不可戰勝)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-side">換棋顏色</label>
+            <select id="side-sel" onchange="changeSide()">
+                <option value="1" selected>紅</option>
+                <option value="-1">黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04" selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量</label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="40" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量</label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="70" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+    
+    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 30%;">
+            <div class="check-container" onclick="document.getElementById('ghost-check').click()" style="justify-content: space-around; padding: 0 4px; height: 38px;">
+                <label id="lbl-ghost" style="font-size: 0.8rem;">提示</label>
+                <input type="checkbox" id="ghost-check" checked onchange="toggleGhost(); event.stopPropagation();">
+            </div>
+        </div>
+        <div style="flex: 30%;">
+             <button class="btn" id="btn-rules" style="width:100%; height:38px; background:#2c3e50; border:1px solid #456; padding: 0;" onclick="toggleRules()">📖 規則</button>
+        </div>
+         <div style="flex: 40%;">
+             <button class="btn" onclick="goHome()" style="width:100%; height:38px; background:#c0392b; border:1px solid #e74c3c; padding: 0;">🏠 回首頁</button>
+        </div>
+    </div>
+
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">中國象棋規則</h3>
+        
+        <h4 id="rules-h-nature">遊戲性質</h4>
+        <p id="rules-p-nature">純策略、零運氣的雙人對奕遊戲。</p>
+        
+        <h4 id="rules-h-setup">棋子配置 (每方 16 子)</h4>
+        <ul id="rules-ul-setup">
+            <li>將（帥）×1、士（仕）×2、象（相）×2</li>
+            <li>車（俥）×2、馬（傌）×2、炮（包）×2</li>
+            <li>卒（兵）×5</li>
+        </ul>
+
+        <h4 id="rules-h-basic">基本走法</h4>
+        <ul id="rules-ul-basic">
+            <li>將/帥：九宮內上下左右移動。</li>
+            <li>士/仕：九宮內沿斜線移動。</li>
+            <li>象/相：走「田」字，不可過河（河界）。</li>
+            <li>車/俥：直線任意格移動，無阻擋時。</li>
+            <li>馬/傌：走「日」字，若前進方向有子則被「蹩馬腿」。</li>
+            <li>炮/包：走法同車；吃子時需隔一子（翻山）。</li>
+            <li>卒/兵：過河前只能向前；過河後可向前或左右移動。</li>
+        </ul>
+
+        <h4 id="rules-h-win">勝負條件</h4>
+        <ul id="rules-ul-win">
+            <li>將死：對手將軍且無法解救。</li>
+            <li>困斃：對手無子可走。</li>
+            <li>認輸：對手主動投降。</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <svg id="lines"></svg>
+            <div class="river-text"><span>楚河</span><span>漢界</span></div>
+            <div id="pieces"></div>
+            <div id="win-overlay"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* ================= WORKER SCRIPT (職業級引擎) ================= */
+const workerScript = `
+let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(30 * 2); let zobristTable = []; 
+const MATE_VAL = 30000; const INFINITY = 999999;
+function initZobrist() { for(let i=0; i<90; i++) { zobristTable[i] = {}; [-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7].forEach(p => { zobristTable[i][p] = Math.floor(Math.random() * 0xFFFFFFFF); }); } }
+initZobrist();
+function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) h ^= zobristTable[i][bd[i]]; } return h; }
+self.onmessage = function(e) { const { bd, limit, turn, level } = e.data; const best = getBestMoveIterative(bd, limit.depth, limit.time, turn, level); self.postMessage(best); };
+const PST = { 3: [0,0,0,0,0,0,0,0,0, 0,6,0,0,0,0,0,6,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,4,0,0,0,0,0,4,0, 0,8,0,0,0,0,0,8,0, 2,4,4,4,8,4,4,4,2, 2,6,4,4,8,4,4,6,2, 10,12,10,10,10,10,10,12,10, 0,0,0,0,0,0,0,0,0], 4: [0,-4,0,0,0,0,0,-4,0, 0,2,4,4,0,4,4,2,0, 4,4,8,8,16,8,8,4,4, 2,8,8,8,12,8,8,8,2, 2,4,6,8,8,8,6,4,2, 2,2,6,8,8,8,6,2,2, 0,2,4,4,4,4,4,2,0, 0,-4,0,2,2,2,0,-4,0, 0,-6,-2,0,0,0,-2,-6,0, 0,0,0,0,0,0,0,0,0], 2: [0,0,2,6,6,6,2,0,0, 0,2,4,2,2,2,4,2,0, 2,2,2,6,8,6,2,2,2, 0,2,2,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2,4,0,-2,0,-2,0,4,2, 2,2,0,-4,-4,-4,0,2,2, 0,0,0,0,0,0,0,0,0], 1: [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 20,24,30,40,50,40,30,24,20, 16,20,30,36,40,36,30,20,16, 6,6,12,18,20,18,12,6,6, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] };
+const VALS = { 1:100, 2:450, 3:900, 4:400, 5:200, 6:200, 7:100000 };
+function evalBd(bd, turn) { let s = 0; for(let i=0; i<90; i++) { const p = bd[i]; if(p===0) continue; const type = Math.abs(p); const val = VALS[type] + (PST[type] ? (p>0 ? PST[type][i] : PST[type][89-i]) : 0); s += (p > 0 ? val : -val); } return s * turn; }
+function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { const startTime = Date.now(); const safeTime = timeLimit * 0.95; let bestMove = null; let rootMoves = genMoves(bd, turn); killerTable.fill(0); let actualMaxDepth = maxDepth; if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); for (let d = 1; d <= actualMaxDepth; d++) { let alpha = -INFINITY, beta = INFINITY; let currentBest = null; rootMoves = sortMoves(rootMoves, bd, turn, 0, bestMove); for (let m of rootMoves) { make(bd, m); let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd)); unmake(bd, m); if (Date.now() - startTime > safeTime) break; if (score > alpha) { alpha = score; currentBest = m; } } if (currentBest) bestMove = currentBest; if (Date.now() - startTime > safeTime * 0.6) break; } if (level === 'easy' || level === 'medium' || level === 'hard') { return pickMoveWithProb(rootMoves, bd, turn, level, bestMove); } return bestMove || rootMoves[0]; }
+function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m === bestM) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
+function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { if ((ply & 2047) === 0 && Date.now() - startTime > limit) return alpha; const ttEntry = tt[hash]; if (ttEntry && ttEntry.depth >= depth) { if (ttEntry.flag === 0) return ttEntry.val; if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; } if (depth <= 0) return quiescence(bd, alpha, beta, turn); let moves = genMoves(bd, turn); if (moves.length === 0) return -MATE_VAL + ply; moves = sortMoves(moves, bd, turn, ply, null); let moveCount = 0; let originalAlpha = alpha; let bestM = null; for (let m of moves) { make(bd, m); let newHash = computeHash(bd); let score; if (moveCount === 0) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } else { score = -alphaBeta(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); if (score > alpha && score < beta) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } } unmake(bd, m); moveCount++; if (Date.now() - startTime > limit) return alpha; if (score > alpha) { alpha = score; bestM = m; historyTable[m.from * 90 + m.to] += depth * depth; } if (alpha >= beta) { if (bd[m.to] === 0) { killerTable[ply * 2 + 1] = killerTable[ply * 2]; killerTable[ply * 2] = m.from * 100 + m.to; } tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; return beta; } } if (alpha > originalAlpha) { tt[hash] = { depth: depth, val: alpha, flag: 0, best: bestM }; } else { tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; } return alpha; }
+function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; }
+function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; }
+function unmake(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; }
+function sortMoves(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS[Math.abs(bd[m.to])] * 10 - VALS[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); }
+function genMoves(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgts(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; }
+function getTgts(bd, i, type, color) { let x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { const dirs = [[0,1],[0,-1],[1,0],[-1,0]]; for(let k=0; k<dirs.length; k++){ let dx=dirs[k][0], dy=dirs[k][1], c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } } } else if(type===4) { const hDirs = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]]; for(let k=0; k<hDirs.length; k++){ let dx=hDirs[k][0], dy=hDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; for(let k=0; k<ds.length; k++){ let dx=ds[k][0], dy=ds[k][1], c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } } } return t; }
+`;
+
+const INIT_BD = [-3,-4,-5,-6,-7,-6,-5,-4,-3, 0,0,0,0,0,0,0,0,0, 0,-2,0,0,0,0,0,-2,0, -1,0,-1,0,-1,0,-1,0,-1, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 1,0,1,0,1,0,1,0,1, 0,2,0,0,0,0,0,2,0, 0,0,0,0,0,0,0,0,0, 3,4,5,6,7,6,5,4,3];
+const TXT = {1:"兵",2:"炮",3:"俥",4:"傌",5:"相",6:"仕",7:"帥","-1":"卒","-2":"包","-3":"車","-4":"馬","-5":"象","-6":"士","-7":"將"};
+
+const TRANSLATIONS = {
+    tw: {
+        title: "象棋大師 2026",
+        redTurn: "紅方 (P1) 走棋",
+        blackTurn: "黑方 (P2) 走棋",
+        redWin: "紅 方 獲 勝",
+        blackWin: "黑 方 獲 勝",
+        draw: "和局",
+        aiResign: "紅方獲勝\n(電腦認輸)",
+        thinking: "思考中...",
+        noMoveRed: "紅方無子可走\n黑方勝",
+        noMoveBlack: "黑方無子可走\n紅方勝",
+        settings: "⚙️ 設定",
+        undo: "↩️ 悔棋",
+        restart: "🔄 重開",
+        lblMode: "對戰模式",
+        optPve: "💻 單人 (挑戰電腦)",
+        optPvp: "👥 雙人 (同機對奕)",
+        lblTheme: "視覺風格",
+        lblDiff: "電腦難度 (單人)",
+        lblSide: "換棋顏色", 
+        lblMusic: "背景音樂",
+        lblLang: "語言",
+        lblBgmVol: "音樂音量",
+        lblSfxVol: "音效音量",
+        lblGhost: "提示",
+        btnRules: "📖 規則",
+        btnDone: "完成設定",
+        btnCloseRules: "關閉說明",
+        rulesTitle: "中國象棋規則",
+        rulesHNature: "遊戲性質",
+        rulesPNature: "純策略、零運氣的雙人對奕遊戲。",
+        rulesHSetup: "棋子配置 (每方 16 子)",
+        rulesHBasic: "基本走法",
+        rulesHWin: "勝負條件",
+        rulesUlSetup: `<li>將（帥）×1、士（仕）×2、象（相）×2</li><li>車（俥）×2、馬（傌）×2、炮（包）×2</li><li>卒（兵）×5</li>`,
+        rulesUlBasic: `<li>將/帥：九宮內上下左右移動。</li><li>士/仕：九宮內沿斜線移動。</li><li>象/相：走「田」字，不可過河（河界）。</li><li>車/俥：直線任意格移動，無阻擋時。</li><li>馬/傌：走「日」字，若前進方向有子則被「蹩馬腿」。</li><li>炮/包：走法同車；吃子時需隔一子（翻山）。</li><li>卒/兵：過河前只能向前；過河後可向前或左右移動。</li>`,
+        rulesUlWin: `<li>將死：對手將軍且無法解救。</li><li>困斃：對手無子可走。</li><li>認輸：對手主動投降。</li>`,
+        diffOpts: { easy: "簡單 (菜鳥)", medium: "中等 (正常)", hard: "困難 (高手)", expert: "專家 (職業)", master: "大師 (宗師)", god: "神 (不可戰勝)" },
+        musicOpts: { none: "🔇 靜音", '01': "🎵 樂曲 01", '02': "🎵 樂曲 02", '03': "🎵 樂曲 03", '04': "🎵 樂曲 04", '05': "🎵 樂曲 05", '06': "🎵 樂曲 06", '07': "🎵 樂曲 07" },
+        themeOpts: { 't-classic': "💎 經典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 紅木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野獸", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 賽博", 't-sketch': "✏️ 素描" },
+        sideOpts: { '1': "紅", '-1': "黑" } 
+    },
+    cn: {
+        title: "象棋大师 2026",
+        redTurn: "红方 (P1) 走棋",
+        blackTurn: "黑方 (P2) 走棋",
+        redWin: "红 方 获 胜",
+        blackWin: "黑 方 获 胜",
+        draw: "和局",
+        aiResign: "红方获胜\n(电脑认输)",
+        thinking: "思考中...",
+        noMoveRed: "红方无子可走\n黑方胜",
+        noMoveBlack: "黑方无子可走\n红方胜",
+        settings: "⚙️ 设置",
+        undo: "↩️ 悔棋",
+        restart: "🔄 重开",
+        lblMode: "对战模式",
+        optPve: "💻 单人 (挑战电脑)",
+        optPvp: "👥 双人 (同机对弈)",
+        lblTheme: "视觉风格",
+        lblDiff: "电脑难度 (单人)",
+        lblSide: "换棋颜色", 
+        lblMusic: "背景音乐",
+        lblLang: "语言",
+        lblBgmVol: "音乐音量",
+        lblSfxVol: "音效音量",
+        lblGhost: "提示",
+        btnRules: "📖 规则",
+        btnDone: "完成设置",
+        btnCloseRules: "关闭说明",
+        rulesTitle: "中国象棋规则",
+        rulesHNature: "游戏性质",
+        rulesPNature: "纯策略、零运气的双人对弈游戏。",
+        rulesHSetup: "棋子配置 (每方 16 子)",
+        rulesHBasic: "基本走法",
+        rulesHWin: "胜负条件",
+        rulesUlSetup: `<li>将（帅）×1、士（仕）×2、象（相）×2</li><li>车（俥）×2、马（傌）×2、炮（包）×2</li><li>卒（兵）×5</li>`,
+        rulesUlBasic: `<li>将/帅：九宫内上下左右移动。</li><li>士/仕：九宫内沿斜线移动。</li><li>象/相：走「田」字，不可过河（河界）。</li><li>车/俥：直线任意格移动，无阻挡时。</li><li>马/傌：走「日」字，若前进方向有子则被「蹩马腿」。</li><li>炮/包：走法同车；吃子时需隔一子（翻山）。</li><li>卒/兵：过河前只能向前；过河后可向前或左右移动。</li>`,
+        rulesUlWin: `<li>将死：对手将军且无法解救。</li><li>困毙：对手无子可走。</li><li>认输：对手主动投降。</li>`,
+        diffOpts: { easy: "简单 (菜鸟)", medium: "中等 (正常)", hard: "困难 (高手)", expert: "专家 (职业)", master: "大师 (宗师)", god: "神 (不可战胜)" },
+        musicOpts: { none: "🔇 静音", '01': "🎵 乐曲 01", '02': "🎵 乐曲 02", '03': "🎵 乐曲 03", '04': "🎵 乐曲 04", '05': "🎵 乐曲 05", '06': "🎵 乐曲 06", '07': "🎵 乐曲 07" },
+        themeOpts: { 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 红木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
+        sideOpts: { '1': "红", '-1': "黑" } 
+    },
+    en: {
+        title: "Xiangqi Master 2026",
+        redTurn: "Red (P1) Turn",
+        blackTurn: "Black (P2) Turn",
+        redWin: "RED WINS",
+        blackWin: "BLACK WINS",
+        draw: "DRAW",
+        aiResign: "Red Wins\n(AI Resigned)",
+        thinking: "Thinking...",
+        noMoveRed: "Red No Move\nBlack Wins",
+        noMoveBlack: "Black No Move\nRed Wins",
+        settings: "⚙️ Settings",
+        undo: "↩️ Undo",
+        restart: "🔄 Restart",
+        lblMode: "Game Mode",
+        optPve: "💻 1 Player (vs AI)",
+        optPvp: "👥 2 Players (Local)",
+        lblTheme: "Visual Style",
+        lblDiff: "AI Difficulty",
+        lblSide: "Side Color", 
+        lblMusic: "Music",
+        lblLang: "Language",
+        lblBgmVol: "Music Vol",
+        lblSfxVol: "SFX Vol",
+        lblGhost: "Hints",
+        btnRules: "📖 Rules",
+        btnDone: "Done",
+        btnCloseRules: "Close",
+        rulesTitle: "Xiangqi Rules",
+        rulesHNature: "Nature",
+        rulesPNature: "Zero-luck strategy board game.",
+        rulesHSetup: "Setup (16 pieces each)",
+        rulesHBasic: "Basic Moves",
+        rulesHWin: "Victory Conditions",
+        rulesUlSetup: `<li>General (King) ×1, Advisor ×2, Elephant ×2</li><li>Chariot (Rook) ×2, Horse (Knight) ×2, Cannon ×2</li><li>Soldier (Pawn) ×5</li>`,
+        rulesUlBasic: `<li>General: Move 1 step orthogonally within the Palace.</li><li>Advisor: Move 1 step diagonally within the Palace.</li><li>Elephant: Move 2 steps diagonally (cannot cross river).</li><li>Chariot: Move any distance orthogonally (like Rook).</li><li>Horse: Move 1 step orthogonal + 1 step diagonal (can be blocked).</li><li>Cannon: Move like Chariot; capture by jumping over one piece.</li><li>Soldier: Move forward; after crossing river, can also move sideways.</li>`,
+        rulesUlWin: `<li>Checkmate: The General is under attack and cannot escape.</li><li>Stalemate: The opponent has no legal moves.</li><li>Resign: The opponent surrenders.</li>`,
+        diffOpts: { easy: "Easy (Novice)", medium: "Medium (Normal)", hard: "Hard (Advanced)", expert: "Expert (Pro)", master: "Master (Grandmaster)", god: "God (Unbeatable)" },
+        musicOpts: { none: "🔇 Mute", '01': "🎵 Track 01", '02': "🎵 Track 02", '03': "🎵 Track 03", '04': "🎵 Track 04", '05': "🎵 Track 05", '06': "🎵 Track 06", '07': "🎵 Track 07" },
+        themeOpts: { 't-classic': "💎 Classic", 't-ink': "🏔️ Ink", 't-dark': "🌃 Dark", 't-jade': "📿 Jade", 't-wood': "🪵 Wood", 't-gold': "👑 Gold", 't-ocean': "🌊 Ocean", 't-royal': "🏛️ Royal", 't-beast': "🦁 Beast", 't-playful': "🎈 Playful", 't-shan': "🖌️ Landscape", 't-cute': "🍬 Cute", 't-cyber': "🤖 Cyber", 't-sketch': "✏️ Sketch" },
+        sideOpts: { '1': "Red", '-1': "Black" } 
+    }
+};
+
+let bd = [], turn = 1, sel = -1, moves = [], over = false, historyStack = [], lastMoveIdx = -1, worker, isPVP = false, aiTimer = null, aiStartTime = 0, isAiThinking = false, userInteracted = false;
+let lastMoveFrom = -1, lastMovePieceType = 0, showGhost = true;
+let currentLang = 'tw'; 
+let viewSide = 1; 
+let dragEl = null;
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const LEVELS = { 'easy': { depth: 4, time: 500 }, 'medium': { depth: 8, time: 1000 }, 'hard': { depth: 12, time: 2000 }, 'expert': { depth: 16, time: 3000 }, 'master': { depth: 20, time: 5000 }, 'god': { depth: 40, time: 7000 } };
+
+/* --- 音樂路徑處理 --- */
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    const baseUrl = "https://johsok.github.io/Games/MP3/";
+    return `${baseUrl}${val}.mp3`;
+}
+
+window.onload = () => {
+    resizeBoard(); drawGrid(); initWorker();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    audio.src = getMp3Path(document.getElementById('music-sel').value); 
+    restart(); 
+    updateVolLabels(); // 初始化音量顯示
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); resizeBoard(); });
+    document.body.addEventListener('click', unlockAudio, {once:true}); 
+    document.body.addEventListener('touchstart', unlockAudio, {once:true}); 
+
+    const boardInner = document.getElementById('board');
+    // 處理點擊空白處以取消選取
+    const deselect = (e) => {
+        if(sel !== -1) {
+            sel = -1; moves = []; dragEl = null; render();
+        }
+    };
+    boardInner.addEventListener('mousedown', deselect);
+    boardInner.addEventListener('touchstart', deselect);
+
+    boardInner.addEventListener('mousemove', dragMove);
+    boardInner.addEventListener('touchmove', dragMove, {passive: false});
+
+    audio.addEventListener('error', (e) => { if(userInteracted && document.getElementById('music-sel').value !== 'none') { setTimeout(() => { audio.load(); audio.play().catch(()=>{}); }, 1000); } });
+    audio.addEventListener('ended', () => { if(userInteracted && document.getElementById('music-sel').value !== 'none') { audio.play().catch(()=>{}); } });
+};
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value;
+    const t = TRANSLATIONS[currentLang];
+    
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('btn-settings').innerText = t.settings;
+    document.getElementById('btn-undo').innerText = t.undo;
+    document.getElementById('btn-restart').innerText = t.restart;
+    
+    document.getElementById('lbl-mode').innerText = t.lblMode;
+    document.getElementById('mode-sel').options[0].text = t.optPve;
+    document.getElementById('mode-sel').options[1].text = t.optPvp;
+    document.getElementById('lbl-theme').innerText = t.lblTheme;
+    document.getElementById('lbl-diff').innerText = t.lblDiff;
+    document.getElementById('lbl-side').innerText = t.lblSide; 
+    document.getElementById('lbl-music').innerText = t.lblMusic;
+    document.getElementById('lbl-lang').innerText = t.lblLang;
+    document.getElementById('lbl-ghost').innerText = t.lblGhost;
+    document.getElementById('btn-rules').innerText = t.btnRules;
+    document.getElementById('btn-done').innerText = t.btnDone;
+
+    const diffSel = document.getElementById('diff-sel'); Array.from(diffSel.options).forEach(opt => { if(t.diffOpts[opt.value]) opt.text = t.diffOpts[opt.value]; });
+    const musicSel = document.getElementById('music-sel'); Array.from(musicSel.options).forEach(opt => { if(t.musicOpts[opt.value]) opt.text = t.musicOpts[opt.value]; });
+    const themeSel = document.getElementById('theme-sel'); Array.from(themeSel.options).forEach(opt => { if(t.themeOpts[opt.value]) opt.text = t.themeOpts[opt.value]; });
+    const sideSel = document.getElementById('side-sel'); Array.from(sideSel.options).forEach(opt => { if(t.sideOpts[opt.value]) opt.text = t.sideOpts[opt.value]; });
+
+    document.getElementById('rules-title').innerText = t.rulesTitle;
+    document.getElementById('rules-h-nature').innerText = t.rulesHNature;
+    document.getElementById('rules-p-nature').innerText = t.rulesPNature;
+    document.getElementById('rules-h-setup').innerText = t.rulesHSetup;
+    document.getElementById('rules-h-basic').innerText = t.rulesHBasic;
+    document.getElementById('rules-h-win').innerText = t.rulesHWin;
+    document.getElementById('btn-close-rules').innerText = t.btnCloseRules;
+
+    document.getElementById('rules-ul-setup').innerHTML = t.rulesUlSetup;
+    document.getElementById('rules-ul-basic').innerHTML = t.rulesUlBasic;
+    document.getElementById('rules-ul-win').innerHTML = t.rulesUlWin;
+
+    updateStatus();
+    updateVolLabels(); 
+}
+
+function updateVolLabels() {
+    const t = TRANSLATIONS[currentLang];
+    const bgmVal = document.getElementById('bgm-vol').value;
+    const sfxVal = document.getElementById('sfx-vol').value;
+    document.getElementById('lbl-vol-bgm').innerText = `${t.lblBgmVol} (${bgmVal}%)`;
+    document.getElementById('lbl-vol-sfx').innerText = `${t.lblSfxVol} (${sfxVal}%)`;
+}
+
+function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
+function resizeBoard() { 
+    const isLandscape = checkOrientation(); const header = document.getElementById('main-header'); const boardWrap = document.getElementById('board-wrap');
+    boardWrap.style.width = ''; boardWrap.style.height = ''; boardWrap.style.margin = '0'; header.style.marginRight = '0';
+    const winW = window.innerWidth; const winH = window.innerHeight; let finalW, finalH;
+    if (isLandscape) {
+        const headerW = 130; const verticalMargin = 4; let maxH = winH - verticalMargin; let maxW = maxH * 0.9; let gap = maxW * 0.02; const requiredW = headerW + gap + maxW + 20;
+        if (requiredW > winW) { maxW = (winW - headerW - 20) / 1.02; maxH = maxW / 0.9; gap = maxW * 0.02; }
+        finalW = maxW; finalH = maxH; header.style.marginRight = `${gap}px`;
+    } else {
+        const paddingV = winH * 0.01; const paddingH = 10; const headerH = header.offsetHeight; let availW = winW - (paddingH * 2); let availH = winH - headerH - (paddingV * 2); 
+        boardWrap.style.marginTop = `${paddingV}px`; boardWrap.style.marginBottom = `${paddingV}px`; const ratio = 0.9; finalH = availH; finalW = finalH * ratio;
+        if (finalW > availW) { finalW = availW; finalH = finalW / ratio; }
+    }
+    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; boardWrap.style.fontSize = (finalW / 9) + "px"; 
+}
+
+function unlockAudio() { 
+    userInteracted = true; 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    if (!audio.src || audio.src === "" || audio.src.endsWith("/")) {
+        const val = document.getElementById('music-sel').value;
+        if(val !== 'none') audio.src = getMp3Path(val);
+    }
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); 
+}
+
+function initWorker() { const blob = new Blob([workerScript], {type: 'application/javascript'}); worker = new Worker(URL.createObjectURL(blob)); worker.onmessage = e => { stopAiTimer(); isAiThinking = false; const move = e.data; if(move) animateAiMove(move.from, move.to); else endGame(TRANSLATIONS[currentLang].aiResign); }; }
+function startAiTimer() { aiStartTime = Date.now(); aiTimer = setInterval(() => { let sec = ((Date.now() - aiStartTime) / 1000).toFixed(1); document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${sec}s)`; }, 100); }
+function stopAiTimer() { clearInterval(aiTimer); }
+
+// --- Game Logic Updates ---
+function restart() { 
+    bd = [...INIT_BD]; 
+    turn = viewSide; 
+    sel = -1; moves = []; over = false; historyStack = []; lastMoveIdx = -1; 
+    lastMoveFrom = -1; lastMovePieceType = 0; 
+    dragEl = null;
+    isAiThinking = false; stopAiTimer(); 
+    isPVP = document.getElementById('mode-sel').value === 'pvp'; 
+    document.getElementById('win-overlay').classList.remove('show');
+    updateStatus(); render(); 
+}
+
+function changeSide() {
+    if(isAiThinking) return;
+    const val = parseInt(document.getElementById('side-sel').value);
+    if (viewSide !== val) {
+        viewSide = val;
+        restart();
+    }
+}
+
+function updateStatus() { 
+    const msg = document.getElementById('msg'); 
+    const t = TRANSLATIONS[currentLang];
+    if(over) return; 
+    if (turn === 1) { 
+        msg.innerText = t.redTurn; 
+        msg.style.color = "#f1c40f"; 
+    } else { 
+        if (isPVP) { 
+            msg.innerText = t.blackTurn; 
+            msg.style.color = "#ccc"; 
+        } else {
+            if(isAiThinking) msg.innerText = t.thinking;
+        }
+    } 
+}
+
+function undo() { 
+    if(over || isAiThinking || historyStack.length === 0) return; 
+    let state = historyStack.pop(); 
+    bd = state.bd; turn = state.turn; lastMoveIdx = state.lastMoveIdx; lastMoveFrom = state.lastMoveFrom; lastMovePieceType = state.lastMovePieceType;
+
+    if(!isPVP && turn === -1 * viewSide && historyStack.length > 0) { 
+        state = historyStack.pop(); 
+        bd = state.bd; turn = state.turn; lastMoveIdx = state.lastMoveIdx; lastMoveFrom = state.lastMoveFrom; lastMovePieceType = state.lastMovePieceType;
+    } 
+    sel = -1; moves = []; dragEl = null; updateStatus(); render(); 
+}
+
+function drawGrid() {
+    const svg = document.getElementById('lines'); let h = '';
+    for(let i=0; i<10; i++) h += `<line x1="0" y1="${i/9*100}%" x2="100%" y2="${i/9*100}%" />`;
+    for(let i=0; i<9; i++) { if(i===0||i===8) h += `<line x1="${i/8*100}%" y1="0" x2="${i/8*100}%" y2="100%" />`; else { h += `<line x1="${i/8*100}%" y1="0" x2="${i/8*100}%" y2="44.4%" />`; h += `<line x1="${i/8*100}%" y1="55.6%" x2="${i/8*100}%" y2="100%" />`; } }
+    h += `<line x1="37.5%" y1="0" x2="62.5%" y2="22.2%" /><line x1="62.5%" y1="0" x2="37.5%" y2="22.2%" /><line x1="37.5%" y1="77.8%" x2="62.5%" y2="100%" /><line x1="62.5%" y1="77.8%" x2="37.5%" y2="100%" />`;
+    svg.innerHTML = h;
+}
+
+function getPos(i) {
+    let col = i % 9;
+    let row = Math.floor(i / 9);
+    if (viewSide === -1) { 
+        col = 8 - col;
+        row = 9 - row;
+    }
+    return { left: col * 12.5, top: row * 11.11 };
+}
+
+function render() {
+    const div = document.getElementById('pieces'); div.innerHTML = '';
+    
+    // 繪製藍色閃爍標記 (如果已選中)
+    if(sel !== -1) {
+        const marker = document.createElement('div');
+        marker.className = 'marker';
+        const pos = getPos(sel);
+        marker.style.left = pos.left + "%";
+        marker.style.top = pos.top + "%";
+        div.appendChild(marker);
+    }
+
+    if(showGhost && lastMoveFrom !== -1 && lastMovePieceType !== 0) {
+        const ghost = document.createElement('div');
+        ghost.className = `piece ${lastMovePieceType>0?'red':'black'} ghost`;
+        ghost.innerText = TXT[lastMovePieceType];
+        const pos = getPos(lastMoveFrom);
+        ghost.style.left = pos.left + "%";
+        ghost.style.top = pos.top + "%";
+        div.appendChild(ghost);
+    }
+
+    bd.forEach((p, i) => { 
+        if(p===0) return; 
+        const el = document.createElement('div'); 
+        el.className = `piece ${p>0?'red':'black'} ${i===sel?'selected':''} ${i===lastMoveIdx?'last-move':''}`; 
+        el.innerText = TXT[p]; 
+        const pos = getPos(i);
+        el.style.left = pos.left + "%"; 
+        el.style.top = pos.top + "%";
+        el.dataset.idx = i; 
+        
+        if (i === sel && dragEl) {
+           el.classList.add('dragging');
+           el.style.left = dragEl.style.left;
+           el.style.top = dragEl.style.top;
+           el.style.transform = dragEl.style.transform;
+           dragEl = el; 
+        }
+
+        el.onmousedown = (e) => { e.stopPropagation(); clickP(i, el); };
+        el.ontouchstart = (e) => { e.stopPropagation(); clickP(i, el); };
+        div.appendChild(el); 
+    });
+
+    moves.forEach(m => { 
+        const d = document.createElement('div'); 
+        d.className = `dot ${bd[m]!==0?'kill':''}`; 
+        const pos = getPos(m);
+        d.style.left = pos.left + "%"; 
+        d.style.top = pos.top + "%"; 
+        d.onmousedown = (e) => { e.stopPropagation(); makeMove(sel, m); }; 
+        d.ontouchstart = (e) => { e.stopPropagation(); makeMove(sel, m); };
+        div.appendChild(d); 
+    });
+}
+
+function clickP(i, el) { 
+    if(over || isAiThinking) return; 
+    if(bd[i] * turn > 0) { 
+        if(!isPVP && turn !== viewSide) return; 
+        
+        // 點擊已選棋子 -> 取消選取
+        if(i === sel) {
+            sel = -1;
+            moves = [];
+            dragEl = null;
+            render();
+            return;
+        }
+
+        sel = i; 
+        moves = getMoves(bd, i, turn); 
+        dragEl = null; 
+        render(); 
+        
+        setTimeout(() => {
+            const pieces = document.getElementById('pieces').children;
+            for(let child of pieces) {
+                if(child.classList.contains('selected')) {
+                    dragEl = child;
+                    break;
+                }
+            }
+        }, 0);
+        
+        playSfx(150, "tap"); 
+    } 
+}
+
+function dragMove(e) {
+    if (!dragEl || sel === -1) return;
+    e.preventDefault();
+    
+    let clientX, clientY;
+    if (e.touches) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    const board = document.getElementById('board');
+    const rect = board.getBoundingClientRect();
+    
+    let x = (clientX - rect.left) / rect.width * 100;
+    let y = (clientY - rect.top) / rect.height * 100;
+
+    dragEl.classList.add('dragging');
+    dragEl.style.left = x + '%';
+    dragEl.style.top = y + '%';
+    dragEl.style.transform = "translate(-50%, -50%) scale(1.15)";
+}
+
+function animateAiMove(from, to) {
+    const piecesDiv = document.getElementById('pieces');
+    let movingPiece = null;
+    
+    for (let child of piecesDiv.children) {
+        if (parseInt(child.dataset.idx) === from && child.classList.contains('piece')) {
+            movingPiece = child;
+            break;
+        }
+    }
+
+    if (movingPiece) {
+        movingPiece.classList.add('moving');
+        const pos = getPos(to);
+        movingPiece.style.left = pos.left + '%';
+        movingPiece.style.top = pos.top + '%';
+        
+        setTimeout(() => {
+            makeMove(from, to);
+        }, 650); 
+    } else {
+        makeMove(from, to);
+    }
+}
+
+function makeMove(from, to) {
+    historyStack.push({ bd: [...bd], turn: turn, lastMoveIdx: lastMoveIdx, lastMoveFrom: lastMoveFrom, lastMovePieceType: lastMovePieceType });
+    lastMoveFrom = from; lastMovePieceType = bd[from];
+
+    const eat = bd[to]; bd[to] = bd[from]; bd[from] = 0; lastMoveIdx = to; playSfx(eat ? 600 : 300);
+    const t = TRANSLATIONS[currentLang];
+    
+    if(bd.indexOf(7) === -1 || bd.indexOf(-7) === -1) { 
+        endGame(bd.indexOf(7)===-1 ? t.blackWin : t.redWin); 
+        return; 
+    }
+    
+    turn = -turn; sel = -1; moves = []; dragEl = null; render();
+    
+    if(!isPVP && turn !== viewSide && !over) { 
+        document.getElementById('msg').innerText = t.thinking; 
+        document.getElementById('msg').style.color = "#e74c3c"; 
+        isAiThinking = true; 
+        startAiTimer(); 
+        const diffKey = document.getElementById('diff-sel').value;
+        const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
+        setTimeout(() => worker.postMessage({ bd: bd, limit: levelConfig, turn: turn, level: diffKey }), 50); 
+    } else { 
+        updateStatus(); 
+        if(!hasMoves(bd, turn)) endGame(turn === 1 ? t.noMoveRed : t.noMoveBlack); 
+    }
+}
+
+function hasMoves(b, t) { for(let i=0; i<90; i++) { if(b[i]*t > 0 && getMoves(b, i, t).length > 0) return true; } return false; }
+function endGame(txt) { over = true; stopAiTimer(); playWinSfx(); const overlay = document.getElementById('win-overlay'); overlay.innerText = txt; overlay.classList.add('show'); render(); }
+function playSfx(freq, type) { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); osc.connect(g); g.connect(audioCtx.destination); if(type === "tap") { osc.type = "sine"; osc.frequency.setValueAtTime(800, audioCtx.currentTime); g.gain.setValueAtTime(v*0.5, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime+0.05); } else { osc.frequency.setValueAtTime(freq, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1); g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15); osc.start(); osc.stop(audioCtx.currentTime+0.15); } }
+function playWinSfx() { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const notes = [523.25, 659.25, 783.99, 1046.50]; const now = audioCtx.currentTime; const loopDuration = 3.0; const noteSpeed = 0.12; const count = Math.ceil(loopDuration / noteSpeed); for (let i = 0; i < count; i++) { const freq = notes[i % notes.length]; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = "square"; osc.connect(g); g.connect(audioCtx.destination); const startTime = now + i * noteSpeed; osc.frequency.setValueAtTime(freq, startTime); g.gain.setValueAtTime(0, startTime); g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, startTime + noteSpeed); osc.start(startTime); osc.stop(startTime + noteSpeed); } }
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; checkOrientation(); }
+function changeMode() { isPVP = document.getElementById('mode-sel').value === 'pvp'; restart(); }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; updateVolLabels(); } 
+function adjSfx() { updateVolLabels(); }
+
+function changeMusic() {
+    if(!userInteracted) unlockAudio();
+    const val = document.getElementById('music-sel').value; 
+    
+    if(val === 'none') { 
+        audio.pause(); 
+        audio.src = ""; // 清空資源
+        document.getElementById('bgm-vol').value = 0;
+        document.getElementById('sfx-vol').value = 0;
+        adjBgm();
+        adjSfx();
+    } else { 
+        const newPath = getMp3Path(val);
+        // 只有當路徑真的改變時才重新加載，避免重複觸發
+        if (audio.src !== newPath) {
+            audio.src = newPath;
+            audio.load(); 
+            audio.play().catch(e => {});
+        }
+    } 
+}
+
+function toggleGhost() { showGhost = document.getElementById('ghost-check').checked; render(); }
+
+// 新增功能：回首頁
+function goHome() {
+    try {
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+             console.log("No parent detected or standalone mode");
+        }
+    } catch (e) {
+        console.error("Cross-origin restriction or error:", e);
+    }
+}
+
+function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; const sim = (target) => { let tmp = bd[target]; bd[target] = bd[i]; bd[i] = 0; let k1 = bd.indexOf(7), k2 = bd.indexOf(-7), safe = true; if(k1!==-1 && k2!==-1 && k1%9 === k2%9) { safe = false; for(let k=Math.min(k1,k2)+9; k<Math.max(k1,k2); k+=9) if(bd[k]!==0) safe = true; } bd[i] = bd[target]; bd[target] = tmp; return safe; }; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } }); } else if(type===4) { [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } }); } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; ds.forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } }); } return t.filter(idx => sim(idx)); }
+// 1. 禁用右鍵選單
+    document.addEventListener('contextmenu', event => {
+        event.preventDefault();
+    });
+
+    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
+    document.onkeydown = function(e) {
+        // 禁止 F12 (123)
+        if (e.keyCode == 123) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+I (檢查元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+C (選取元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+J (開發者主控台)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+U (查看網頁原始碼)
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+S (存檔)
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
+            return false;
+        }
+    };
+
+    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
+    // 雖然無法阻止高手，但對普通人很有效
+    console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+    console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+
+
+</script>
+</body>
+</html>
