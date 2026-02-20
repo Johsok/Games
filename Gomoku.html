@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3a3a3a">
+    <title>五子棋大師 2026</title>
+    <link rel="manifest" id="manifest-placeholder">
+    <style>
+        /* === 核心變數與配色定義 === */
+        :root {
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: #5d4037;
+            --piece-shadow: 2px 4px 6px rgba(0,0,0,0.5), inset -2px -4px 6px rgba(0,0,0,0.2);
+            --border-style: 8px solid #5d4037;
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            
+            --black-piece: radial-gradient(circle at 30% 30%, #555, #111);
+            --white-piece: radial-gradient(circle at 30% 30%, #fff, #ccc);
+        }
+
+        /* === 視覺風格定義 (14種) === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --border-style: 10px ridge #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --border-style: 8px double #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --border-style: 10px inset #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: #3e2723; --border-style: 10px groove #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: #ffd700; --border-style: 8px solid #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: #bbdefb; --border-style: 8px double #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: #e1bee7; --border-style: 8px solid #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: #5e3105; --border-style: 10px dashed #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --border-style: 8px dotted #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: #5d6d7e; --border-style: 8px double #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --border-style: 10px solid #b39ddb; border-radius: 12px; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: #0ff; --border-style: 8px solid #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            color: white; 
+            transition: background 0.5s; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+
+        /* === 頂部 UI 樣式 === */
+        header { 
+            width: 100%; height: auto; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
+            z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
+            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            transition: all 0.3s ease;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* === 橫向模式 UI 適配 === */
+        body.is-landscape {
+            flex-direction: row; 
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            justify-content: center;
+        }
+        body.is-landscape header {
+            width: 140px; 
+            height: 100vh; 
+            padding: 0;
+            border-bottom: none;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            justify-content: center; 
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0,0,0,0.4);
+        }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status { font-size: 1rem; margin-bottom: 10px; text-align: center; }
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+        body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; }
+
+        /* === 設定面板樣式 === */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; }
+        .vol-row > div { padding: 0 10px; } 
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+
+        /* === 遊戲容器與棋盤 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            padding: 4%; box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
+        }
+        
+        .board-inner { position: relative; width: 100%; height: 100%; }
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.8; }
+        line { stroke: var(--line-color); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+
+        .piece { 
+            position: absolute; width: calc(100% / 14); height: calc(100% / 14); margin: 0; 
+            transform: translate(-50%, -50%) scale(0.9); border-radius: 50%; 
+            box-shadow: var(--piece-shadow); cursor: pointer; z-index: 10; 
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        .piece.black { background: var(--black-piece); }
+        .piece.white { background: var(--white-piece); }
+        .piece.last-move::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 25%; height: 25%; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 5px rgba(255,0,0,0.8); opacity: 0.9;
+        }
+        .click-zone {
+            position: absolute; width: calc(100% / 14); height: calc(100% / 14);
+            transform: translate(-50%, -50%); z-index: 5; cursor: pointer;
+        }
+
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%,-50%); 
+            width: 80%; height: 80%;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            pointer-events: none; opacity: 0; z-index: 1000; 
+            font-family: "Microsoft JhengHei", sans-serif; font-weight: 900; 
+            font-size: calc(var(--board-size, 300px) * 0.12);
+            letter-spacing: calc(var(--board-size, 300px) * 0.01); 
+            color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
+            line-height: 1.2;
+        }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite; }
+        @keyframes win { 
+            0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
+            20%, 100% { transform: translate(-50%,-50%) scale(1) rotate(-3deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) scale(1) rotate(3deg); } 
+        }
+
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; padding: 25px; color: #ddd; }
+        .rules-content h3 { color: #f1c40f; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px;}
+        .close-rules { width: 100%; padding: 10px; background: #cc0000; color: #fff; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">五子棋大師 2026</h2>
+        <div class="status" id="msg">黑方走棋</div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-mode">對戰模式</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="pve" selected>💻 單人</option>
+                <option value="pvp">👥 雙人</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-diff">電腦難度 (單人)</label>
+            <select id="diff-sel">
+                <option value="easy">簡單 (2秒)</option>
+                <option value="medium">中等 (3秒)</option>
+                <option value="hard">困難 (4秒)</option>
+                <option value="expert" selected>專家 (5秒)</option>
+                <option value="master">大師 (8秒)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-side">玩家顏色</label>
+            <select id="side-sel" onchange="changeSide()">
+                <option value="1" selected>黑 (先手)</option>
+                <option value="-1">白 (後手)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04"  selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split vol-row">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量<span id="bgm-val-hint" class="vol-hint">20</span></label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="20" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量<span id="sfx-val-hint" class="vol-hint">50</span></label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="50" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <button class="btn" id="btn-rules" style="width:100%; background:#2c3e50; padding: 10px; margin-top:10px;" onclick="toggleRules()">📖 遊戲規則</button>
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">五子棋規則</h3>
+        <p id="rules-p-nature">純策略的雙人對奕遊戲。</p>
+        <ul id="rules-ul-basic" style="padding-left: 20px; line-height: 1.6;">
+            <li>棋盤為 15×15 的網格。</li>
+            <li>黑方先手，白方後手，雙方輪流落子於交叉點上。</li>
+            <li>最先在橫、豎、或斜方向上形成連續五顆同色棋子的一方獲勝。</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <svg id="lines"></svg>
+            <div id="click-zones"></div>
+            <div id="pieces"></div>
+            <div id="win-overlay"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* === PWA 支援 === */
+const manifestJSON = {
+    name: "五子棋大師 2026", short_name: "五子棋", display: "standalone",
+    background_color: "#3a3a3a", theme_color: "#3a3a3a",
+    icons: [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzExMSIvPjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml"}]
+};
+document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
+
+/* === Web Worker：回歸原始 AI 演算法 === */
+const workerScript = `
+const SIZE = 15;
+const DIRS = [[1,0], [0,1], [1,1], [1,-1]]; 
+
+function getScore(count, openEnds) {
+    if (count >= 5) return 1000000; 
+    if (count === 4) {
+        if (openEnds === 2) return 100000; 
+        if (openEnds === 1) return 10000;  
+    }
+    if (count === 3) {
+        if (openEnds === 2) return 10000;  
+        if (openEnds === 1) return 100;    
+    }
+    if (count === 2) {
+        if (openEnds === 2) return 100;    
+        if (openEnds === 1) return 10;     
+    }
+    return 0;
+}
+
+function evaluate(bd, turn) {
+    let score = 0;
+    for(let y=0; y<SIZE; y++) {
+        for(let x=0; x<SIZE; x++) {
+            let p = bd[y*SIZE+x];
+            if(p === 0) continue;
+            
+            for(let d=0; d<4; d++) {
+                let dx = DIRS[d][0], dy = DIRS[d][1];
+                let nx = x - dx, ny = y - dy;
+                if (nx>=0 && nx<SIZE && ny>=0 && ny<SIZE && bd[ny*SIZE+nx] === p) continue;
+                
+                let count = 1, openEnds = 0;
+                if (nx>=0 && nx<SIZE && ny>=0 && ny<SIZE && bd[ny*SIZE+nx] === 0) openEnds++;
+                
+                let cx = x + dx, cy = y + dy;
+                while(cx>=0 && cx<SIZE && cy>=0 && cy<SIZE && bd[cy*SIZE+cx] === p) {
+                    count++; cx += dx; cy += dy;
+                }
+                if (cx>=0 && cx<SIZE && cy>=0 && cy<SIZE && bd[cy*SIZE+cx] === 0) openEnds++;
+                
+                let val = getScore(count, openEnds);
+                score += (p === turn) ? val : -val * 1.5; 
+            }
+        }
+    }
+    return score;
+}
+
+function genMoves(bd, turn) {
+    let moves = [];
+    let hasPiece = false;
+    let adj = new Int32Array(SIZE*SIZE);
+    
+    for(let i=0; i<SIZE*SIZE; i++) {
+        if(bd[i] !== 0) {
+            hasPiece = true;
+            let x = i%SIZE, y = Math.floor(i/SIZE);
+            for(let dy=-2; dy<=2; dy++) {
+                for(let dx=-2; dx<=2; dx++) {
+                    let nx=x+dx, ny=y+dy;
+                    if(nx>=0 && nx<SIZE && ny>=0 && ny<SIZE && bd[ny*SIZE+nx]===0) adj[ny*SIZE+nx] = 1;
+                }
+            }
+        }
+    }
+    
+    if(!hasPiece) return [Math.floor(SIZE/2)*SIZE + Math.floor(SIZE/2)];
+    
+    for(let i=0; i<SIZE*SIZE; i++) {
+        if(adj[i] === 1) {
+            bd[i] = turn;
+            let score = evaluate(bd, turn);
+            bd[i] = 0;
+            moves.push({m: i, s: score});
+        }
+    }
+    moves.sort((a,b) => b.s - a.s);
+    return moves.map(x => x.m);
+}
+
+function alphaBeta(bd, depth, alpha, beta, turn, isMax, startTime, timeLimit) {
+    if (Date.now() - startTime >= timeLimit) return 0;
+    
+    let score = evaluate(bd, turn);
+    if (Math.abs(score) >= 500000 || depth === 0) return score;
+
+    let moves = genMoves(bd, turn);
+    if (moves.length === 0) return 0;
+
+    if (isMax) {
+        let best = -Infinity;
+        for (let m of moves) {
+            bd[m] = turn;
+            let val = alphaBeta(bd, depth - 1, alpha, beta, turn, false, startTime, timeLimit);
+            bd[m] = 0;
+            best = Math.max(best, val);
+            alpha = Math.max(alpha, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    } else {
+        let best = Infinity;
+        for (let m of moves) {
+            bd[m] = -turn;
+            let val = alphaBeta(bd, depth - 1, alpha, beta, turn, true, startTime, timeLimit);
+            bd[m] = 0;
+            best = Math.min(best, val);
+            beta = Math.min(beta, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
+}
+
+self.onmessage = function(e) {
+    const { bd, limit, turn } = e.data;
+    const timeLimit = limit.time;
+    const maxDepth = limit.maxDepth;
+    const startTime = Date.now();
+    
+    let bestMoveGlobal = null;
+    let moves = genMoves(bd, turn);
+    if (moves.length === 1) {
+        self.postMessage(moves[0]);
+        return;
+    }
+
+    for (let d = 1; d <= maxDepth; d++) {
+        let bestScore = -Infinity;
+        let currentBestMove = null;
+        let alpha = -Infinity;
+        let beta = Infinity;
+
+        for(let m of moves) {
+            bd[m] = turn;
+            let score = alphaBeta(bd, d - 1, alpha, beta, turn, false, startTime, timeLimit);
+            bd[m] = 0;
+            
+            if (Date.now() - startTime >= timeLimit) break;
+
+            if(score > bestScore) {
+                bestScore = score;
+                currentBestMove = m;
+            }
+            alpha = Math.max(alpha, bestScore);
+        }
+        if (currentBestMove !== null) bestMoveGlobal = currentBestMove;
+        if (Date.now() - startTime >= timeLimit) break;
+        if (bestScore >= 500000) break; 
+    }
+    
+    let timeTaken = Date.now() - startTime;
+    let timeToWait = timeLimit - timeTaken;
+    if (timeToWait > 0 && bestMoveGlobal !== null) {
+        setTimeout(() => {
+            self.postMessage(bestMoveGlobal);
+        }, timeToWait);
+    } else {
+        self.postMessage(bestMoveGlobal !== null ? bestMoveGlobal : moves[0]);
+    }
+};
+`;
+
+/* === 遊戲主變數 === */
+const SIZE = 15;
+let bd = new Array(SIZE*SIZE).fill(0); 
+let turn = 1, over = false, historyStack = [], lastMoveIdx = -1, worker, isPVP = false;
+let aiTimer = null, aiStartTime = 0, isAiThinking = false, currentAiTimeLimit = 0;
+let currentLang = 'tw', viewSide = 1, userInteracted = false; 
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const LEVELS = { 
+    'easy': { time: 2000, maxDepth: 4 }, 'medium': { time: 3000, maxDepth: 6 }, 
+    'hard': { time: 4000, maxDepth: 8 }, 'expert': { time: 5000, maxDepth: 10 }, 
+    'master': { time: 8000, maxDepth: 15 } 
+};
+
+const TRANSLATIONS = {
+    tw: { title: "五子棋大師 2026", blackTurn: "黑方 (P1) 走棋", whiteTurn: "白方 (P2) 走棋", blackWin: "黑 方 獲 勝", whiteWin: "白 方 獲 勝", draw: "和局", thinking: "思考中...", countdown: "倒數", optPve: "💻 單人", optPvp: "👥 雙人" },
+    cn: { title: "五子棋大师 2026", blackTurn: "黑方 (P1) 走棋", whiteTurn: "白方 (P2) 走棋", blackWin: "黑 方 获 胜", whiteWin: "白 方 获 胜", draw: "和局", thinking: "思考中...", countdown: "倒数", optPve: "💻 单人", optPvp: "👥 双人" },
+    en: { title: "Gomoku Master", blackTurn: "Black (P1) Turn", whiteTurn: "White (P2) Turn", blackWin: "BLACK WINS", whiteWin: "WHITE WINS", draw: "DRAW", thinking: "Thinking...", countdown: "Count", optPve: "💻 1 Player", optPvp: "👥 2 Players" }
+};
+
+/* --- github音樂路徑處理 --- */
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    
+    // 將這裡的網址換成你 GitHub Pages 的網址
+    const baseUrl = "https://johsok.github.io/gomoku/";
+    
+    // 假設你的檔案名稱就是 01.mp3, 02.mp3...
+    return `${baseUrl}${val}.mp3`;
+}
+
+function unlockAudio() {
+    userInteracted = true;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    if (!audio.src || audio.src === "") {
+        const val = document.getElementById('music-sel').value;
+        if(val !== 'none') audio.src = getMp3Path(val);
+    }
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(() => {});
+}
+
+// 偵測頁面可見度
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        audio.pause();
+    } else {
+        if (userInteracted && document.getElementById('music-sel').value !== 'none') {
+            audio.play().catch(() => {});
+        }
+    }
+});
+
+document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
+document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
+
+window.onload = () => {
+    resizeBoard(); drawGrid(); initWorker();
+    audio.src = getMp3Path(document.getElementById('music-sel').value);
+    restart(); 
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
+};
+
+function checkOrientation() { 
+    const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
+    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape'); 
+    return isLand; 
+}
+
+function resizeBoard() { 
+    const isLand = checkOrientation(), wrap = document.getElementById('board-wrap'), header = document.getElementById('main-header');
+    wrap.style.width = wrap.style.height = wrap.style.margin = ''; 
+    header.style.marginRight = '0';
+    const winW = window.innerWidth, winH = window.innerHeight; 
+    let finalSize;
+    if (isLand) {
+        const headerW = 140, gap = winW * 0.02;
+        header.style.marginRight = `${gap}px`;
+        finalSize = Math.min(winW - headerW - gap - 20, winH - 20);
+    } else {
+        wrap.style.marginTop = '10px'; wrap.style.marginBottom = '10px';
+        finalSize = Math.min(winW - 20, winH - header.offsetHeight - 20);
+    }
+    wrap.style.width = wrap.style.height = `${finalSize}px`;
+    wrap.style.setProperty('--board-size', `${finalSize}px`);
+}
+
+function drawGrid() {
+    const svg = document.getElementById('lines'), zones = document.getElementById('click-zones');
+    let h = '', z = '';
+    for(let i=0; i<SIZE; i++) { 
+        let pos = (i / (SIZE-1)) * 100;
+        h += `<line x1="0" y1="${pos}%" x2="100%" y2="${pos}%" /><line x1="${pos}%" y1="0" x2="${pos}%" y2="100%" />`;
+    }
+    for(let i=0; i<SIZE*SIZE; i++) {
+        let x = i % SIZE, y = Math.floor(i / SIZE);
+        z += `<div class="click-zone" style="left:${x/(SIZE-1)*100}%; top:${y/(SIZE-1)*100}%" onclick="makeMove(${i})"></div>`;
+    }
+    svg.innerHTML = h; zones.innerHTML = z;
+}
+
+function initWorker() { 
+    const blob = new Blob([workerScript], {type: 'application/javascript'}); 
+    worker = new Worker(URL.createObjectURL(blob)); 
+    worker.onmessage = e => { clearInterval(aiTimer); isAiThinking = false; makeMove(e.data, true); }; 
+}
+
+function restart() { 
+    bd.fill(0); turn = 1; over = false; historyStack = []; lastMoveIdx = -1; 
+    isAiThinking = false; clearInterval(aiTimer);
+    isPVP = document.getElementById('mode-sel').value === 'pvp'; 
+    document.getElementById('win-overlay').classList.remove('show');
+    render(); updateStatus();
+    if(!isPVP && viewSide === -1) triggerAI();
+}
+
+function render() {
+    const div = document.getElementById('pieces'); div.innerHTML = '';
+    bd.forEach((p, i) => { 
+        if(p===0) return; 
+        const el = document.createElement('div'); 
+        el.className = `piece ${p===1?'black':'white'} ${i===lastMoveIdx?'last-move':''}`; 
+        let x = i % SIZE, y = Math.floor(i / SIZE);
+        el.style.left = `${x/(SIZE-1)*100}%`; el.style.top = `${y/(SIZE-1)*100}%`;
+        div.appendChild(el); 
+    });
+}
+
+function checkWin(idx, player) {
+    const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+    let cx = idx % SIZE, cy = Math.floor(idx / SIZE);
+    for(let d=0; d<4; d++) {
+        let count = 1;
+        for(let step of [1, -1]) {
+            let nx = cx + dirs[d][0]*step, ny = cy + dirs[d][1]*step;
+            while(nx>=0 && nx<SIZE && ny>=0 && ny<SIZE && bd[ny*SIZE+nx] === player) {
+                count++; nx += dirs[d][0]*step; ny += dirs[d][1]*step;
+            }
+        }
+        if(count >= 5) return true;
+    }
+    return false;
+}
+
+function makeMove(i, isAi = false) {
+    if(over || bd[i] !== 0 || (isAiThinking && !isAi)) return;
+    historyStack.push({ bd: [...bd], turn: turn, lastIdx: lastMoveIdx });
+    bd[i] = turn; lastMoveIdx = i;
+    playSfx(turn === 1 ? 400 : 600);
+    render();
+    const t = TRANSLATIONS[currentLang];
+    if(checkWin(i, turn)) {
+        endGame(isPVP ? (turn === 1 ? t.blackWin : t.whiteWin) : (turn === viewSide ? "You Win" : "You Lose")); return;
+    }
+    if(bd.indexOf(0) === -1) { endGame(t.draw); return; }
+    turn = -turn; updateStatus();
+    if(!isPVP && turn !== viewSide && !over) triggerAI();
+}
+
+function triggerAI() {
+    isAiThinking = true; aiStartTime = Date.now();
+    const t = TRANSLATIONS[currentLang], diffKey = document.getElementById('diff-sel').value;
+    const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
+    currentAiTimeLimit = levelConfig.time;
+    document.getElementById('msg').style.color = "#e74c3c";
+    aiTimer = setInterval(() => { 
+        let remain = Math.max(0, currentAiTimeLimit - (Date.now() - aiStartTime));
+        document.getElementById('msg').innerText = `${t.thinking} ${t.countdown} ${(remain/1000).toFixed(1)}s`; 
+    }, 100);
+    worker.postMessage({ bd: bd, limit: levelConfig, turn: turn });
+}
+
+function undo() { 
+    if(over || isAiThinking || historyStack.length === 0) return; 
+    let state = historyStack.pop(); bd = state.bd; turn = state.turn; lastMoveIdx = state.lastIdx;
+    if(!isPVP && turn !== viewSide && historyStack.length > 0) { 
+        state = historyStack.pop(); bd = state.bd; turn = state.turn; lastMoveIdx = state.lastIdx;
+    } 
+    updateStatus(); render(); 
+}
+
+function updateStatus() { 
+    if(over || isAiThinking) return;
+    const msg = document.getElementById('msg'), t = TRANSLATIONS[currentLang];
+    msg.innerText = turn === 1 ? t.blackTurn : t.whiteTurn;
+    msg.style.color = turn === 1 ? "#f1c40f" : "#ccc"; 
+}
+
+function endGame(txt) { over = true; clearInterval(aiTimer); playSfx(800, 'win'); const ol = document.getElementById('win-overlay'); ol.innerText = txt; ol.classList.add('show'); }
+
+function playSfx(freq, type) { 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
+    osc.connect(g); g.connect(audioCtx.destination); 
+    if(type === 'win') {
+        osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+        osc.start(); osc.stop(audioCtx.currentTime+1);
+    } else {
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime+0.15);
+    }
+}
+
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function changeMode() { restart(); }
+function changeSide() { viewSide = parseInt(document.getElementById('side-sel').value); restart(); }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
+function adjSfx() { document.getElementById('sfx-val-hint').innerText = document.getElementById('sfx-vol').value; } 
+
+function changeMusic() {
+    if(!userInteracted) unlockAudio();
+    const val = document.getElementById('music-sel').value; 
+    
+    if(val === 'none') { 
+        audio.pause(); 
+        audio.src = ""; // 清空資源
+    } else { 
+        const newPath = getMp3Path(val);
+        // 只有當路徑真的改變時才重新加載，避免重複觸發
+        if (audio.src !== newPath) {
+            audio.src = newPath;
+            audio.load(); // 重要：強制瀏覽器重新掃描新路徑
+            audio.play().catch(e => {
+                console.log("自動播放被攔截，等待使用者點擊", e);
+            });
+        }
+    } 
+}
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value; const t = TRANSLATIONS[currentLang];
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('mode-sel').options[0].text = t.optPve;
+    document.getElementById('mode-sel').options[1].text = t.optPvp;
+    if(!isAiThinking) updateStatus();
+}
+
+
+
+// 1. 禁用右鍵選單
+    document.addEventListener('contextmenu', event => {
+        event.preventDefault();
+    });
+
+    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
+    document.onkeydown = function(e) {
+        // 禁止 F12 (123)
+        if (e.keyCode == 123) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+I (檢查元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+C (選取元件)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+Shift+J (開發者主控台)
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+U (查看網頁原始碼)
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+            return false;
+        }
+        // 禁止 Ctrl+S (存檔)
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
+            return false;
+        }
+    };
+
+    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
+    // 雖然無法阻止高手，但對普通人很有效
+    console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+    console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+</script>
+</body>
+</html>
