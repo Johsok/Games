@@ -15,6 +15,7 @@
             --line-color: rgba(93, 64, 55, 0.3);
             --piece-shadow: 1px 3px 5px rgba(0,0,0,0.6), inset -2px -4px 6px rgba(0,0,0,0.3);
             
+            /* 統一邊框寬度，避免切換風格時跳動 */
             --border-width: 12px;
             --border-style: solid;
             --border-color: #5d4037;
@@ -30,7 +31,8 @@
             --anim-speed: 0.6s;
         }
 
-        /* === 視覺風格定義 (僅改變顏色/材質，不改變尺寸佈局) === */
+        /* === 視覺風格定義 === */
+        /* 注意：只改變顏色、材質和 border-style，嚴禁改變 border-width, padding, margin */
         body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93, 64, 55, 0.4); --border-style: ridge; --border-color: #6d4c41; }
         body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --hole-bg: rgba(0,0,0,0.1); --line-color: rgba(66, 66, 66, 0.2); --border-style: double; --border-color: #424242; }
         body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --hole-bg: rgba(0,77,64,0.3); --line-color: rgba(0, 77, 64, 0.3); --border-style: inset; --border-color: #00695c; }
@@ -79,7 +81,16 @@
         .player-info { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #ddd; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; }
 
         .btn-group { display: flex; gap: 8px; align-items: center; margin-top: 5px;}
-        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        /* UI 穩定性修改：設定 min-width 確保英文切換時不跳動 */
+        .btn { 
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+            color: #f0f0f0; padding: 5px 12px; border-radius: 20px; 
+            cursor: pointer; font-size: 0.85rem; transition: all 0.2s; 
+            white-space: nowrap; backdrop-filter: blur(4px); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+            min-width: 80px; /* 強制最小寬度 */
+            text-align: center;
+        }
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
@@ -112,11 +123,12 @@
         #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
         .set-row { margin-bottom: 12px; }
         .flex-split { display: flex; gap: 10px; justify-content: space-between; }
-        .flex-split > div { flex: 1; display: flex; flex-direction: column; }
+        /* UI 穩定性修改：使用 flex: 1 1 0 確保欄位均分，不受文字長度影響 */
+        .flex-split > div { flex: 1 1 0; display: flex; flex-direction: column; width: 0; }
         .vol-row > div { padding: 0 10px; } 
-        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
-        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; box-sizing: border-box; }
         input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; }
 
         /* === 遊戲容器與棋盤 === */
@@ -182,24 +194,21 @@
         }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
 
+        /* === 獲勝宣告樣式 === */
         #win-overlay { 
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%,-50%); 
-            width: 80%; height: 80%;
-            display: flex; justify-content: center; align-items: center; text-align: center;
-            pointer-events: none; opacity: 0; z-index: 1000; 
-            font-family: "Microsoft JhengHei", sans-serif; font-weight: 900; 
-            font-size: calc(var(--board-size, 300px) * 0.12);
-            letter-spacing: calc(var(--board-size, 300px) * 0.01); 
-            color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
-            line-height: 1.2;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            pointer-events: none; opacity: 0; z-index: 1000; white-space: nowrap; 
+            font: 900 2.5em "Microsoft JhengHei", sans-serif; 
+            letter-spacing: 6px; color: #fff; -webkit-text-stroke: 1px #fff; 
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
         }
-        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite; }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite, hue 4s linear infinite; }
         @keyframes win { 
             0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
-            20%, 100% { transform: translate(-50%,-50%) scale(1) rotate(-3deg); opacity: 1; } 
-            60% { transform: translate(-50%,-52%) scale(1) rotate(3deg); } 
+            20%, 100% { transform: translate(-50%,-50%) rotate(-3deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) rotate(3deg); } 
         }
+        @keyframes hue { to { filter: hue-rotate(360deg); } }
 
         #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
         .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; padding: 25px; color: #ddd; }
@@ -372,19 +381,19 @@ document.getElementById('manifest-placeholder').setAttribute('href', 'data:appli
 
 /* === 顏色定義 (10種) === */
 const PIECE_COLORS = [
-    { id: "red", name: "烈焰紅", val: "radial-gradient(circle at 30% 30%, #ff4d4d, #990000)" },
-    { id: "green", name: "森林綠", val: "radial-gradient(circle at 30% 30%, #4dff4d, #009900)" },
-    { id: "blue", name: "寶石藍", val: "radial-gradient(circle at 30% 30%, #4d4dff, #000099)" },
-    { id: "yellow", name: "閃耀黃", val: "radial-gradient(circle at 30% 30%, #ffff4d, #999900)" },
-    { id: "white", name: "珍珠白", val: "radial-gradient(circle at 30% 30%, #ffffff, #999999)" },
-    { id: "black", name: "黑曜石", val: "radial-gradient(circle at 30% 30%, #444444, #000000)" },
-    { id: "purple", name: "魔幻紫", val: "radial-gradient(circle at 30% 30%, #d500f9, #4a148c)" },
-    { id: "cyan", name: "霓虹青", val: "radial-gradient(circle at 30% 30%, #00e5ff, #006064)" },
-    { id: "orange", name: "活力橘", val: "radial-gradient(circle at 30% 30%, #ff6d00, #e65100)" },
-    { id: "pink", name: "甜心粉", val: "radial-gradient(circle at 30% 30%, #ff80ab, #c51162)" }
+    { id: "red", name: "烈焰紅", val: "radial-gradient(circle at 30% 30%, #ff4d4d, #990000)", enName: "Red" },
+    { id: "green", name: "森林綠", val: "radial-gradient(circle at 30% 30%, #4dff4d, #009900)", enName: "Green" },
+    { id: "blue", name: "寶石藍", val: "radial-gradient(circle at 30% 30%, #4d4dff, #000099)", enName: "Blue" },
+    { id: "yellow", name: "閃耀黃", val: "radial-gradient(circle at 30% 30%, #ffff4d, #999900)", enName: "Yellow" },
+    { id: "white", name: "珍珠白", val: "radial-gradient(circle at 30% 30%, #ffffff, #999999)", enName: "White" },
+    { id: "black", name: "黑曜石", val: "radial-gradient(circle at 30% 30%, #444444, #000000)", enName: "Black" },
+    { id: "purple", name: "魔幻紫", val: "radial-gradient(circle at 30% 30%, #d500f9, #4a148c)", enName: "Purple" },
+    { id: "cyan", name: "霓虹青", val: "radial-gradient(circle at 30% 30%, #00e5ff, #006064)", enName: "Cyan" },
+    { id: "orange", name: "活力橘", val: "radial-gradient(circle at 30% 30%, #ff6d00, #e65100)", enName: "Orange" },
+    { id: "pink", name: "甜心粉", val: "radial-gradient(circle at 30% 30%, #ff80ab, #c51162)", enName: "Pink" }
 ];
 
-/* === Web Worker：AI 核心 === */
+/* === Web Worker：AI 核心 (強化版 - 攻擊型) === */
 const workerScript = `
 let ADJ = {}; let JUMP_ADJ = {};
 let coords = [];
@@ -442,60 +451,94 @@ function getAllPossibleMoves(board, startIdx) {
     return Array.from(moves);
 }
 
+// 計算歐幾里得距離
 function getDist(idx1, targetPoint) {
     let c1 = coords[idx1];
     return Math.sqrt(Math.pow(c1.x - targetPoint.x, 2) + Math.pow(c1.y - targetPoint.y, 2));
 }
 
+// 判斷座標是否在目標三角區域內 (簡單半徑判斷)
+function isInTargetZone(idx, targetPoint) {
+    return getDist(idx, targetPoint) < 4.5; // 約 4 格距離
+}
+
 function think(board, player, targetPoint, timeLimit) {
-    let startTime = Date.now();
     let myPieces = [];
     for (let i = 0; i < board.length; i++) if (board[i] === player) myPieces.push(i);
     
     let bestMoves = [];
     let bestScore = -Infinity;
 
-    // 優先考慮距離目標較遠的棋子 (落後者優先)
-    myPieces.sort((a, b) => getDist(b, targetPoint) - getDist(a, targetPoint));
+    // 找出離目標最遠的棋子 (落後者)，用於加分
+    let maxDist = -1;
+    let laggardIdx = -1;
+    for(let p of myPieces) {
+        let d = getDist(p, targetPoint);
+        if(d > maxDist) { maxDist = d; laggardIdx = p; }
+    }
 
     for (let from of myPieces) {
         let moves = getAllPossibleMoves(board, from);
-        
+        let distStart = getDist(from, targetPoint);
+        let isLaggard = (from === laggardIdx);
+        let startInZone = isInTargetZone(from, targetPoint);
+
         for (let to of moves) {
-            let distStart = getDist(from, targetPoint);
             let distEnd = getDist(to, targetPoint);
             let moveDist = Math.sqrt(Math.pow(coords[from].x - coords[to].x, 2) + Math.pow(coords[from].y - coords[to].y, 2));
+            let endInZone = isInTargetZone(to, targetPoint);
             
-            // === 核心評分邏輯修正 ===
-            
-            // 1. 進度分：前進加分，後退重罰
-            let progress = distStart - distEnd;
+            // === 核心評分邏輯 (攻擊型優化) ===
             let score = 0;
+            let advancement = distStart - distEnd; // 正值代表靠近目標
+            
+            // 1. 基本推進分：前進距離 * 加權
+            // 讓電腦極度傾向於大幅度跨越 (跳躍)
+            score += advancement * 100;
 
-            if (progress > 0) {
-                score += progress * 40; // 加速前進權重
-            } else {
-                score -= 500; // 強烈懲罰後退 (解決來回走問題)
+            // 2. 懲罰後退
+            if (advancement < 0) {
+                // 如果已經在目標區，嚴禁後退離開
+                if (startInZone && !endInZone) {
+                    score -= 50000;
+                } else {
+                    // 一般後退，給予重罰，除非是為了搭橋
+                    score -= 500; 
+                }
             }
 
-            // 2. 跳躍分：鼓勵長距離移動
-            if (moveDist > 2.5) { // 大於單步距離 (約1.5-2.0視為單步)
-                score += 30; // 跳躍基礎分
-                score += moveDist * 10; // 距離越遠越好
+            // 3. 落後者獎勵 (搭橋戰術)
+            // 如果移動的是最後面的棋子，且有前進，給予額外加分
+            if (isLaggard && advancement > 0) {
+                score += 300; 
             }
 
-            // 3. 落後棋子補償：鼓勵移動最後面的棋子
-            if (distStart > 60) {
-                score += 15;
+            // 4. 跳躍獎勵
+            // 鼓勵長距離移動 (大於單步距離)
+            if (moveDist > 2.5) { 
+                score += 150; 
+                score += moveDist * 20; // 跳越遠越好
             }
 
-            // 4. 防止離開目標區：如果已經在目標區附近，不要輕易離開
-            if (distStart < 15 && distEnd > distStart) {
-                score -= 1000;
+            // 5. 目標區鎖定
+            // 如果這步棋進入了目標區，給予巨額獎勵
+            if (!startInZone && endInZone) {
+                score += 2000;
+            }
+            // 如果在目標區內移動，越深入越好
+            if (startInZone && endInZone && advancement > 0) {
+                score += 500;
             }
 
-            // 5. 隨機擾動 (打破平局)
-            score += Math.random() * 2;
+            // 6. 防止卡邊 (稍微傾向走中間)
+            let distToCenterStart = Math.abs(coords[from].x - 50);
+            let distToCenterEnd = Math.abs(coords[to].x - 50);
+            if (distToCenterEnd < distToCenterStart) {
+                score += 10;
+            }
+
+            // 7. 隨機擾動 (打破平局)
+            score += Math.random() * 5;
 
             if (score > bestScore) {
                 bestScore = score;
@@ -509,7 +552,6 @@ function think(board, player, targetPoint, timeLimit) {
     if (bestMoves.length > 0) {
         return bestMoves[Math.floor(Math.random() * bestMoves.length)];
     }
-    // 如果真的無路可走(全都是負分)，勉強走一步分數最高的(即扣分最少的)
     return null;
 }
 
@@ -561,7 +603,7 @@ const ZONES = {
 const TRANSLATIONS = {
     tw: { 
         title: "跳棋大師 2026", 
-        win: "獲勝！", thinking: "思考中...", yourTurn: "請走棋",
+        thinking: "思考中...", yourTurn: "請走棋",
         lblMode: "對戰模式", lblTheme: "視覺風格", lblDiff: "電腦難度", lblSide: "先後手設定", lblLang: "語言", lblMusic: "背景音樂", lblVolBgm: "音樂音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移動動畫",
         optMode1: "👤 單人 (vs AI)", optMode2: "👥 雙人 (1v1)", optMode3: "👪 三人 (混戰)",
         optDiffEasy: "簡單 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困難 (8s)",
@@ -575,7 +617,7 @@ const TRANSLATIONS = {
     },
     cn: { 
         title: "跳棋大师 2026", 
-        win: "获胜！", thinking: "思考中...", yourTurn: "请走棋",
+        thinking: "思考中...", yourTurn: "请走棋",
         lblMode: "对战模式", lblTheme: "视觉风格", lblDiff: "电脑难度", lblSide: "先后手设置", lblLang: "语言", lblMusic: "背景音乐", lblVolBgm: "音乐音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移动动画",
         optMode1: "👤 单人 (vs AI)", optMode2: "👥 双人 (1v1)", optMode3: "👪 三人 (混战)",
         optDiffEasy: "简单 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困难 (8s)",
@@ -589,7 +631,7 @@ const TRANSLATIONS = {
     },
     en: { 
         title: "Checkers Master", 
-        win: "Wins!", thinking: "Thinking...", yourTurn: "Your Turn",
+        thinking: "Thinking...", yourTurn: "Your Turn",
         lblMode: "Mode", lblTheme: "Theme", lblDiff: "Difficulty", lblSide: "First Move", lblLang: "Language", lblMusic: "Music", lblVolBgm: "BGM Volume", lblVolSfx: "SFX Volume", lblColor: "Player Color", lblAnim: "Animation",
         optMode1: "👤 1 Player (vs AI)", optMode2: "👥 2 Players", optMode3: "👪 3 Players",
         optDiffEasy: "Easy (2s)", optDiffMed: "Medium (4s)", optDiffHard: "Hard (8s)",
@@ -763,8 +805,8 @@ function setupPlayers() {
         let aiSlots = slots.filter(s => s !== p1Slot && s !== p1Opposite);
         let aiSlot = aiSlots[Math.floor(Math.random() * aiSlots.length)];
 
-        let p1 = { id: 1, type: 'human', name: "您", startZone: p1Slot, target: ZONES[p1Slot].target };
-        let ai = { id: 6, type: 'ai', name: "電腦", startZone: aiSlot, target: ZONES[aiSlot].target };
+        let p1 = { id: 1, type: 'human', name: "您", startZone: p1Slot, target: ZONES[p1Slot].target, colorName: p1ColorObj.enName };
+        let ai = { id: 6, type: 'ai', name: "電腦", startZone: aiSlot, target: ZONES[aiSlot].target, colorName: aiColorObj.enName };
 
         if (side === 1) { 
             players.push(p1);
@@ -787,13 +829,23 @@ function setupPlayers() {
     } else {
         ind.style.display = 'none';
         document.getElementById('side-select-container').style.display = 'none';
+        
+        // P1 default red (unless changed), others fixed for now based on ID
+        // P1=1(Red), P2=6(Black) in mode 2.
+        // In mode 3: P1=1(Red), P2=3(Blue), P3=5(White) usually, but logic used specific IDs.
+        // Let's deduce color names from PIECE_COLORS based on default ID mapping.
+        // ID 1: Red (idx 0)
+        // ID 3: Blue (idx 2)
+        // ID 5: White (idx 4)
+        // ID 6: Black (idx 5)
+        
         if (mode === "2") {
-            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target});
-            players.push({id: 6, type: 'human', name: "P2", startZone: 4, target: ZONES[4].target});
+            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target, colorName: "Red"});
+            players.push({id: 6, type: 'human', name: "P2", startZone: 4, target: ZONES[4].target, colorName: "Black"});
         } else if (mode === "3") {
-            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target});
-            players.push({id: 3, type: 'human', name: "P2", startZone: 6, target: ZONES[6].target});
-            players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target});
+            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target, colorName: "Red"});
+            players.push({id: 3, type: 'human', name: "P2", startZone: 6, target: ZONES[6].target, colorName: "Blue"});
+            players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target, colorName: "White"});
         }
     }
 }
@@ -973,8 +1025,26 @@ function checkWin() {
         let count = 0;
         targetIndices.forEach(idx => { if (boardState[idx] === p.id) count++; });
         if (count === 10) {
-            playSfx(800, 'win');
-            let winText = (currentLang === 'en') ? `${p.name} ${TRANSLATIONS[currentLang].win}` : `${p.name} ${TRANSLATIONS[currentLang].win}`;
+            // === 獲勝效果 (符合新需求) ===
+            playWinSfx();
+            
+            let winText = "";
+            const mode = document.getElementById('mode-sel').value;
+
+            if (mode === "1") {
+                // 單人模式
+                if (p.type === 'human') {
+                    winText = "You Win !";
+                } else {
+                    winText = "You Lose !";
+                }
+            } else {
+                // 雙人/三人模式 (使用顏色名稱)
+                // 從 player 物件中獲取存好的顏色名稱
+                let colorName = p.colorName || "Player";
+                winText = `${colorName} Win !`;
+            }
+
             document.getElementById('win-overlay').innerText = winText;
             document.getElementById('win-overlay').classList.add('show');
             isAiThinking = true; 
@@ -1003,7 +1073,6 @@ function checkAiTurn() {
             if (timeLeft <= 0) clearInterval(aiTimerInterval);
         }, 100);
 
-        // 修正：先宣告變數 p，再使用 p.target
         let p = players[currentPlayer];
         let tCoord = p.target;
         let targetPos = boardCoords.find(c => c.q === tCoord.q && c.r === tCoord.r);
@@ -1159,6 +1228,7 @@ function playSfx(freq, type) {
     const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
     osc.connect(g); g.connect(audioCtx.destination); 
     if(type === 'win') {
+        // 保留舊的 win 作為備用
         osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
         g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
         osc.start(); osc.stop(audioCtx.currentTime+1);
@@ -1167,6 +1237,40 @@ function playSfx(freq, type) {
         osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1);
         g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
         osc.start(); osc.stop(audioCtx.currentTime+0.15);
+    }
+}
+
+// === 勝利音效 (循環播放5次) ===
+function playWinSfx() { 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
+    
+    const notes = [523.25, 659.25, 783.99, 1046.50]; 
+    const loops = 5; // 循環次數
+    const noteSpeed = 0.12; 
+    const loopDuration = notes.length * noteSpeed;
+    const gap = 0.05; // 循環間隔
+    
+    const now = audioCtx.currentTime; 
+
+    for (let l = 0; l < loops; l++) {
+        let startTimeBase = now + (l * (loopDuration + gap));
+        
+        for (let i = 0; i < notes.length; i++) { 
+            const freq = notes[i]; 
+            const osc = audioCtx.createOscillator(); 
+            const g = audioCtx.createGain(); 
+            osc.type = "square"; 
+            osc.connect(g); 
+            g.connect(audioCtx.destination); 
+            const startTime = startTimeBase + i * noteSpeed; 
+            osc.frequency.setValueAtTime(freq, startTime); 
+            g.gain.setValueAtTime(0, startTime); 
+            g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); 
+            g.gain.exponentialRampToValueAtTime(0.001, startTime + noteSpeed); 
+            osc.start(startTime); 
+            osc.stop(startTime + noteSpeed); 
+        }
     }
 }
 
