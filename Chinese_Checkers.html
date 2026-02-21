@@ -419,13 +419,13 @@ function buildGraph(c) {
 function getAllPossibleMoves(board, startIdx) {
     let visited = new Set();
     let moves = new Set();
-    let queue = [{idx: startIdx, dist: 0, path: []}];
-    visited.add(startIdx);
-
+    
+    // 1. 單步
     for (let n of ADJ[startIdx]) {
         if (board[n] === 0) moves.add(n);
     }
 
+    // 2. 連跳
     let jumpQueue = [startIdx];
     let jumpVisited = new Set([startIdx]);
     
@@ -455,6 +455,7 @@ function think(board, player, targetPoint, timeLimit) {
     let bestMoves = [];
     let bestScore = -Infinity;
 
+    // 優先考慮距離目標較遠的棋子 (落後者優先)
     myPieces.sort((a, b) => getDist(b, targetPoint) - getDist(a, targetPoint));
 
     for (let from of myPieces) {
@@ -465,17 +466,36 @@ function think(board, player, targetPoint, timeLimit) {
             let distEnd = getDist(to, targetPoint);
             let moveDist = Math.sqrt(Math.pow(coords[from].x - coords[to].x, 2) + Math.pow(coords[from].y - coords[to].y, 2));
             
-            let score = (distStart - distEnd) * 20;
+            // === 核心評分邏輯修正 ===
             
-            if (moveDist > 4.0) { 
-                score += (moveDist * 5); 
-            }
-            
-            if (distStart > 50) { 
-                score += 5;
+            // 1. 進度分：前進加分，後退重罰
+            let progress = distStart - distEnd;
+            let score = 0;
+
+            if (progress > 0) {
+                score += progress * 40; // 加速前進權重
+            } else {
+                score -= 500; // 強烈懲罰後退 (解決來回走問題)
             }
 
-            score += Math.random() * 5; 
+            // 2. 跳躍分：鼓勵長距離移動
+            if (moveDist > 2.5) { // 大於單步距離 (約1.5-2.0視為單步)
+                score += 30; // 跳躍基礎分
+                score += moveDist * 10; // 距離越遠越好
+            }
+
+            // 3. 落後棋子補償：鼓勵移動最後面的棋子
+            if (distStart > 60) {
+                score += 15;
+            }
+
+            // 4. 防止離開目標區：如果已經在目標區附近，不要輕易離開
+            if (distStart < 15 && distEnd > distStart) {
+                score -= 1000;
+            }
+
+            // 5. 隨機擾動 (打破平局)
+            score += Math.random() * 2;
 
             if (score > bestScore) {
                 bestScore = score;
@@ -489,6 +509,7 @@ function think(board, player, targetPoint, timeLimit) {
     if (bestMoves.length > 0) {
         return bestMoves[Math.floor(Math.random() * bestMoves.length)];
     }
+    // 如果真的無路可走(全都是負分)，勉強走一步分數最高的(即扣分最少的)
     return null;
 }
 
