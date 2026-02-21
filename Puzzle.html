@@ -82,10 +82,9 @@
         body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; }
 
         /* === 設定面板 === */
-        /* 修改：使用 fixed 定位以確保切換風格時不會移動 */
         #settings { 
             display: none; 
-            position: fixed; /* 改為 fixed */
+            position: fixed; 
             top: 50%; left: 50%; 
             transform: translate(-50%, -50%); 
             z-index: 2000; 
@@ -97,7 +96,7 @@
             border: 1px solid rgba(255,255,255,0.1); 
             max-height: 90vh; 
             overflow-y: auto; 
-            box-sizing: border-box; /* 確保 padding 不會影響寬度 */
+            box-sizing: border-box; 
         }
         .set-row { margin-bottom: 12px; }
         .flex-split { display: flex; gap: 10px; justify-content: space-between; }
@@ -115,7 +114,7 @@
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
             border: var(--border-style); border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            padding: 0; /* 拼圖不需要 padding */
+            padding: 0; 
             box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
         }
         
@@ -324,21 +323,16 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === 圖片設定區 (請確保 Pictures 資料夾內有對應檔案) === */
+/* === 圖片設定區 (使用 GitHub 路徑) === */
 const IMAGE_FILES = [
-    "demo1.jpg", 
-    "demo2.jpg", 
-    "demo3.jpg", 
-    "landscape.jpg", 
-    "city.jpg", 
-    "animal.jpg", 
-    "art.jpg",
-    "cat.jpg"
+    "01.jpg", "02.jpg", "03.jpg", "04.jpg", "05.jpg", "06.jpg", "07.jpg", "08.jpg", "09.jpg", "10.jpg",
+    "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
+    "21.jpg", "22.jpg"
 ];
-// 預設圖片路徑前綴 (必須為 Pictures/ 目錄)
-const IMG_PATH_PREFIX = "Pictures/";
-// 如果沒有圖片，使用佔位圖
-const USE_PLACEHOLDER = true; 
+// 設定 GitHub 前綴
+const IMG_PATH_PREFIX = "https://johsok.github.io/Games/Pictures/";
+// 關閉佔位圖，強制使用上述路徑
+const USE_PLACEHOLDER = false; 
 
 /* === 遊戲變數 === */
 let gridSize = 4; // 預設 4x4
@@ -352,7 +346,7 @@ let userInteracted = false;
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// 修改：增加 theme, music, settings, hint, buttons 等翻譯鍵值
+// 翻譯檔
 const TRANSLATIONS = {
     tw: { 
         title: "拼圖大師 2026", msgStart: "請點擊任意兩塊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
@@ -417,7 +411,7 @@ function initImgList() {
     optR.text = TRANSLATIONS[currentLang].random;
     sel.appendChild(optR);
 
-    // 修改：添加列表選項時，顯示文字移除副檔名
+    // 添加列表選項 (自動移除 .jpg 後綴顯示)
     IMAGE_FILES.forEach(f => {
         let opt = document.createElement('option');
         opt.value = f; // 值保留完整檔名
@@ -462,7 +456,6 @@ function getImageUrl() {
     }
     
     if(USE_PLACEHOLDER) {
-        // 使用 Lorem Picsum 作為演示，實際使用請移除此段並確保 Pictures 資料夾有圖片
         let seed = 0;
         for(let i=0; i<val.length; i++) seed += val.charCodeAt(i);
         return `https://picsum.photos/seed/${seed}/800/800`;
@@ -470,14 +463,14 @@ function getImageUrl() {
     return `${IMG_PATH_PREFIX}${val}`;
 }
 
-// 新增功能：圖片提示
+// 圖片提示功能
 function showHint() {
     toggleSet(); // 關閉設定 UI
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
     
     previewImg.src = currentImgUrl;
-    // 移除動畫並直接顯示，避免旋轉縮放干擾觀看
+    // 移除動畫並直接顯示
     previewImg.style.animation = 'none';
     previewImg.style.opacity = '1';
     previewImg.style.transform = 'scale(1)';
@@ -501,10 +494,10 @@ function restart() {
     selectedIdx = -1;
     updateStatus(TRANSLATIONS[currentLang].msgMemo);
 
-    // 初始化拼圖狀態 (0 到 N*N-1)
+    // 初始化拼圖狀態
     tiles = Array.from({length: gridSize * gridSize}, (_, i) => i);
     
-    // 洗牌 (Fisher-Yates)
+    // 洗牌
     for (let i = tiles.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
@@ -544,13 +537,13 @@ function renderTiles() {
         el.style.width = `${tileSize}%`;
         el.style.height = `${tileSize}%`;
         
-        // 設定目前位置 (Top/Left)
+        // 設定目前位置
         const curX = currentPos % gridSize;
         const curY = Math.floor(currentPos / gridSize);
         el.style.left = `${curX * tileSize}%`;
         el.style.top = `${curY * tileSize}%`;
         
-        // 設定背景圖片顯示區域 (根據 originalIdx)
+        // 設定背景圖片顯示區域
         const orgX = originalIdx % gridSize;
         const orgY = Math.floor(originalIdx / gridSize);
         el.style.backgroundImage = `url('${currentImgUrl}')`;
@@ -565,22 +558,19 @@ function renderTiles() {
 function onTileClick(idx) {
     if (isLocked) return;
     
-    playSfx(400); // 點擊音效
+    playSfx(400); 
 
     if (selectedIdx === -1) {
-        // 選取第一個
         selectedIdx = idx;
-        renderTiles(); // 更新選取狀態
+        renderTiles();
     } else if (selectedIdx === idx) {
-        // 取消選取
         selectedIdx = -1;
         renderTiles();
     } else {
-        // 交換
-        historyStack.push([...tiles]); // 紀錄歷史
+        historyStack.push([...tiles]);
         [tiles[selectedIdx], tiles[idx]] = [tiles[idx], tiles[selectedIdx]];
         selectedIdx = -1;
-        playSfx(600); // 交換音效
+        playSfx(600);
         renderTiles();
         checkWin();
     }
@@ -664,7 +654,7 @@ function changeLang() {
     document.getElementById('lbl-img').innerText = t.img;
     document.getElementById('btn-undo').innerText = "↩️ " + t.undo;
 
-    // 修改：修復設定介面標籤語言切換
+    // 更新設定介面
     document.getElementById('lbl-theme').innerText = t.theme;
     document.getElementById('lbl-music').innerText = t.music;
     document.getElementById('btn-settings').innerHTML = "⚙️ " + t.settings;
@@ -672,7 +662,7 @@ function changeLang() {
     document.getElementById('btn-done').innerText = t.done;
     document.getElementById('btn-rules').innerHTML = "📖 " + t.rules;
     document.getElementById('btn-home').innerHTML = "🏠 " + t.home;
-    document.getElementById('rules-title').innerText = t.title; // 規則標題
+    document.getElementById('rules-title').innerText = t.title;
     document.getElementById('btn-close-rules').innerText = t.closeRules;
     document.getElementById('lbl-vol-bgm').childNodes[0].nodeValue = t.volBgm;
     document.getElementById('lbl-vol-sfx').childNodes[0].nodeValue = t.volSfx;
