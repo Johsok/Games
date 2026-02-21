@@ -96,6 +96,12 @@
             100% { transform: translateX(0) scale(1); box-shadow: 0 0 15px var(--cyber-blue); }
         }
 
+        /* === 4. 拼圖動畫：聚合與散開 === */
+        @keyframes puzzle-assemble {
+            0%, 100% { transform: translate(0, 0); box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+            50% { transform: translate(var(--tx), var(--ty)); box-shadow: 0 0 15px var(--glow-color); }
+        }
+
         /* 其他通用動畫 */
         @keyframes slow-rotate {
             from { transform: rotate(0deg); }
@@ -175,6 +181,7 @@
         .game-card:nth-child(3) { animation-delay: 0.3s, 2s; }
         .game-card:nth-child(4) { animation-delay: 0.4s, 3s; }
         .game-card:nth-child(5) { animation-delay: 0.5s, 4s; }
+        .game-card:nth-child(6) { animation-delay: 0.6s, 5s; }
 
         .game-card::before, .game-card::after {
             content: ""; position: absolute; width: 20px; height: 20px;
@@ -342,6 +349,41 @@
             box-shadow: 0 0 40px var(--cyber-blue);
         }
 
+        /* 6. 拼圖 (常駐聚合散開 + 懸停發光) */
+        .icon-puzzle-box {
+            width: 80px; height: 80px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .p-piece {
+            width: 36px; height: 36px; position: absolute;
+            border: 2px solid; background: rgba(0,0,0,0.5);
+            transition: box-shadow 0.3s, border-color 0.3s;
+            animation: puzzle-assemble 4s infinite ease-in-out;
+        }
+        /* 四個拼圖塊的位置與顏色 */
+        .pp-1 { 
+            top: 0; left: 0; border-color: var(--jade-glow);
+            --tx: -5px; --ty: -5px; --glow-color: var(--jade-glow); 
+        }
+        .pp-2 { 
+            top: 0; right: 0; border-color: var(--neon-purple);
+            --tx: 5px; --ty: -5px; --glow-color: var(--neon-purple);
+        }
+        .pp-3 { 
+            bottom: 0; left: 0; border-color: var(--cyber-blue);
+            --tx: -5px; --ty: 5px; --glow-color: var(--cyber-blue);
+        }
+        .pp-4 { 
+            bottom: 0; right: 0; border-color: var(--text-main);
+            --tx: 5px; --ty: 5px; --glow-color: var(--text-main);
+        }
+
+        /* HOVER GLOW */
+        .game-card:hover .p-piece {
+            box-shadow: 0 0 20px var(--glow-color);
+            border-color: #fff;
+        }
+
         /* 文字樣式 */
         .game-title {
             font-size: 1.4rem; font-weight: 700; letter-spacing: 5px;
@@ -381,6 +423,9 @@
             .icon-checkers::after { width: 24px; height: 24px; }
             .icon-gomoku-container { width: 80px; height: 80px; }
             .g-stone { width: 12px; height: 12px; }
+
+            .icon-puzzle-box { width: 70px; height: 70px; }
+            .p-piece { width: 32px; height: 32px; }
             
             .game-card { padding: 30px 15px; }
         }
@@ -453,6 +498,20 @@
             <span class="game-title">跳棋</span>
             <span class="game-en-title">CHECKERS</span>
         </a>
+
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Puzzle.html')">
+            <div class="icon-box">
+                <div class="icon-puzzle-box">
+                    <div class="p-piece pp-1"></div>
+                    <div class="p-piece pp-2"></div>
+                    <div class="p-piece pp-3"></div>
+                    <div class="p-piece pp-4"></div>
+                </div>
+            </div>
+            <span class="game-title">拼圖</span>
+            <span class="game-en-title">PUZZLE</span>
+        </a>
+
     </div>
 
     <div class="footer">
