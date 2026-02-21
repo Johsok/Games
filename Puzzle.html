@@ -7,7 +7,7 @@
     <title>拼圖大師 2026</title>
     <link rel="manifest" id="manifest-placeholder">
     <style>
-        /* === 核心變數與配色定義 (與五子棋一致) === */
+        /* === 核心變數與配色定義 === */
         :root {
             --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
             --board-bg: #e0c38c;
@@ -19,7 +19,7 @@
             --safe-right: env(safe-area-inset-right, 0px);
         }
 
-        /* === 視覺風格定義 (保留原有的14種風格) === */
+        /* === 視覺風格定義 === */
         body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --border-style: 10px ridge #6d4c41; }
         body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --border-style: 8px double #424242; }
         body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --border-style: 10px inset #00695c; }
@@ -30,7 +30,7 @@
         body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: #5e3105; --border-style: 10px dashed #8e44ad; }
         body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --border-style: 8px dotted #ff69b4; }
         body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: #5d6d7e; --border-style: 8px double #5d6d7e; }
-        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --border-style: 10px solid #b39ddb; border-radius: 12px; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --border-style: 10px solid #b39ddb; }
         body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: #0ff; --border-style: 8px solid #0ff; }
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
@@ -58,7 +58,10 @@
             z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
             background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
             border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-            transition: all 0.3s ease;
+            /* 固定 Header 的定位屬性，確保切換主題時不跳動 */
+            position: relative;
+            box-sizing: border-box;
+            transition: background 0.3s;
         }
 
         .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
@@ -70,7 +73,9 @@
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
-        .btn-hint { background: #e67e22; border: none; margin-left: auto; font-size: 0.8rem; padding: 4px 10px; }
+        
+        /* 圖片提示按鈕樣式 (在設定面板中使用) */
+        .btn-hint { background: #e67e22; border: none; font-size: 0.8rem; padding: 4px 10px; height: 38px; border-radius: 8px; }
 
         /* === 橫向 UI === */
         body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
@@ -102,9 +107,9 @@
         .flex-split { display: flex; gap: 10px; justify-content: space-between; }
         .flex-split > div { flex: 1; display: flex; flex-direction: column; }
         .vol-row > div { padding: 0 10px; } 
-        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; display: block; }
         .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
-        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; box-sizing: border-box;}
 
         /* === 遊戲容器與拼圖區 === */
         #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
@@ -154,6 +159,28 @@
             box-shadow: 0 0 30px rgba(0,0,0,0.8);
             /* animation 由 JS 控制 */
         }
+        
+        /* 關閉按鈕樣式 */
+        #hint-close-btn {
+            position: absolute; 
+            top: 15px; right: 15px; 
+            width: 44px; height: 44px;
+            background: rgba(220, 20, 20, 0.9);
+            color: #fff;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            display: none; /* 預設隱藏，只有在提示模式顯示 */
+            cursor: pointer;
+            z-index: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            line-height: 38px; /* 垂直置中 */
+            text-align: center;
+            transition: transform 0.1s;
+        }
+        #hint-close-btn:active { transform: scale(0.9); }
+
         @keyframes memorize {
             0% { transform: rotate(-5deg) scale(0.8); opacity: 0; }
             20% { transform: rotate(0deg) scale(1); opacity: 1; }
@@ -235,12 +262,12 @@
     </div>
 
     <div class="set-row">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <label id="lbl-img" style="margin-bottom: 0;">關卡圖片</label>
-            <button class="btn btn-hint" id="btn-hint" onclick="showHint()">👁️ 圖片提示</button>
+        <label id="lbl-img">關卡圖片</label>
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <select id="img-sel" onchange="changeImage()" style="flex: 1; width: 0;">
+                </select>
+            <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="flex: 1; width: 0; margin-left: auto; display:flex; align-items:center; justify-content:center;">👁️ 圖片提示</button>
         </div>
-        <select id="img-sel" onchange="changeImage()">
-            </select>
     </div>
 
     <div class="set-row flex-split">
@@ -307,6 +334,7 @@
             <div id="win-overlay"></div>
             <div id="preview-layer">
                 <img id="preview-img" src="" alt="Preview">
+                <button id="hint-close-btn" onclick="closeHint()">✕</button>
             </div>
         </div>
     </div>
@@ -463,11 +491,12 @@ function getImageUrl() {
     return `${IMG_PATH_PREFIX}${val}`;
 }
 
-// 圖片提示功能
+// 圖片提示功能 - 顯示
 function showHint() {
     toggleSet(); // 關閉設定 UI
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
+    const closeBtn = document.getElementById('hint-close-btn');
     
     previewImg.src = currentImgUrl;
     // 移除動畫並直接顯示
@@ -475,14 +504,25 @@ function showHint() {
     previewImg.style.opacity = '1';
     previewImg.style.transform = 'scale(1)';
     
-    previewLayer.classList.add('show');
+    // 顯示關閉按鈕
+    closeBtn.style.display = 'block';
     
-    setTimeout(() => {
-        previewLayer.classList.remove('show');
-        // 恢復原本樣式以供 restart 使用
-        previewImg.style.opacity = '';
-        previewImg.style.transform = '';
-    }, 5000);
+    previewLayer.classList.add('show');
+    // 取消自動關閉 setTimeout，改為常駐直到用戶點擊 X
+}
+
+// 圖片提示功能 - 關閉
+function closeHint() {
+    const previewLayer = document.getElementById('preview-layer');
+    const previewImg = document.getElementById('preview-img');
+    const closeBtn = document.getElementById('hint-close-btn');
+
+    previewLayer.classList.remove('show');
+    closeBtn.style.display = 'none'; // 隱藏按鈕
+    
+    // 恢復樣式
+    previewImg.style.opacity = '';
+    previewImg.style.transform = '';
 }
 
 function restart() {
@@ -509,6 +549,11 @@ function restart() {
     // 顯示預覽層 3 秒
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
+    const closeBtn = document.getElementById('hint-close-btn');
+
+    // 確保記憶階段不顯示關閉按鈕
+    closeBtn.style.display = 'none';
+
     previewImg.src = currentImgUrl;
     previewLayer.classList.add('show');
     
