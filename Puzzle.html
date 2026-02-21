@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3a3a3a">
+    <title>拼圖大師 2026</title>
+    <link rel="manifest" id="manifest-placeholder">
+    <style>
+        /* === 核心變數與配色定義 (與五子棋一致) === */
+        :root {
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: #5d4037;
+            --border-style: 8px solid #5d4037;
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+
+        /* === 視覺風格定義 (保留原有的14種風格) === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --border-style: 10px ridge #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --border-style: 8px double #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --border-style: 10px inset #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: #3e2723; --border-style: 10px groove #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: #ffd700; --border-style: 8px solid #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: #bbdefb; --border-style: 8px double #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: #e1bee7; --border-style: 8px solid #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: #5e3105; --border-style: 10px dashed #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --border-style: 8px dotted #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: #5d6d7e; --border-style: 8px double #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --border-style: 10px solid #b39ddb; border-radius: 12px; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: #0ff; --border-style: 8px solid #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            color: white; 
+            transition: background 0.5s; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+
+        /* === 頂部 UI === */
+        header { 
+            width: 100%; height: auto; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
+            z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
+            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            transition: all 0.3s ease;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+        .btn-hint { background: #e67e22; border: none; margin-left: auto; font-size: 0.8rem; padding: 4px 10px; }
+
+        /* === 橫向 UI === */
+        body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
+        body.is-landscape header { width: 140px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; background: rgba(0,0,0,0.4); }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status { font-size: 1rem; margin-bottom: 10px; text-align: center; }
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+        body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; }
+
+        /* === 設定面板 === */
+        /* 修改：使用 fixed 定位以確保切換風格時不會移動 */
+        #settings { 
+            display: none; 
+            position: fixed; /* 改為 fixed */
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            z-index: 2000; 
+            background: rgba(30, 30, 30, 0.95); 
+            width: 340px; 
+            padding: 20px; 
+            border-radius: 16px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            box-sizing: border-box; /* 確保 padding 不會影響寬度 */
+        }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; }
+        .vol-row > div { padding: 0 10px; } 
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+
+        /* === 遊戲容器與拼圖區 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            padding: 0; /* 拼圖不需要 padding */
+            box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
+        }
+        
+        .board-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 2px; }
+        
+        /* 拼圖塊樣式 */
+        .tile {
+            position: absolute;
+            background-repeat: no-repeat;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: top 0.2s, left 0.2s, transform 0.1s, box-shadow 0.2s;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .tile:hover { z-index: 20; border-color: rgba(255,255,255,0.6); }
+        .tile.selected {
+            z-index: 30;
+            box-shadow: 0 0 15px #f1c40f, inset 0 0 5px #f1c40f;
+            border: 2px solid #f1c40f;
+            transform: scale(1.02);
+        }
+
+        /* 記憶預覽層 */
+        #preview-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            display: none;
+            justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.5s;
+        }
+        #preview-layer.show { display: flex; opacity: 1; }
+        #preview-img {
+            max-width: 80%; max-height: 80%;
+            border: 5px solid #fff;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            /* animation 由 JS 控制 */
+        }
+        @keyframes memorize {
+            0% { transform: rotate(-5deg) scale(0.8); opacity: 0; }
+            20% { transform: rotate(0deg) scale(1); opacity: 1; }
+            80% { transform: rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: rotate(5deg) scale(1.1); opacity: 0; }
+        }
+
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%,-50%); 
+            width: 80%; height: 80%;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            pointer-events: none; opacity: 0; z-index: 1000; 
+            font-family: "Microsoft JhengHei", sans-serif; font-weight: 900; 
+            font-size: calc(var(--board-size, 300px) * 0.12);
+            letter-spacing: calc(var(--board-size, 300px) * 0.01); 
+            color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
+            line-height: 1.2;
+        }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite; }
+        @keyframes win { 
+            0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
+            20%, 100% { transform: translate(-50%,-50%) scale(1) rotate(-3deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) scale(1) rotate(3deg); } 
+        }
+
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; padding: 25px; color: #ddd; }
+        .rules-content h3 { color: #f1c40f; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px;}
+        .close-rules { width: 100%; padding: 10px; background: #cc0000; color: #fff; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">拼圖大師 2026</h2>
+        <div class="status" id="msg">選擇圖片開始</div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 復原</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-diff">難度等級</label>
+            <select id="diff-sel" onchange="changeDiff()">
+                <option value="3">3 x 3</option>
+                <option value="4" selected>4 x 4 (預設)</option>
+                <option value="5">5 x 5</option>
+                <option value="7">7 x 7</option>
+                <option value="9">9 x 9</option>
+                <option value="12">12 x 12</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <label id="lbl-img" style="margin-bottom: 0;">關卡圖片</label>
+            <button class="btn btn-hint" id="btn-hint" onclick="showHint()">👁️ 圖片提示</button>
+        </div>
+        <select id="img-sel" onchange="changeImage()">
+            </select>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04"  selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split vol-row">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量<span id="bgm-val-hint" class="vol-hint">20</span></label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="20" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量<span id="sfx-val-hint" class="vol-hint">50</span></label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="50" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <div class="set-row flex-split" style="margin-top:10px;">
+        <button class="btn" id="btn-rules" onclick="toggleRules()" style="flex:1; background:#2c3e50; padding: 10px;">📖 規則</button>
+        <button class="btn" id="btn-home" onclick="goHome()" style="flex:1; background:#c0392b; padding: 10px;">🏠 回首頁</button>
+    </div>
+
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">拼圖規則</h3>
+        <p id="rules-p-nature">考驗記憶與觀察力的圖片還原遊戲。</p>
+        <ul id="rules-ul-basic" style="padding-left: 20px; line-height: 1.6;">
+            <li>遊戲開始前，完整圖片會旋轉展示 3 秒，請記住它！</li>
+            <li>背景中的圖片已被隨機打亂。</li>
+            <li>點擊一個方塊選取，再點擊另一個方塊進行<b>交換</b>。</li>
+            <li>將所有方塊還原到正確位置即可獲勝。</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <div id="tiles-container"></div>
+            <div id="win-overlay"></div>
+            <div id="preview-layer">
+                <img id="preview-img" src="" alt="Preview">
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* === PWA 支援 === */
+const manifestJSON = {
+    name: "拼圖大師 2026", short_name: "拼圖", display: "standalone",
+    background_color: "#3a3a3a", theme_color: "#3a3a3a",
+    icons: [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2UzYjU1MSIvPjxwYXRoIGQ9Ik01MCAxMCBWOTAgTTEwIDUwIEg5MCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjUiLz48L3N2Zz4=", "sizes": "192x192", "type": "image/svg+xml"}]
+};
+document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
+
+/* === 圖片設定區 (請確保 Pictures 資料夾內有對應檔案) === */
+const IMAGE_FILES = [
+    "demo1.jpg", 
+    "demo2.jpg", 
+    "demo3.jpg", 
+    "landscape.jpg", 
+    "city.jpg", 
+    "animal.jpg", 
+    "art.jpg",
+    "cat.jpg"
+];
+// 預設圖片路徑前綴 (必須為 Pictures/ 目錄)
+const IMG_PATH_PREFIX = "Pictures/";
+// 如果沒有圖片，使用佔位圖
+const USE_PLACEHOLDER = true; 
+
+/* === 遊戲變數 === */
+let gridSize = 4; // 預設 4x4
+let tiles = []; // 儲存目前的拼圖狀態 (值為原始索引)
+let currentImgUrl = "";
+let selectedIdx = -1; // 目前選取的方塊
+let isLocked = false; // 是否鎖定操作 (預覽時)
+let historyStack = [];
+let currentLang = 'tw';
+let userInteracted = false;
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// 修改：增加 theme, music, settings, hint, buttons 等翻譯鍵值
+const TRANSLATIONS = {
+    tw: { 
+        title: "拼圖大師 2026", msgStart: "請點擊任意兩塊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
+        random: "🎲 隨機圖片", diff: "難度等級", img: "關卡圖片", undo: "復原", rules: "規則", home: "回首頁",
+        theme: "視覺風格", music: "背景音樂", settings: "設定", hint: "圖片提示", 
+        done: "完成設定", closeRules: "關閉說明", volBgm: "音樂音量", volSfx: "音效音量"
+    },
+    cn: { 
+        title: "拼图大师 2026", msgStart: "请点击任意两块进行交换", msgWin: "拼 图 完 成 !", msgMemo: "记忆时间...", 
+        random: "🎲 随机图片", diff: "难度等级", img: "关卡图片", undo: "撤销", rules: "规则", home: "回首页",
+        theme: "视觉风格", music: "背景音乐", settings: "设置", hint: "图片提示", 
+        done: "完成设置", closeRules: "关闭说明", volBgm: "音乐音量", volSfx: "音效音量"
+    },
+    en: { 
+        title: "Puzzle Master", msgStart: "Click two tiles to swap", msgWin: "SOLVED!", msgMemo: "Memorize...", 
+        random: "🎲 Random", diff: "Difficulty", img: "Level Image", undo: "Undo", rules: "Rules", home: "Home",
+        theme: "Theme", music: "Music", settings: "Settings", hint: "Image Hint", 
+        done: "Done", closeRules: "Close", volBgm: "BGM Volume", volSfx: "SFX Volume"
+    }
+};
+
+/* --- github音樂路徑處理 --- */
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    const baseUrl = "https://johsok.github.io/Games/MP3/";
+    return `${baseUrl}${val}.mp3`;
+}
+
+function unlockAudio() {
+    userInteracted = true;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    if (!audio.src || audio.src === "") {
+        const val = document.getElementById('music-sel').value;
+        if(val !== 'none') audio.src = getMp3Path(val);
+    }
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(() => {});
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { audio.pause(); } 
+    else { if (userInteracted && document.getElementById('music-sel').value !== 'none') audio.play().catch(() => {}); }
+});
+
+document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
+document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
+
+window.onload = () => {
+    initImgList();
+    resizeBoard(); 
+    audio.src = getMp3Path(document.getElementById('music-sel').value);
+    restart(); 
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
+};
+
+function initImgList() {
+    const sel = document.getElementById('img-sel');
+    sel.innerHTML = "";
+    // 添加隨機選項
+    let optR = document.createElement('option');
+    optR.value = "random";
+    optR.text = TRANSLATIONS[currentLang].random;
+    sel.appendChild(optR);
+
+    // 修改：添加列表選項時，顯示文字移除副檔名
+    IMAGE_FILES.forEach(f => {
+        let opt = document.createElement('option');
+        opt.value = f; // 值保留完整檔名
+        // 顯示文字：移除最後一個 . 之後的字元
+        let displayName = f.substring(0, f.lastIndexOf('.')) || f;
+        opt.text = displayName;
+        sel.appendChild(opt);
+    });
+}
+
+function checkOrientation() { 
+    const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
+    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape'); 
+    return isLand; 
+}
+
+function resizeBoard() { 
+    const isLand = checkOrientation(), wrap = document.getElementById('board-wrap'), header = document.getElementById('main-header');
+    wrap.style.width = wrap.style.height = wrap.style.margin = ''; 
+    header.style.marginRight = '0';
+    const winW = window.innerWidth, winH = window.innerHeight; 
+    let finalSize;
+    if (isLand) {
+        const headerW = 140, gap = winW * 0.02;
+        header.style.marginRight = `${gap}px`;
+        finalSize = Math.min(winW - headerW - gap - 20, winH - 20);
+    } else {
+        wrap.style.marginTop = '10px'; wrap.style.marginBottom = '10px';
+        finalSize = Math.min(winW - 20, winH - header.offsetHeight - 20);
+    }
+    wrap.style.width = wrap.style.height = `${finalSize}px`;
+    wrap.style.setProperty('--board-size', `${finalSize}px`);
+    // 重新渲染拼圖大小
+    renderTiles();
+}
+
+function getImageUrl() {
+    let val = document.getElementById('img-sel').value;
+    if (val === 'random') {
+        const randIdx = Math.floor(Math.random() * IMAGE_FILES.length);
+        val = IMAGE_FILES[randIdx];
+    }
+    
+    if(USE_PLACEHOLDER) {
+        // 使用 Lorem Picsum 作為演示，實際使用請移除此段並確保 Pictures 資料夾有圖片
+        let seed = 0;
+        for(let i=0; i<val.length; i++) seed += val.charCodeAt(i);
+        return `https://picsum.photos/seed/${seed}/800/800`;
+    }
+    return `${IMG_PATH_PREFIX}${val}`;
+}
+
+// 新增功能：圖片提示
+function showHint() {
+    toggleSet(); // 關閉設定 UI
+    const previewLayer = document.getElementById('preview-layer');
+    const previewImg = document.getElementById('preview-img');
+    
+    previewImg.src = currentImgUrl;
+    // 移除動畫並直接顯示，避免旋轉縮放干擾觀看
+    previewImg.style.animation = 'none';
+    previewImg.style.opacity = '1';
+    previewImg.style.transform = 'scale(1)';
+    
+    previewLayer.classList.add('show');
+    
+    setTimeout(() => {
+        previewLayer.classList.remove('show');
+        // 恢復原本樣式以供 restart 使用
+        previewImg.style.opacity = '';
+        previewImg.style.transform = '';
+    }, 5000);
+}
+
+function restart() {
+    isLocked = true;
+    document.getElementById('win-overlay').classList.remove('show');
+    gridSize = parseInt(document.getElementById('diff-sel').value);
+    currentImgUrl = getImageUrl();
+    historyStack = [];
+    selectedIdx = -1;
+    updateStatus(TRANSLATIONS[currentLang].msgMemo);
+
+    // 初始化拼圖狀態 (0 到 N*N-1)
+    tiles = Array.from({length: gridSize * gridSize}, (_, i) => i);
+    
+    // 洗牌 (Fisher-Yates)
+    for (let i = tiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+
+    // 渲染打亂的背景
+    renderTiles();
+
+    // 顯示預覽層 3 秒
+    const previewLayer = document.getElementById('preview-layer');
+    const previewImg = document.getElementById('preview-img');
+    previewImg.src = currentImgUrl;
+    previewLayer.classList.add('show');
+    
+    // 重設動畫
+    previewImg.style.animation = 'none';
+    previewImg.offsetHeight; /* trigger reflow */
+    previewImg.style.animation = 'memorize 3.5s ease-in-out forwards';
+
+    setTimeout(() => {
+        previewLayer.classList.remove('show');
+        isLocked = false;
+        updateStatus(TRANSLATIONS[currentLang].msgStart);
+    }, 3500);
+}
+
+function renderTiles() {
+    const container = document.getElementById('tiles-container');
+    container.innerHTML = '';
+    const tileSize = 100 / gridSize;
+    
+    tiles.forEach((originalIdx, currentPos) => {
+        const el = document.createElement('div');
+        el.className = 'tile';
+        if (currentPos === selectedIdx) el.classList.add('selected');
+        
+        el.style.width = `${tileSize}%`;
+        el.style.height = `${tileSize}%`;
+        
+        // 設定目前位置 (Top/Left)
+        const curX = currentPos % gridSize;
+        const curY = Math.floor(currentPos / gridSize);
+        el.style.left = `${curX * tileSize}%`;
+        el.style.top = `${curY * tileSize}%`;
+        
+        // 設定背景圖片顯示區域 (根據 originalIdx)
+        const orgX = originalIdx % gridSize;
+        const orgY = Math.floor(originalIdx / gridSize);
+        el.style.backgroundImage = `url('${currentImgUrl}')`;
+        el.style.backgroundSize = `${gridSize * 100}%`;
+        el.style.backgroundPosition = `${orgX * (100/(gridSize-1))}% ${orgY * (100/(gridSize-1))}%`;
+        
+        el.onclick = () => onTileClick(currentPos);
+        container.appendChild(el);
+    });
+}
+
+function onTileClick(idx) {
+    if (isLocked) return;
+    
+    playSfx(400); // 點擊音效
+
+    if (selectedIdx === -1) {
+        // 選取第一個
+        selectedIdx = idx;
+        renderTiles(); // 更新選取狀態
+    } else if (selectedIdx === idx) {
+        // 取消選取
+        selectedIdx = -1;
+        renderTiles();
+    } else {
+        // 交換
+        historyStack.push([...tiles]); // 紀錄歷史
+        [tiles[selectedIdx], tiles[idx]] = [tiles[idx], tiles[selectedIdx]];
+        selectedIdx = -1;
+        playSfx(600); // 交換音效
+        renderTiles();
+        checkWin();
+    }
+}
+
+function checkWin() {
+    let isWin = true;
+    for (let i = 0; i < tiles.length; i++) {
+        if (tiles[i] !== i) {
+            isWin = false;
+            break;
+        }
+    }
+    if (isWin) {
+        isLocked = true;
+        playSfx(800, 'win');
+        const ol = document.getElementById('win-overlay');
+        ol.innerText = TRANSLATIONS[currentLang].msgWin;
+        ol.classList.add('show');
+    }
+}
+
+function undo() {
+    if (isLocked || historyStack.length === 0) return;
+    tiles = historyStack.pop();
+    selectedIdx = -1;
+    renderTiles();
+}
+
+function updateStatus(txt) {
+    document.getElementById('msg').innerText = txt;
+}
+
+function playSfx(freq, type) { 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
+    osc.connect(g); g.connect(audioCtx.destination); 
+    if(type === 'win') {
+        osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+        osc.start(); osc.stop(audioCtx.currentTime+1);
+    } else {
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime+0.15);
+    }
+}
+
+/* === 設定相關函數 === */
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function changeDiff() { restart(); }
+function changeImage() { restart(); }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
+function adjSfx() { document.getElementById('sfx-val-hint').innerText = document.getElementById('sfx-vol').value; } 
+
+function changeMusic() {
+    if(!userInteracted) unlockAudio();
+    const val = document.getElementById('music-sel').value; 
+    if(val === 'none') { audio.pause(); audio.src = ""; } 
+    else { 
+        const newPath = getMp3Path(val);
+        if (audio.src !== newPath) {
+            audio.src = newPath; audio.load();
+            audio.play().catch(e => { console.log("Autoplay blocked", e); });
+        }
+    } 
+}
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value; const t = TRANSLATIONS[currentLang];
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('msg').innerText = isLocked ? t.msgMemo : t.msgStart;
+    
+    // 更新選單文字
+    document.getElementById('img-sel').options[0].text = t.random;
+    document.getElementById('lbl-diff').innerText = t.diff;
+    document.getElementById('lbl-img').innerText = t.img;
+    document.getElementById('btn-undo').innerText = "↩️ " + t.undo;
+
+    // 修改：修復設定介面標籤語言切換
+    document.getElementById('lbl-theme').innerText = t.theme;
+    document.getElementById('lbl-music').innerText = t.music;
+    document.getElementById('btn-settings').innerHTML = "⚙️ " + t.settings;
+    document.getElementById('btn-hint').innerHTML = "👁️ " + t.hint;
+    document.getElementById('btn-done').innerText = t.done;
+    document.getElementById('btn-rules').innerHTML = "📖 " + t.rules;
+    document.getElementById('btn-home').innerHTML = "🏠 " + t.home;
+    document.getElementById('rules-title').innerText = t.title; // 規則標題
+    document.getElementById('btn-close-rules').innerText = t.closeRules;
+    document.getElementById('lbl-vol-bgm').childNodes[0].nodeValue = t.volBgm;
+    document.getElementById('lbl-vol-sfx').childNodes[0].nodeValue = t.volSfx;
+}
+
+function goHome() {
+    try {
+        if (window.parent && typeof window.parent.closeGame === 'function') { window.parent.closeGame(); } 
+        else { console.log("No parent detected"); }
+    } catch (e) { console.error("Error:", e); }
+}
+
+// 防護機制
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.onkeydown = function(e) {
+    if (e.keyCode == 123) return false;
+    if (e.ctrlKey && (e.keyCode == 'U'.charCodeAt(0) || e.keyCode == 'S'.charCodeAt(0))) return false;
+};
+console.log("%c拼圖系統啟動", "color: orange; font-size: 20px; font-weight: bold;");
+</script>
+</body>
+</html>
