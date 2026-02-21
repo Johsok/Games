@@ -522,24 +522,16 @@ let lastMovedPiece = -1;
 let aiTimerInterval = null;
 let animEnabled = true;
 
-// 區域定義：將棋盤分為6個區域，用於隨機生成起始位置
 const ZONE_CONFIG = {
     1: { id: 1, name: "Bottom", filter: c => c.r >= 5, center: {q:0, r:6} }, 
-    2: { id: 2, name: "BottomRight", filter: c => c.q >= 5, center: {q:6, r:0} }, // 修正對應
-    3: { id: 3, name: "TopRight", filter: c => c.q+c.r <= -5, center: {q:0, r:-6} }, // 這裡其實是上方的右側嗎? q+r <= -5 是TopRight區域
-    // 修正：標準六角星區域
-    // Zone 1: r>=5 (Bottom) -> Opposite is Top (r<=-5)
-    // Zone 2: q>=5 (BottomRight) -> Opposite is TopLeft (q<=-5)
-    // Zone 3: q+r<=-5 (TopRight) -> Opposite is BottomLeft (q+r>=5)
-    // Zone 4: r<=-5 (Top) -> Opposite is Bottom (r>=5)
-    // Zone 5: q<=-5 (TopLeft) -> Opposite is BottomRight (q>=5)
-    // Zone 6: q+r>=5 (BottomLeft) -> Opposite is TopRight (q+r<=-5)
+    2: { id: 2, name: "BottomRight", filter: c => c.q >= 5, center: {q:6, r:0} },
+    3: { id: 3, name: "TopRight", filter: c => c.q+c.r <= -5, center: {q:0, r:-6} },
 };
-// 修正後的精確過濾器
+
 const ZONES = {
     1: { filter: c => c.r >= 5, opposite: 4, target: {q:0, r:-6} },      // 下
     2: { filter: c => c.q >= 5, opposite: 5, target: {q:-6, r:0} },      // 右下
-    3: { filter: c => (c.q+c.r) <= -5, opposite: 6, target: {q:6, r:6} },// 右上 (q+r=-8 roughly)
+    3: { filter: c => (c.q+c.r) <= -5, opposite: 6, target: {q:6, r:6} },// 右上
     4: { filter: c => c.r <= -5, opposite: 1, target: {q:0, r:6} },      // 上
     5: { filter: c => c.q <= -5, opposite: 2, target: {q:6, r:0} },      // 左上
     6: { filter: c => (c.q+c.r) >= 5, opposite: 3, target: {q:-6, r:-6}} // 左下
@@ -607,8 +599,7 @@ function initBoardGeometry() {
 }
 
 function addPoint(q, r) {
-    // 調整：縮小比例以確保最外圍的點能完整顯示在圓形容器內
-    const scale = 3.3; // 原本 3.8 -> 3.3
+    const scale = 3.3; 
     const cx = 50, cy = 50;
     let x = cx + scale * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
     let y = cy + scale * (1.5 * r);
@@ -730,7 +721,6 @@ function setupPlayers() {
     const p1ColorObj = PIECE_COLORS[userColorIdx];
     document.documentElement.style.setProperty('--p1-color', p1ColorObj.val);
     
-    // AI 顏色隨機
     let availColors = PIECE_COLORS.filter((c, i) => i !== userColorIdx);
     let aiColorObj = availColors[Math.floor(Math.random() * availColors.length)];
     document.documentElement.style.setProperty('--p6-color', aiColorObj.val);
@@ -744,28 +734,24 @@ function setupPlayers() {
 
     players = [];
 
-    if (mode === "1") { // 單人模式：隨機非正對面
-        // 1. 隨機選擇玩家起始區域 (1-6)
+    if (mode === "1") { 
         let slots = [1, 2, 3, 4, 5, 6];
         let p1Slot = slots[Math.floor(Math.random() * slots.length)];
         
-        // 2. 隨機選擇電腦起始區域 (不能是玩家的，也不能是玩家正對面的)
         let p1Opposite = ZONES[p1Slot].opposite;
         let aiSlots = slots.filter(s => s !== p1Slot && s !== p1Opposite);
         let aiSlot = aiSlots[Math.floor(Math.random() * aiSlots.length)];
 
-        // 設定玩家與電腦物件
         let p1 = { id: 1, type: 'human', name: "您", startZone: p1Slot, target: ZONES[p1Slot].target };
         let ai = { id: 6, type: 'ai', name: "電腦", startZone: aiSlot, target: ZONES[aiSlot].target };
 
-        if (side === 1) { // 玩家先手
+        if (side === 1) { 
             players.push(p1);
             players.push(ai);
-        } else { // 電腦先手
+        } else { 
             players.push(ai);
             players.push(p1);
             
-            // 交換顯示顏色與名字順序
             if (side === -1) {
                 document.documentElement.style.setProperty('--p1-color', aiColorObj.val);
                 document.documentElement.style.setProperty('--p6-color', p1ColorObj.val);
@@ -778,7 +764,6 @@ function setupPlayers() {
         document.getElementById('side-select-container').style.display = 'block';
 
     } else {
-        // 多人模式保持標準對角線
         ind.style.display = 'none';
         document.getElementById('side-select-container').style.display = 'none';
         if (mode === "2") {
@@ -786,8 +771,8 @@ function setupPlayers() {
             players.push({id: 6, type: 'human', name: "P2", startZone: 4, target: ZONES[4].target});
         } else if (mode === "3") {
             players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target});
-            players.push({id: 3, type: 'human', name: "P2", startZone: 6, target: ZONES[6].target}); // 修正為 Zone 6 (BottomLeft)
-            players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target}); // 修正為 Zone 5 (TopLeft)
+            players.push({id: 3, type: 'human', name: "P2", startZone: 6, target: ZONES[6].target});
+            players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target});
         }
     }
 }
@@ -805,7 +790,6 @@ function restart() {
     document.getElementById('ghosts-layer').innerHTML = '';
     document.getElementById('win-overlay').classList.remove('show');
     
-    // 根據 startZone 放置棋子
     players.forEach(p => {
         let filterFunc = ZONES[p.startZone].filter;
         let startIndices = boardCoords.filter(filterFunc).map(c => c.idx);
@@ -831,10 +815,6 @@ function renderPieces() {
         if(pid === 0) return;
         const p = boardCoords[idx];
         const el = document.createElement('div');
-        
-        // 為了支援多種起始位置的顏色顯示，這裡做一個對應
-        // p.id 為 1 時使用 --p1-color (玩家), p.id 為 6 時使用 --p6-color (電腦/P2)
-        // 多人模式下 p.id 會是 1, 6, 3, 5 等
         
         el.className = `piece p${pid} ${selectedPiece === idx ? 'selected' : ''} ${lastMovedPiece === idx ? 'last-move' : ''}`;
         el.style.left = `${p.x}%`;
@@ -965,7 +945,6 @@ function checkWin() {
     let startZone = p.startZone;
     let targetZone = ZONES[startZone].opposite;
     
-    // 使用區域過濾器來檢查目標區域
     let filterFunc = ZONES[targetZone].filter;
     let targetIndices = boardCoords.filter(filterFunc).map(c => c.idx);
     
@@ -1003,11 +982,10 @@ function checkAiTurn() {
             if (timeLeft <= 0) clearInterval(aiTimerInterval);
         }, 100);
 
-        let targetPos = boardCoords.find(c => c.q === p.target.q && c.r === p.target.r);
-        // 使用玩家物件中的 target 座標
+        // 修正：先宣告變數 p，再使用 p.target
         let p = players[currentPlayer];
         let tCoord = p.target;
-        targetPos = boardCoords.find(c => c.q === tCoord.q && c.r === tCoord.r);
+        let targetPos = boardCoords.find(c => c.q === tCoord.q && c.r === tCoord.r);
         
         if (!targetPos) {
              targetPos = {x: 50, y: 50}; 
@@ -1046,7 +1024,6 @@ function updateStatus(customText = null) {
     } else {
         const p = players[currentPlayer];
         let pName = p.name;
-        // 修正：動態獲取顏色，因為 now p.id 對應的是隊伍而非固定顏色
         let colorVar = (p.id === 1) ? getComputedStyle(document.documentElement).getPropertyValue('--p1-color') 
                       : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
                       : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
