@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3a3a3a">
+    <title>跳棋大師 2026</title>
+    <link rel="manifest" id="manifest-placeholder">
+    <style>
+        /* === 核心變數與配色定義 === */
+        :root {
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --hole-bg: rgba(0,0,0,0.2);
+            --line-color: rgba(93, 64, 55, 0.3);
+            --piece-shadow: 1px 3px 5px rgba(0,0,0,0.6), inset -2px -4px 6px rgba(0,0,0,0.3);
+            
+            --border-width: 12px;
+            --border-style: solid;
+            --border-color: #5d4037;
+            
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            
+            --p1-color: radial-gradient(circle at 30% 30%, #ff4d4d, #990000); /* 預設紅 */
+            --p6-color: radial-gradient(circle at 30% 30%, #444444, #000000); /* 預設黑 */
+            
+            --hint-color: rgba(0, 255, 255, 0.6);
+            --anim-speed: 0.6s;
+        }
+
+        /* === 視覺風格定義 (僅改變顏色/材質，不改變尺寸佈局) === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93, 64, 55, 0.4); --border-style: ridge; --border-color: #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --hole-bg: rgba(0,0,0,0.1); --line-color: rgba(66, 66, 66, 0.2); --border-style: double; --border-color: #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --hole-bg: rgba(0,77,64,0.3); --line-color: rgba(0, 77, 64, 0.3); --border-style: inset; --border-color: #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --hole-bg: rgba(62, 39, 35, 0.4); --line-color: rgba(62, 39, 35, 0.4); --border-style: groove; --border-color: #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --hole-bg: #333; --line-color: rgba(255, 215, 0, 0.3); --border-style: solid; --border-color: #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --hole-bg: rgba(0,0,81,0.3); --line-color: rgba(187, 222, 251, 0.3); --border-style: double; --border-color: #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --hole-bg: rgba(74, 0, 114, 0.3); --line-color: rgba(225, 190, 231, 0.3); --border-style: solid; --border-color: #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --hole-bg: rgba(94, 49, 5, 0.4); --line-color: rgba(94, 49, 5, 0.3); --border-style: dashed; --border-color: #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --hole-bg: rgba(255, 105, 180, 0.2); --line-color: rgba(255, 105, 180, 0.3); --border-style: dotted; --border-color: #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --hole-bg: rgba(93, 109, 126, 0.3); --line-color: rgba(93, 109, 126, 0.3); --border-style: double; --border-color: #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --hole-bg: rgba(77, 208, 225, 0.3); --line-color: rgba(77, 208, 225, 0.4); --border-style: solid; --border-color: #b39ddb; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --hole-bg: #1a1a1a; --line-color: rgba(0, 255, 255, 0.3); --border-style: solid; --border-color: #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --hole-bg: #eee; --line-color: rgba(34, 34, 34, 0.1); --border-style: solid; --border-color: #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --hole-bg: #111; --line-color: rgba(119, 119, 119, 0.3); --border-style: solid; --border-color: #555; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            color: white; 
+            transition: background 0.5s; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+
+        /* === 頂部 UI 樣式 === */
+        header { 
+            width: 100%; height: auto; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
+            z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
+            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            transition: all 0.3s ease;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; flex-wrap: wrap;}
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%;}
+        .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.5); vertical-align: middle; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .player-info { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #ddd; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; margin-top: 5px;}
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* === 橫向模式 UI 適配 === */
+        body.is-landscape {
+            flex-direction: row; 
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            justify-content: center;
+        }
+        body.is-landscape header {
+            width: 160px; 
+            height: 100vh; 
+            padding: 0;
+            border-bottom: none;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            justify-content: center; 
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0,0,0,0.4);
+        }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status { font-size: 0.9rem; margin-bottom: 10px; text-align: center; flex-direction: column;}
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+        body.is-landscape .btn { width: 85%; text-align: center; padding: 10px 0; }
+
+        /* === 設定面板樣式 === */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; }
+        .vol-row > div { padding: 0 10px; } 
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+        input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; }
+
+        /* === 遊戲容器與棋盤 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; background: var(--board-bg);
+            border: var(--border-width) var(--border-style) var(--border-color);
+            border-radius: 50%; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            width: var(--board-size); height: var(--board-size);
+            box-sizing: border-box; 
+            flex-shrink: 0; transition: all 0.3s ease;
+        }
+        
+        .board-inner { position: relative; width: 100%; height: 100%; }
+        
+        svg.board-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        circle.hole { fill: var(--hole-bg); transition: fill 0.2s; }
+        line.grid-line { stroke: var(--line-color); stroke-width: 2px; stroke-linecap: round; }
+        
+        /* 互動層 */
+        .piece { 
+            position: absolute; width: 4.8%; height: 4.8%; margin: 0; 
+            transform: translate(-50%, -50%) scale(0.85); border-radius: 50%; 
+            box-shadow: var(--piece-shadow); cursor: pointer; z-index: 10; 
+            transition: top var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), left var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), transform 0.1s; 
+        }
+        .piece.no-anim { transition: none !important; }
+
+        .piece.selected { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 10px #fff; z-index: 100; }
+        
+        .piece.ghost { 
+            opacity: 0.5; 
+            pointer-events: none; 
+            z-index: 5; 
+            box-shadow: none; 
+            filter: grayscale(40%);
+            border: 2px dashed rgba(255, 255, 255, 0.6);
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        
+        .piece.last-move::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 30%; height: 30%; background: #00e5ff; border-radius: 50%;
+            box-shadow: 0 0 4px #000;
+        }
+
+        .piece.p1 { background: var(--p1-color); }
+        .piece.p6 { background: var(--p6-color); }
+        /* 支援其他多色 ID */
+        .piece.p2 { background: var(--p2-color); }
+        .piece.p3 { background: var(--p3-color); }
+        .piece.p4 { background: var(--p4-color); }
+        .piece.p5 { background: var(--p5-color); }
+
+        .hint {
+            position: absolute; width: 5%; height: 5%; 
+            transform: translate(-50%, -50%); border-radius: 50%;
+            background: var(--hint-color); z-index: 5; cursor: pointer;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%,-50%); 
+            width: 80%; height: 80%;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            pointer-events: none; opacity: 0; z-index: 1000; 
+            font-family: "Microsoft JhengHei", sans-serif; font-weight: 900; 
+            font-size: calc(var(--board-size, 300px) * 0.12);
+            letter-spacing: calc(var(--board-size, 300px) * 0.01); 
+            color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
+            line-height: 1.2;
+        }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite; }
+        @keyframes win { 
+            0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
+            20%, 100% { transform: translate(-50%,-50%) scale(1) rotate(-3deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) scale(1) rotate(3deg); } 
+        }
+
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; padding: 25px; color: #ddd; }
+        .rules-content h3 { color: #f1c40f; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px;}
+        .close-rules { width: 100%; padding: 10px; background: #cc0000; color: #fff; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">跳棋大師 2026</h2>
+        <div class="status">
+            <div id="player-indicator" style="display:none; width:100%; justify-content:center; gap:10px; margin-bottom:4px;"></div>
+            <div id="msg"><span class="turn-dot" style="background:red"></span> 紅方走棋</div>
+        </div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-mode">對戰模式</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="1" selected>👤 單人 (vs AI)</option>
+                <option value="2">👥 雙人 (1v1)</option>
+                <option value="3">👪 三人 (混戰)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-diff">電腦難度</label>
+            <select id="diff-sel">
+                <option value="easy">簡單 (2s)</option>
+                <option value="medium" selected>中等 (4s)</option>
+                <option value="hard">困難 (8s)</option>
+            </select>
+        </div>
+        <div id="side-select-container">
+            <label id="lbl-side">先後手設定</label>
+            <select id="side-sel" onchange="restart()">
+                <option value="1" selected>🔴 我方先手</option>
+                <option value="-1">⚫ 電腦先手</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03" selected>🎵 樂曲 03</option>
+                <option value="04">🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split vol-row">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量<span id="bgm-val-hint" class="vol-hint">20</span></label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="20" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量<span id="sfx-val-hint" class="vol-hint">50</span></label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="50" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <div class="set-row flex-split" style="margin-top:12px; align-items: flex-end;">
+        <div style="flex: 1;">
+            <label id="lbl-color">玩家棋色</label>
+            <select id="color-sel" onchange="restart()">
+            </select>
+        </div>
+        <div style="flex: 1; padding-left: 10px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+            <label style="cursor:pointer; display:flex; align-items:center;">
+                <input type="checkbox" id="anim-toggle" checked onchange="toggleAnim()">
+                <span id="lbl-anim" style="margin-left:8px; color:#fff;">移動動畫</span>
+            </label>
+        </div>
+    </div>
+    
+    <div class="set-row flex-split" style="margin-top:10px;">
+        <div style="flex: 1;">
+             <button class="btn" id="btn-rules" onclick="toggleRules()" style="width:100%; background:#2c3e50; padding: 10px; height: 38px;">📖 規則</button>
+        </div>
+        <div style="flex: 1;">
+             <button class="btn" id="btn-home" onclick="goHome()" style="width:100%; background:#c0392b; padding: 10px; height: 38px;">🏠 回首頁</button>
+        </div>
+    </div>
+
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:15px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">跳棋規則</h3>
+        <ul id="rules-ul-basic" style="padding-left: 20px; line-height: 1.6;">
+            <li><b>目標：</b>將己方所有棋子移動到正對面的三角區域。</li>
+            <li><b>移動：</b>可移動到相鄰空位，或"跳過"相鄰的棋子（不分敵我）。</li>
+            <li><b>連跳：</b>若跳過後仍有棋子可跳，可連續跳躍。</li>
+            <li><b>獲勝：</b>最先將所有棋子佔滿目標區域者獲勝。</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <svg class="board-svg" id="board-svg"></svg>
+            <div id="ghosts-layer"></div>
+            <div id="pieces-layer"></div>
+            <div id="hints-layer"></div>
+            <div id="win-overlay"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* === PWA 支援 === */
+const manifestJSON = {
+    name: "跳棋大師 2026", short_name: "跳棋", display: "standalone",
+    background_color: "#3a3a3a", theme_color: "#3a3a3a",
+    icons: [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMjUgODAgTDUwIDMwIEw3NSA4MCBaIiBmaWxsPSIjRjAwIi8+PHBhdGggZD0iTTI1IDMwIEw1MCA4MCBMNzUgMzAgWiIgZmlsbD0iIzAwRCIgb3BhY2l0eT0iMC41Ii8+PC9zdmc+", "sizes": "192x192", "type": "image/svg+xml"}]
+};
+document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
+
+/* === 顏色定義 (10種) === */
+const PIECE_COLORS = [
+    { id: "red", name: "烈焰紅", val: "radial-gradient(circle at 30% 30%, #ff4d4d, #990000)" },
+    { id: "green", name: "森林綠", val: "radial-gradient(circle at 30% 30%, #4dff4d, #009900)" },
+    { id: "blue", name: "寶石藍", val: "radial-gradient(circle at 30% 30%, #4d4dff, #000099)" },
+    { id: "yellow", name: "閃耀黃", val: "radial-gradient(circle at 30% 30%, #ffff4d, #999900)" },
+    { id: "white", name: "珍珠白", val: "radial-gradient(circle at 30% 30%, #ffffff, #999999)" },
+    { id: "black", name: "黑曜石", val: "radial-gradient(circle at 30% 30%, #444444, #000000)" },
+    { id: "purple", name: "魔幻紫", val: "radial-gradient(circle at 30% 30%, #d500f9, #4a148c)" },
+    { id: "cyan", name: "霓虹青", val: "radial-gradient(circle at 30% 30%, #00e5ff, #006064)" },
+    { id: "orange", name: "活力橘", val: "radial-gradient(circle at 30% 30%, #ff6d00, #e65100)" },
+    { id: "pink", name: "甜心粉", val: "radial-gradient(circle at 30% 30%, #ff80ab, #c51162)" }
+];
+
+/* === Web Worker：AI 核心 === */
+const workerScript = `
+let ADJ = {}; let JUMP_ADJ = {};
+let coords = [];
+
+function buildGraph(c) {
+    coords = c;
+    ADJ = {}; JUMP_ADJ = {};
+    for (let i = 0; i < coords.length; i++) {
+        ADJ[i] = []; JUMP_ADJ[i] = [];
+        let c1 = coords[i];
+        for (let j = 0; j < coords.length; j++) {
+            if (i === j) continue;
+            let c2 = coords[j];
+            let dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2));
+            if (dist < 1.2) ADJ[i].push(j);
+        }
+    }
+    for (let i = 0; i < coords.length; i++) {
+        for (let mid of ADJ[i]) {
+            let c1 = coords[i], cm = coords[mid];
+            let tx = cm.x + (cm.x - c1.x), ty = cm.y + (cm.y - c1.y);
+            for (let k = 0; k < coords.length; k++) {
+                let ck = coords[k];
+                if (Math.abs(ck.x - tx) < 0.1 && Math.abs(ck.y - ty) < 0.1) {
+                    JUMP_ADJ[i].push({mid: mid, dest: k}); break;
+                }
+            }
+        }
+    }
+}
+
+function getAllPossibleMoves(board, startIdx) {
+    let visited = new Set();
+    let moves = new Set();
+    let queue = [{idx: startIdx, dist: 0, path: []}];
+    visited.add(startIdx);
+
+    for (let n of ADJ[startIdx]) {
+        if (board[n] === 0) moves.add(n);
+    }
+
+    let jumpQueue = [startIdx];
+    let jumpVisited = new Set([startIdx]);
+    
+    while(jumpQueue.length > 0) {
+        let curr = jumpQueue.shift();
+        for(let jump of JUMP_ADJ[curr]) {
+            if (board[jump.mid] !== 0 && board[jump.dest] === 0 && !jumpVisited.has(jump.dest)) {
+                jumpVisited.add(jump.dest);
+                jumpQueue.push(jump.dest);
+                moves.add(jump.dest);
+            }
+        }
+    }
+    return Array.from(moves);
+}
+
+function getDist(idx1, targetPoint) {
+    let c1 = coords[idx1];
+    return Math.sqrt(Math.pow(c1.x - targetPoint.x, 2) + Math.pow(c1.y - targetPoint.y, 2));
+}
+
+function think(board, player, targetPoint, timeLimit) {
+    let startTime = Date.now();
+    let myPieces = [];
+    for (let i = 0; i < board.length; i++) if (board[i] === player) myPieces.push(i);
+    
+    let bestMoves = [];
+    let bestScore = -Infinity;
+
+    myPieces.sort((a, b) => getDist(b, targetPoint) - getDist(a, targetPoint));
+
+    for (let from of myPieces) {
+        let moves = getAllPossibleMoves(board, from);
+        
+        for (let to of moves) {
+            let distStart = getDist(from, targetPoint);
+            let distEnd = getDist(to, targetPoint);
+            let moveDist = Math.sqrt(Math.pow(coords[from].x - coords[to].x, 2) + Math.pow(coords[from].y - coords[to].y, 2));
+            
+            let score = (distStart - distEnd) * 20;
+            
+            if (moveDist > 4.0) { 
+                score += (moveDist * 5); 
+            }
+            
+            if (distStart > 50) { 
+                score += 5;
+            }
+
+            score += Math.random() * 5; 
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMoves = [{from, to}];
+            } else if (Math.abs(score - bestScore) < 0.1) {
+                bestMoves.push({from, to});
+            }
+        }
+    }
+    
+    if (bestMoves.length > 0) {
+        return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+    return null;
+}
+
+self.onmessage = function(e) {
+    const { type, data } = e.data;
+    if (type === 'init') { 
+        buildGraph(data.coords); 
+    } else if (type === 'think') {
+        const { board, player, target, timeLimit } = data;
+        const move = think(board, player, target, timeLimit);
+        self.postMessage(move);
+    }
+};
+`;
+
+/* === 遊戲主程式 === */
+const PIECE_COUNT = 10;
+let boardCoords = []; 
+let boardState = []; 
+let adjList = []; 
+let currentPlayer = 1;
+let players = []; 
+let historyStack = [];
+let selectedPiece = -1;
+let validMoves = [];
+let isAnimating = false;
+let worker;
+let isAiThinking = false;
+let currentLang = 'tw';
+let lastMovedPiece = -1;
+let aiTimerInterval = null;
+let animEnabled = true;
+
+// 區域定義：將棋盤分為6個區域，用於隨機生成起始位置
+const ZONE_CONFIG = {
+    1: { id: 1, name: "Bottom", filter: c => c.r >= 5, center: {q:0, r:6} }, 
+    2: { id: 2, name: "BottomRight", filter: c => c.q >= 5, center: {q:6, r:0} }, // 修正對應
+    3: { id: 3, name: "TopRight", filter: c => c.q+c.r <= -5, center: {q:0, r:-6} }, // 這裡其實是上方的右側嗎? q+r <= -5 是TopRight區域
+    // 修正：標準六角星區域
+    // Zone 1: r>=5 (Bottom) -> Opposite is Top (r<=-5)
+    // Zone 2: q>=5 (BottomRight) -> Opposite is TopLeft (q<=-5)
+    // Zone 3: q+r<=-5 (TopRight) -> Opposite is BottomLeft (q+r>=5)
+    // Zone 4: r<=-5 (Top) -> Opposite is Bottom (r>=5)
+    // Zone 5: q<=-5 (TopLeft) -> Opposite is BottomRight (q>=5)
+    // Zone 6: q+r>=5 (BottomLeft) -> Opposite is TopRight (q+r<=-5)
+};
+// 修正後的精確過濾器
+const ZONES = {
+    1: { filter: c => c.r >= 5, opposite: 4, target: {q:0, r:-6} },      // 下
+    2: { filter: c => c.q >= 5, opposite: 5, target: {q:-6, r:0} },      // 右下
+    3: { filter: c => (c.q+c.r) <= -5, opposite: 6, target: {q:6, r:6} },// 右上 (q+r=-8 roughly)
+    4: { filter: c => c.r <= -5, opposite: 1, target: {q:0, r:6} },      // 上
+    5: { filter: c => c.q <= -5, opposite: 2, target: {q:6, r:0} },      // 左上
+    6: { filter: c => (c.q+c.r) >= 5, opposite: 3, target: {q:-6, r:-6}} // 左下
+};
+
+const TRANSLATIONS = {
+    tw: { 
+        title: "跳棋大師 2026", 
+        win: "獲勝！", thinking: "思考中...", yourTurn: "請走棋",
+        lblMode: "對戰模式", lblTheme: "視覺風格", lblDiff: "電腦難度", lblSide: "先後手設定", lblLang: "語言", lblMusic: "背景音樂", lblVolBgm: "音樂音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移動動畫",
+        optMode1: "👤 單人 (vs AI)", optMode2: "👥 雙人 (1v1)", optMode3: "👪 三人 (混戰)",
+        optDiffEasy: "簡單 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困難 (8s)",
+        optSide1: "🔴 我方先手", optSide2: "⚫ 電腦先手",
+        btnSettings: "⚙️ 設定", btnUndo: "↩️ 悔棋", btnRestart: "🔄 重開", btnDone: "完成設定", btnRules: "📖 規則", btnHome: "🏠 回首頁", btnCloseRules: "關閉說明",
+        rulesTitle: "跳棋規則",
+        rulesList: ["目標：將己方所有棋子移動到正對面的三角區域。", "移動：可移動到相鄰空位，或'跳過'相鄰的棋子。", "連跳：若跳過後仍有棋子可跳，可連續跳躍。", "獲勝：最先將所有棋子佔滿目標區域者獲勝。"],
+        themes: ["💎 經典", "🏔️ 水墨", "📿 翡翠", "🪵 紅木", "👑 黑金", "🌊 深海", "🏛️ 紫禁", "🦁 野獸", "🎈 俏皮", "🖌️ 山水", "🍬 可愛", "🤖 賽博", "✏️ 素描", "🌃 暗黑"],
+        musics: ["🔇 靜音", "🎵 樂曲 01", "🎵 樂曲 02", "🎵 樂曲 03", "🎵 樂曲 04", "🎵 樂曲 05", "🎵 樂曲 06", "🎵 樂曲 07"],
+        colors: ["烈焰紅", "森林綠", "寶石藍", "閃耀黃", "珍珠白", "黑曜石", "魔幻紫", "霓虹青", "活力橘", "甜心粉"]
+    },
+    cn: { 
+        title: "跳棋大师 2026", 
+        win: "获胜！", thinking: "思考中...", yourTurn: "请走棋",
+        lblMode: "对战模式", lblTheme: "视觉风格", lblDiff: "电脑难度", lblSide: "先后手设置", lblLang: "语言", lblMusic: "背景音乐", lblVolBgm: "音乐音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移动动画",
+        optMode1: "👤 单人 (vs AI)", optMode2: "👥 双人 (1v1)", optMode3: "👪 三人 (混战)",
+        optDiffEasy: "简单 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困难 (8s)",
+        optSide1: "🔴 我方先手", optSide2: "⚫ 电脑先手",
+        btnSettings: "⚙️ 设置", btnUndo: "↩️ 悔棋", btnRestart: "🔄 重开", btnDone: "完成设置", btnRules: "📖 规则", btnHome: "🏠 回首页", btnCloseRules: "关闭说明",
+        rulesTitle: "跳棋规则",
+        rulesList: ["目标：将己方所有棋子移动到正对面的三角区域。", "移动：可移动到相邻空位，或'跳过'相邻的棋子。", "连跳：若跳过后仍有棋子可跳，可连续跳跃。", "获胜：最先将所有棋子占满目标区域者获胜。"],
+        themes: ["💎 经典", "🏔️ 水墨", "📿 翡翠", "🪵 红木", "👑 黑金", "🌊 深海", "🏛️ 紫禁", "🦁 野兽", "🎈 俏皮", "🖌️ 山水", "🍬 可爱", "🤖 赛博", "✏️ 素描", "🌃 暗黑"],
+        musics: ["🔇 静音", "🎵 乐曲 01", "🎵 乐曲 02", "🎵 乐曲 03", "🎵 乐曲 04", "🎵 乐曲 05", "🎵 乐曲 06", "🎵 乐曲 07"],
+        colors: ["烈焰红", "森林绿", "宝石蓝", "闪耀黄", "珍珠白", "黑曜石", "魔幻紫", "霓虹青", "活力橘", "甜心粉"]
+    },
+    en: { 
+        title: "Checkers Master", 
+        win: "Wins!", thinking: "Thinking...", yourTurn: "Your Turn",
+        lblMode: "Mode", lblTheme: "Theme", lblDiff: "Difficulty", lblSide: "First Move", lblLang: "Language", lblMusic: "Music", lblVolBgm: "BGM Volume", lblVolSfx: "SFX Volume", lblColor: "Player Color", lblAnim: "Animation",
+        optMode1: "👤 1 Player (vs AI)", optMode2: "👥 2 Players", optMode3: "👪 3 Players",
+        optDiffEasy: "Easy (2s)", optDiffMed: "Medium (4s)", optDiffHard: "Hard (8s)",
+        optSide1: "🔴 Me First", optSide2: "⚫ AI First",
+        btnSettings: "⚙️ Settings", btnUndo: "↩️ Undo", btnRestart: "🔄 Restart", btnDone: "Done", btnRules: "📖 Rules", btnHome: "🏠 Home", btnCloseRules: "Close",
+        rulesTitle: "Game Rules",
+        rulesList: ["Goal: Move all pieces to the opposite triangle.", "Move: Step to adjacent hole or jump over pieces.", "Multi-jump: Consecutive jumps are allowed.", "Win: First to fill the target area wins."],
+        themes: ["💎 Classic", "🏔️ Ink", "📿 Jade", "🪵 Wood", "👑 Gold", "🌊 Ocean", "🏛️ Royal", "🦁 Beast", "🎈 Playful", "🖌️ Shan", "🍬 Cute", "🤖 Cyber", "✏️ Sketch", "🌃 Dark"],
+        musics: ["🔇 Mute", "🎵 Track 01", "🎵 Track 02", "🎵 Track 03", "🎵 Track 04", "🎵 Track 05", "🎵 Track 06", "🎵 Track 07"],
+        colors: ["Flame Red", "Forest Green", "Gem Blue", "Shiny Yellow", "Pearl White", "Obsidian", "Magic Purple", "Neon Cyan", "Vivid Orange", "Sweet Pink"]
+    }
+};
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function initBoardGeometry() {
+    boardCoords = [];
+    for (let q = -8; q <= 8; q++) {
+        for (let r = -8; r <= 8; r++) {
+            let s = -q - r;
+            let count = 0;
+            if (Math.abs(q) <= 4) count++;
+            if (Math.abs(r) <= 4) count++;
+            if (Math.abs(s) <= 4) count++;
+            if (count >= 2) addPoint(q, r);
+        }
+    }
+}
+
+function addPoint(q, r) {
+    // 調整：縮小比例以確保最外圍的點能完整顯示在圓形容器內
+    const scale = 3.3; // 原本 3.8 -> 3.3
+    const cx = 50, cy = 50;
+    let x = cx + scale * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
+    let y = cy + scale * (1.5 * r);
+    boardCoords.push({q, r, x, y, idx: boardCoords.length});
+}
+
+function initGame() {
+    initColorSelect();
+    initBoardGeometry();
+    initWorker();
+    
+    adjList = new Array(boardCoords.length).fill(0).map(() => []);
+    for(let i=0; i<boardCoords.length; i++) {
+        for(let j=i+1; j<boardCoords.length; j++) {
+            let c1 = boardCoords[i], c2 = boardCoords[j];
+            let dist = Math.abs(c1.q - c2.q) + Math.abs(c1.r - c2.r) + Math.abs((-c1.q-c1.r) - (-c2.q-c2.r));
+            if (dist === 2) { adjList[i].push(j); adjList[j].push(i); }
+        }
+    }
+    
+    drawBoard();
+    restart();
+    window.addEventListener('resize', resizeBoard);
+    resizeBoard();
+}
+
+function initColorSelect() {
+    const sel = document.getElementById('color-sel');
+    const t = TRANSLATIONS[currentLang];
+    sel.innerHTML = '';
+    PIECE_COLORS.forEach((c, idx) => {
+        let opt = document.createElement('option');
+        opt.value = idx;
+        opt.text = t.colors[idx];
+        if(idx === 0) opt.selected = true; 
+        sel.appendChild(opt);
+    });
+}
+
+function initWorker() {
+    const blob = new Blob([workerScript], {type: 'application/javascript'});
+    worker = new Worker(URL.createObjectURL(blob));
+    worker.postMessage({ type: 'init', data: { coords: boardCoords } });
+    worker.onmessage = e => {
+        clearInterval(aiTimerInterval);
+        isAiThinking = false; 
+        
+        const move = e.data;
+        if (move && move.from !== undefined && move.to !== undefined) {
+             makeMove(move.from, move.to);
+        } else {
+             forceRandomMove();
+        }
+    };
+}
+
+function forceRandomMove() {
+    let aiPlayer = players[currentPlayer];
+    let myPieces = [];
+    boardState.forEach((pid, idx) => { if(pid === aiPlayer.id) myPieces.push(idx); });
+    let moves = [];
+    myPieces.forEach(from => {
+        let ms = calculateMoves(from);
+        ms.forEach(to => moves.push({from, to}));
+    });
+    if(moves.length > 0) {
+        let m = moves[Math.floor(Math.random()*moves.length)];
+        makeMove(m.from, m.to);
+    } else {
+        currentPlayer = (currentPlayer + 1) % players.length;
+        updateStatus();
+    }
+}
+
+function resizeBoard() {
+    const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650;
+    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape');
+    const wrap = document.getElementById('board-wrap');
+    const header = document.getElementById('main-header');
+    wrap.style.width = wrap.style.height = wrap.style.marginTop = '';
+    header.style.marginRight = '0';
+    
+    const winW = window.innerWidth, winH = window.innerHeight;
+    let finalSize;
+    
+    if (isLand) {
+        header.style.marginRight = '20px';
+        finalSize = Math.min(winW - 160 - 40, winH - 40); 
+    } else {
+        wrap.style.marginTop = '10px';
+        finalSize = Math.min(winW - 40, winH - header.offsetHeight - 40);
+    }
+    wrap.style.setProperty('--board-size', `${Math.max(280, finalSize)}px`);
+}
+
+function drawBoard() {
+    const svg = document.getElementById('board-svg');
+    let html = '';
+    for(let i=0; i<boardCoords.length; i++) {
+        let p1 = boardCoords[i];
+        for(let n of adjList[i]) {
+            if(n < i) continue;
+            let p2 = boardCoords[n];
+            html += `<line x1="${p1.x}%" y1="${p1.y}%" x2="${p2.x}%" y2="${p2.y}%" class="grid-line" />`;
+        }
+    }
+    for(let i=0; i<boardCoords.length; i++) {
+        let p = boardCoords[i];
+        html += `<circle cx="${p.x}%" cy="${p.y}%" r="1.5%" class="hole" />`;
+    }
+    svg.innerHTML = html;
+}
+
+function setupPlayers() {
+    const mode = document.getElementById('mode-sel').value;
+    const side = parseInt(document.getElementById('side-sel').value);
+    const userColorIdx = parseInt(document.getElementById('color-sel').value);
+    
+    const p1ColorObj = PIECE_COLORS[userColorIdx];
+    document.documentElement.style.setProperty('--p1-color', p1ColorObj.val);
+    
+    // AI 顏色隨機
+    let availColors = PIECE_COLORS.filter((c, i) => i !== userColorIdx);
+    let aiColorObj = availColors[Math.floor(Math.random() * availColors.length)];
+    document.documentElement.style.setProperty('--p6-color', aiColorObj.val);
+    
+    const ind = document.getElementById('player-indicator');
+    ind.style.display = 'flex';
+    ind.innerHTML = `
+        <div class="player-info"><span class="turn-dot" style="background:${p1ColorObj.val.split(', ')[1]}"></span> 您</div>
+        <div class="player-info"><span class="turn-dot" style="background:${aiColorObj.val.split(', ')[1]}"></span> 電腦</div>
+    `;
+
+    players = [];
+
+    if (mode === "1") { // 單人模式：隨機非正對面
+        // 1. 隨機選擇玩家起始區域 (1-6)
+        let slots = [1, 2, 3, 4, 5, 6];
+        let p1Slot = slots[Math.floor(Math.random() * slots.length)];
+        
+        // 2. 隨機選擇電腦起始區域 (不能是玩家的，也不能是玩家正對面的)
+        let p1Opposite = ZONES[p1Slot].opposite;
+        let aiSlots = slots.filter(s => s !== p1Slot && s !== p1Opposite);
+        let aiSlot = aiSlots[Math.floor(Math.random() * aiSlots.length)];
+
+        // 設定玩家與電腦物件
+        let p1 = { id: 1, type: 'human', name: "您", startZone: p1Slot, target: ZONES[p1Slot].target };
+        let ai = { id: 6, type: 'ai', name: "電腦", startZone: aiSlot, target: ZONES[aiSlot].target };
+
+        if (side === 1) { // 玩家先手
+            players.push(p1);
+            players.push(ai);
+        } else { // 電腦先手
+            players.push(ai);
+            players.push(p1);
+            
+            // 交換顯示顏色與名字順序
+            if (side === -1) {
+                document.documentElement.style.setProperty('--p1-color', aiColorObj.val);
+                document.documentElement.style.setProperty('--p6-color', p1ColorObj.val);
+                ind.innerHTML = `
+                    <div class="player-info"><span class="turn-dot" style="background:${aiColorObj.val.split(', ')[1]}"></span> 電腦</div>
+                    <div class="player-info"><span class="turn-dot" style="background:${p1ColorObj.val.split(', ')[1]}"></span> 您</div>
+                `;
+            }
+        }
+        document.getElementById('side-select-container').style.display = 'block';
+
+    } else {
+        // 多人模式保持標準對角線
+        ind.style.display = 'none';
+        document.getElementById('side-select-container').style.display = 'none';
+        if (mode === "2") {
+            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target});
+            players.push({id: 6, type: 'human', name: "P2", startZone: 4, target: ZONES[4].target});
+        } else if (mode === "3") {
+            players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target});
+            players.push({id: 3, type: 'human', name: "P2", startZone: 6, target: ZONES[6].target}); // 修正為 Zone 6 (BottomLeft)
+            players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target}); // 修正為 Zone 5 (TopLeft)
+        }
+    }
+}
+
+function restart() {
+    setupPlayers();
+    boardState = new Array(boardCoords.length).fill(0);
+    historyStack = [];
+    selectedPiece = -1;
+    validMoves = [];
+    isAnimating = false;
+    lastMovedPiece = -1;
+    isAiThinking = false;
+    clearInterval(aiTimerInterval);
+    document.getElementById('ghosts-layer').innerHTML = '';
+    document.getElementById('win-overlay').classList.remove('show');
+    
+    // 根據 startZone 放置棋子
+    players.forEach(p => {
+        let filterFunc = ZONES[p.startZone].filter;
+        let startIndices = boardCoords.filter(filterFunc).map(c => c.idx);
+        startIndices.forEach(idx => boardState[idx] = p.id);
+    });
+    
+    currentPlayer = 0; 
+    updateStatus();
+    renderPieces();
+    
+    setTimeout(checkAiTurn, 500);
+}
+
+function renderPieces() {
+    const layer = document.getElementById('pieces-layer');
+    layer.innerHTML = '';
+    
+    if (players[currentPlayer].type === 'human') {
+        isAiThinking = false;
+    }
+
+    boardState.forEach((pid, idx) => {
+        if(pid === 0) return;
+        const p = boardCoords[idx];
+        const el = document.createElement('div');
+        
+        // 為了支援多種起始位置的顏色顯示，這裡做一個對應
+        // p.id 為 1 時使用 --p1-color (玩家), p.id 為 6 時使用 --p6-color (電腦/P2)
+        // 多人模式下 p.id 會是 1, 6, 3, 5 等
+        
+        el.className = `piece p${pid} ${selectedPiece === idx ? 'selected' : ''} ${lastMovedPiece === idx ? 'last-move' : ''}`;
+        el.style.left = `${p.x}%`;
+        el.style.top = `${p.y}%`;
+        el.dataset.idx = idx; 
+        
+        if (!animEnabled) el.classList.add('no-anim');
+        
+        if (players[currentPlayer].type === 'human' && players[currentPlayer].id === pid) {
+            el.onclick = (e) => { e.stopPropagation(); selectPiece(idx); };
+        }
+        layer.appendChild(el);
+    });
+    
+    const hintsLayer = document.getElementById('hints-layer');
+    hintsLayer.innerHTML = '';
+    validMoves.forEach(idx => {
+        const p = boardCoords[idx];
+        const el = document.createElement('div');
+        el.className = 'hint';
+        el.style.left = `${p.x}%`;
+        el.style.top = `${p.y}%`;
+        el.onclick = (e) => { e.stopPropagation(); makeMove(selectedPiece, idx); };
+        hintsLayer.appendChild(el);
+    });
+}
+
+function createGhost(idx, pid, className) {
+    const layer = document.getElementById('ghosts-layer');
+    const p = boardCoords[idx];
+    const el = document.createElement('div');
+    el.className = `piece p${pid} ghost ${className}`;
+    el.style.left = `${p.x}%`;
+    el.style.top = `${p.y}%`;
+    layer.appendChild(el);
+}
+
+function calculateMoves(idx) {
+    let moves = new Set();
+    let startCoord = boardCoords[idx];
+    
+    adjList[idx].forEach(n => { if (boardState[n] === 0) moves.add(n); });
+
+    let queue = [idx];
+    let visited = new Set([idx]);
+    
+    while(queue.length > 0) {
+        let curr = queue.shift();
+        let currCoord = boardCoords[curr];
+        
+        adjList[curr].forEach(mid => {
+            if (boardState[mid] !== 0) { 
+                let mc = boardCoords[mid];
+                let tx = mc.q + (mc.q - currCoord.q);
+                let ty = mc.r + (mc.r - currCoord.r);
+                let destIdx = boardCoords.findIndex(c => c.q === tx && c.r === ty);
+                if (destIdx !== -1 && boardState[destIdx] === 0 && !visited.has(destIdx)) {
+                    visited.add(destIdx);
+                    queue.push(destIdx);
+                    moves.add(destIdx);
+                }
+            }
+        });
+    }
+    return Array.from(moves);
+}
+
+function selectPiece(idx) {
+    if (isAnimating || isAiThinking) return;
+    if (selectedPiece === idx) { selectedPiece = -1; validMoves = []; } 
+    else { selectedPiece = idx; validMoves = calculateMoves(idx); playSfx(300); }
+    renderPieces();
+}
+
+function makeMove(from, to) {
+    const movingPlayer = players[currentPlayer];
+    const fromCoord = boardCoords[from];
+    const toCoord = boardCoords[to];
+    
+    if (movingPlayer.type === 'human') {
+        document.querySelectorAll('.ghost.type-human').forEach(e => e.remove());
+        createGhost(from, boardState[from], 'type-human');
+    } else {
+        document.querySelectorAll('.ghost.type-ai').forEach(e => e.remove());
+        createGhost(from, boardState[from], 'type-ai');
+    }
+    
+    if (animEnabled) {
+        isAnimating = true;
+        const pieceEl = document.querySelector(`.piece[data-idx="${from}"]`);
+        if (pieceEl) {
+            pieceEl.style.left = `${toCoord.x}%`;
+            pieceEl.style.top = `${toCoord.y}%`;
+            setTimeout(() => {
+                finalizeMove(from, to);
+                isAnimating = false;
+                checkAiTurn();
+            }, 600); 
+        } else {
+            finalizeMove(from, to);
+            isAnimating = false;
+            checkAiTurn();
+        }
+    } else {
+        finalizeMove(from, to);
+        checkAiTurn();
+    }
+}
+
+function finalizeMove(from, to) {
+    historyStack.push({ board: [...boardState], player: currentPlayer, lastMoved: lastMovedPiece });
+    boardState[to] = boardState[from];
+    boardState[from] = 0;
+    selectedPiece = -1;
+    validMoves = [];
+    lastMovedPiece = to;
+    
+    playSfx(500);
+    checkWin();
+    currentPlayer = (currentPlayer + 1) % players.length;
+    
+    updateStatus();
+    renderPieces();
+}
+
+function checkWin() {
+    let p = players[currentPlayer];
+    let startZone = p.startZone;
+    let targetZone = ZONES[startZone].opposite;
+    
+    // 使用區域過濾器來檢查目標區域
+    let filterFunc = ZONES[targetZone].filter;
+    let targetIndices = boardCoords.filter(filterFunc).map(c => c.idx);
+    
+    if (targetIndices.length > 0) {
+        let count = 0;
+        targetIndices.forEach(idx => { if (boardState[idx] === p.id) count++; });
+        if (count === 10) {
+            playSfx(800, 'win');
+            let winText = (currentLang === 'en') ? `${p.name} ${TRANSLATIONS[currentLang].win}` : `${p.name} ${TRANSLATIONS[currentLang].win}`;
+            document.getElementById('win-overlay').innerText = winText;
+            document.getElementById('win-overlay').classList.add('show');
+            isAiThinking = true; 
+        }
+    }
+}
+
+function checkAiTurn() {
+    if (players[currentPlayer].type === 'ai') {
+        isAiThinking = true;
+        
+        const diff = document.getElementById('diff-sel').value;
+        const timeLimit = diff === 'easy' ? 2000 : (diff === 'medium' ? 4000 : 8000);
+        
+        let timeLeft = timeLimit;
+        const t = TRANSLATIONS[currentLang];
+        
+        updateStatus(`${t.thinking} ${(timeLeft/1000).toFixed(1)}s`);
+        
+        if(aiTimerInterval) clearInterval(aiTimerInterval);
+        
+        aiTimerInterval = setInterval(() => {
+            timeLeft -= 100;
+            if (timeLeft < 0) timeLeft = 0;
+            updateStatus(`${t.thinking} ${(timeLeft/1000).toFixed(1)}s`);
+            if (timeLeft <= 0) clearInterval(aiTimerInterval);
+        }, 100);
+
+        let targetPos = boardCoords.find(c => c.q === p.target.q && c.r === p.target.r);
+        // 使用玩家物件中的 target 座標
+        let p = players[currentPlayer];
+        let tCoord = p.target;
+        targetPos = boardCoords.find(c => c.q === tCoord.q && c.r === tCoord.r);
+        
+        if (!targetPos) {
+             targetPos = {x: 50, y: 50}; 
+        }
+        
+        worker.postMessage({
+            type: 'think',
+            data: { board: boardState, player: p.id, target: targetPos, timeLimit: timeLimit }
+        });
+    }
+}
+
+function undo() {
+    if (isAiThinking || isAnimating || historyStack.length === 0) return;
+    let prev = historyStack.pop();
+    if (document.getElementById('mode-sel').value === '1' && historyStack.length > 0) {
+         prev = historyStack.pop(); 
+    }
+    boardState = prev.board;
+    currentPlayer = prev.player;
+    lastMovedPiece = prev.lastMoved || -1;
+    selectedPiece = -1;
+    validMoves = [];
+    document.getElementById('ghosts-layer').innerHTML = '';
+    renderPieces();
+    updateStatus();
+    document.getElementById('win-overlay').classList.remove('show');
+}
+
+function updateStatus(customText = null) {
+    const t = TRANSLATIONS[currentLang];
+    const msgEl = document.getElementById('msg');
+    
+    if (customText) {
+        msgEl.innerHTML = customText;
+    } else {
+        const p = players[currentPlayer];
+        let pName = p.name;
+        // 修正：動態獲取顏色，因為 now p.id 對應的是隊伍而非固定顏色
+        let colorVar = (p.id === 1) ? getComputedStyle(document.documentElement).getPropertyValue('--p1-color') 
+                      : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
+                      : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
+                      
+        let cleanColor = colorVar.trim().replace('radial-gradient(circle at 30% 30%, ', '').replace(')', '').split(',')[0];
+        
+        let turnText = (currentLang === 'en') ? `${pName}'s Turn` : `${pName} 走棋`;
+        let colorDot = `<span class="turn-dot" style="background:${cleanColor}"></span>`;
+        msgEl.innerHTML = `${colorDot} ${turnText}`;
+    }
+}
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value;
+    const t = TRANSLATIONS[currentLang];
+    
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('btn-settings').innerText = t.btnSettings;
+    document.getElementById('btn-undo').innerText = t.btnUndo;
+    document.getElementById('btn-restart').innerText = t.btnRestart;
+    document.getElementById('btn-done').innerText = t.btnDone;
+    document.getElementById('btn-rules').innerText = t.btnRules;
+    document.getElementById('btn-home').innerText = t.btnHome;
+    document.getElementById('btn-close-rules').innerText = t.btnCloseRules;
+    
+    document.getElementById('lbl-mode').innerText = t.lblMode;
+    document.getElementById('lbl-theme').innerText = t.lblTheme;
+    document.getElementById('lbl-diff').innerText = t.lblDiff;
+    document.getElementById('lbl-side').innerText = t.lblSide;
+    document.getElementById('lbl-lang').innerText = t.lblLang;
+    document.getElementById('lbl-music').innerText = t.lblMusic;
+    document.getElementById('lbl-vol-bgm').childNodes[0].nodeValue = t.lblVolBgm;
+    document.getElementById('lbl-vol-sfx').childNodes[0].nodeValue = t.lblVolSfx;
+    document.getElementById('lbl-color').innerText = t.lblColor;
+    document.getElementById('lbl-anim').innerText = t.lblAnim;
+    
+    const modeSel = document.getElementById('mode-sel');
+    modeSel.options[0].text = t.optMode1;
+    modeSel.options[1].text = t.optMode2;
+    modeSel.options[2].text = t.optMode3;
+    
+    const diffSel = document.getElementById('diff-sel');
+    diffSel.options[0].text = t.optDiffEasy;
+    diffSel.options[1].text = t.optDiffMed;
+    diffSel.options[2].text = t.optDiffHard;
+
+    const sideSel = document.getElementById('side-sel');
+    sideSel.options[0].text = t.optSide1;
+    sideSel.options[1].text = t.optSide2;
+
+    const themeSel = document.getElementById('theme-sel');
+    for(let i=0; i<themeSel.options.length; i++) {
+        themeSel.options[i].text = t.themes[i];
+    }
+    const musicSel = document.getElementById('music-sel');
+    for(let i=0; i<musicSel.options.length; i++) {
+        musicSel.options[i].text = t.musics[i];
+    }
+    
+    const colorSel = document.getElementById('color-sel');
+    const savedIdx = colorSel.value;
+    colorSel.innerHTML = '';
+    PIECE_COLORS.forEach((c, idx) => {
+        let opt = document.createElement('option');
+        opt.value = idx;
+        opt.text = t.colors[idx];
+        if(idx == savedIdx) opt.selected = true;
+        colorSel.appendChild(opt);
+    });
+    
+    document.getElementById('rules-title').innerText = t.rulesTitle;
+    const ul = document.getElementById('rules-ul-basic');
+    ul.innerHTML = '';
+    t.rulesList.forEach(txt => {
+        const li = document.createElement('li');
+        li.innerText = txt;
+        ul.appendChild(li);
+    });
+    
+    updateStatus();
+}
+
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    const baseUrl = "https://johsok.github.io/Games/MP3/";
+    return `${baseUrl}${val}.mp3`;
+}
+
+function unlockAudio() {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    if ((!audio.src || audio.src === "") && document.getElementById('music-sel').value !== 'none') {
+        audio.src = getMp3Path(document.getElementById('music-sel').value);
+    }
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(() => {});
+}
+document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        audio.pause();
+    } else {
+        if (document.getElementById('music-sel').value !== 'none') {
+            audio.play().catch(() => {});
+        }
+    }
+});
+
+function playSfx(freq, type) { 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
+    osc.connect(g); g.connect(audioCtx.destination); 
+    if(type === 'win') {
+        osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+        osc.start(); osc.stop(audioCtx.currentTime+1);
+    } else {
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime+0.15);
+    }
+}
+
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function changeMode() { 
+    const mode = document.getElementById('mode-sel').value;
+    document.getElementById('side-select-container').style.display = (mode === "1") ? 'block' : 'none';
+    restart(); 
+}
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
+function adjSfx() { document.getElementById('sfx-val-hint').innerText = document.getElementById('sfx-vol').value; } 
+function changeMusic() {
+    const val = document.getElementById('music-sel').value; 
+    if(val === 'none') { audio.pause(); audio.src = ""; } 
+    else { audio.src = getMp3Path(val); audio.play().catch(()=>{}); } 
+}
+function toggleAnim() { animEnabled = document.getElementById('anim-toggle').checked; }
+
+function goHome() {
+    try { if (window.parent && typeof window.parent.closeGame === 'function') window.parent.closeGame(); } catch (e) { console.error(e); }
+}
+
+window.onload = initGame;
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.onkeydown = function(e) {
+    if (e.keyCode == 123) return false;
+    if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+    if (e.ctrlKey && (e.keyCode == 'U'.charCodeAt(0) || e.keyCode == 'S'.charCodeAt(0))) return false;
+};
+console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+</script>
+</body>
+</html>
