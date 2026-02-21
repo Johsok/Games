@@ -58,7 +58,6 @@
             z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
             background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
             border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-            /* 固定 Header 的定位屬性，確保切換主題時不跳動 */
             position: relative;
             box-sizing: border-box;
             transition: background 0.3s;
@@ -74,7 +73,6 @@
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
         
-        /* 圖片提示按鈕樣式 (在設定面板中使用) */
         .btn-hint { background: #e67e22; border: none; font-size: 0.8rem; padding: 4px 10px; height: 38px; border-radius: 8px; }
 
         /* === 橫向 UI === */
@@ -125,11 +123,13 @@
         
         .board-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 2px; }
         
-        /* 拼圖塊樣式 */
+        /* 拼圖塊樣式 - 修正切割問題 (新增 background-origin) */
         .tile {
             position: absolute;
             background-repeat: no-repeat;
             box-sizing: border-box;
+            /* 修正關鍵：讓背景圖片計算包含邊框，防止圖片被切割錯位 */
+            background-origin: border-box; 
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: top 0.2s, left 0.2s, transform 0.1s, box-shadow 0.2s;
             cursor: pointer;
@@ -157,8 +157,11 @@
             max-width: 80%; max-height: 80%;
             border: 5px solid #fff;
             box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            /* animation 由 JS 控制 */
+            /* 允許拖曳的游標 */
+            cursor: grab;
+            touch-action: none; /* 防止手機上拖曳時觸發捲動 */
         }
+        #preview-img:active { cursor: grabbing; }
         
         /* 關閉按鈕樣式 */
         #hint-close-btn {
@@ -171,11 +174,11 @@
             border-radius: 50%;
             font-size: 24px;
             font-weight: bold;
-            display: none; /* 預設隱藏，只有在提示模式顯示 */
+            display: none; 
             cursor: pointer;
             z-index: 600;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            line-height: 38px; /* 垂直置中 */
+            line-height: 38px;
             text-align: center;
             transition: transform 0.1s;
         }
@@ -232,6 +235,7 @@
         <div>
             <label id="lbl-diff">難度等級</label>
             <select id="diff-sel" onchange="changeDiff()">
+                <option value="2">2 x 2 (新手)</option>
                 <option value="3">3 x 3</option>
                 <option value="4" selected>4 x 4 (預設)</option>
                 <option value="5">5 x 5</option>
@@ -265,7 +269,7 @@
         <label id="lbl-img">關卡圖片</label>
         <div style="display: flex; gap: 10px; width: 100%;">
             <select id="img-sel" onchange="changeImage()" style="flex: 1; width: 0;">
-                </select>
+            </select>
             <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="flex: 1; width: 0; margin-left: auto; display:flex; align-items:center; justify-content:center;">👁️ 圖片提示</button>
         </div>
     </div>
@@ -359,7 +363,6 @@ const IMAGE_FILES = [
 ];
 // 設定 GitHub 前綴
 const IMG_PATH_PREFIX = "https://johsok.github.io/Games/Pictures/";
-// 關閉佔位圖，強制使用上述路徑
 const USE_PLACEHOLDER = false; 
 
 /* === 遊戲變數 === */
@@ -374,7 +377,6 @@ let userInteracted = false;
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// 翻譯檔
 const TRANSLATIONS = {
     tw: { 
         title: "拼圖大師 2026", msgStart: "請點擊任意兩塊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
@@ -396,7 +398,6 @@ const TRANSLATIONS = {
     }
 };
 
-/* --- github音樂路徑處理 --- */
 function getMp3Path(val) {
     if (val === 'none') return "";
     const baseUrl = "https://johsok.github.io/Games/MP3/";
@@ -422,6 +423,69 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
 document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
 
+/* === 拖曳功能變數與函數 === */
+let activeDrag = false;
+let currentX;
+let currentY;
+let initialX;
+let initialY;
+let xOffset = 0;
+let yOffset = 0;
+const dragItem = document.getElementById("preview-img");
+
+function dragStart(e) {
+    if (e.type === "touchstart") {
+        initialX = e.touches[0].clientX - xOffset;
+        initialY = e.touches[0].clientY - yOffset;
+    } else {
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+    }
+
+    if (e.target === dragItem) {
+        activeDrag = true;
+    }
+}
+
+function dragEnd(e) {
+    initialX = currentX;
+    initialY = currentY;
+    activeDrag = false;
+}
+
+function drag(e) {
+    if (activeDrag) {
+        e.preventDefault();
+    
+        if (e.type === "touchmove") {
+            currentX = e.touches[0].clientX - initialX;
+            currentY = e.touches[0].clientY - initialY;
+        } else {
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+        }
+
+        xOffset = currentX;
+        yOffset = currentY;
+
+        setTranslate(currentX, currentY, dragItem);
+    }
+}
+
+function setTranslate(xPos, yPos, el) {
+    el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+}
+
+// 綁定拖曳事件
+const container = document.getElementById("preview-layer");
+container.addEventListener("touchstart", dragStart, false);
+container.addEventListener("touchend", dragEnd, false);
+container.addEventListener("touchmove", drag, false);
+container.addEventListener("mousedown", dragStart, false);
+container.addEventListener("mouseup", dragEnd, false);
+container.addEventListener("mousemove", drag, false);
+
+
 window.onload = () => {
     initImgList();
     resizeBoard(); 
@@ -433,17 +497,14 @@ window.onload = () => {
 function initImgList() {
     const sel = document.getElementById('img-sel');
     sel.innerHTML = "";
-    // 添加隨機選項
     let optR = document.createElement('option');
     optR.value = "random";
     optR.text = TRANSLATIONS[currentLang].random;
     sel.appendChild(optR);
 
-    // 添加列表選項 (自動移除 .jpg 後綴顯示)
     IMAGE_FILES.forEach(f => {
         let opt = document.createElement('option');
-        opt.value = f; // 值保留完整檔名
-        // 顯示文字：移除最後一個 . 之後的字元
+        opt.value = f; 
         let displayName = f.substring(0, f.lastIndexOf('.')) || f;
         opt.text = displayName;
         sel.appendChild(opt);
@@ -472,7 +533,6 @@ function resizeBoard() {
     }
     wrap.style.width = wrap.style.height = `${finalSize}px`;
     wrap.style.setProperty('--board-size', `${finalSize}px`);
-    // 重新渲染拼圖大小
     renderTiles();
 }
 
@@ -491,38 +551,38 @@ function getImageUrl() {
     return `${IMG_PATH_PREFIX}${val}`;
 }
 
-// 圖片提示功能 - 顯示
 function showHint() {
-    toggleSet(); // 關閉設定 UI
+    toggleSet(); 
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
     const closeBtn = document.getElementById('hint-close-btn');
     
     previewImg.src = currentImgUrl;
-    // 移除動畫並直接顯示
     previewImg.style.animation = 'none';
     previewImg.style.opacity = '1';
-    previewImg.style.transform = 'scale(1)';
     
-    // 顯示關閉按鈕
+    // 重置拖曳位置
+    xOffset = 0;
+    yOffset = 0;
+    setTranslate(0, 0, previewImg);
+
     closeBtn.style.display = 'block';
-    
     previewLayer.classList.add('show');
-    // 取消自動關閉 setTimeout，改為常駐直到用戶點擊 X
 }
 
-// 圖片提示功能 - 關閉
 function closeHint() {
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
     const closeBtn = document.getElementById('hint-close-btn');
 
     previewLayer.classList.remove('show');
-    closeBtn.style.display = 'none'; // 隱藏按鈕
-    
-    // 恢復樣式
+    closeBtn.style.display = 'none'; 
     previewImg.style.opacity = '';
-    previewImg.style.transform = '';
+    
+    // 重置拖曳位置
+    xOffset = 0;
+    yOffset = 0;
+    setTranslate(0, 0, previewImg);
 }
 
 function restart() {
@@ -534,32 +594,32 @@ function restart() {
     selectedIdx = -1;
     updateStatus(TRANSLATIONS[currentLang].msgMemo);
 
-    // 初始化拼圖狀態
     tiles = Array.from({length: gridSize * gridSize}, (_, i) => i);
     
-    // 洗牌
     for (let i = tiles.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
     }
 
-    // 渲染打亂的背景
     renderTiles();
 
-    // 顯示預覽層 3 秒
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
     const closeBtn = document.getElementById('hint-close-btn');
 
-    // 確保記憶階段不顯示關閉按鈕
     closeBtn.style.display = 'none';
 
     previewImg.src = currentImgUrl;
+    
+    // 重置拖曳位置 (以防萬一)
+    xOffset = 0;
+    yOffset = 0;
+    setTranslate(0, 0, previewImg);
+
     previewLayer.classList.add('show');
     
-    // 重設動畫
     previewImg.style.animation = 'none';
-    previewImg.offsetHeight; /* trigger reflow */
+    previewImg.offsetHeight; 
     previewImg.style.animation = 'memorize 3.5s ease-in-out forwards';
 
     setTimeout(() => {
@@ -582,18 +642,22 @@ function renderTiles() {
         el.style.width = `${tileSize}%`;
         el.style.height = `${tileSize}%`;
         
-        // 設定目前位置
         const curX = currentPos % gridSize;
         const curY = Math.floor(currentPos / gridSize);
         el.style.left = `${curX * tileSize}%`;
         el.style.top = `${curY * tileSize}%`;
         
-        // 設定背景圖片顯示區域
         const orgX = originalIdx % gridSize;
         const orgY = Math.floor(originalIdx / gridSize);
         el.style.backgroundImage = `url('${currentImgUrl}')`;
         el.style.backgroundSize = `${gridSize * 100}%`;
-        el.style.backgroundPosition = `${orgX * (100/(gridSize-1))}% ${orgY * (100/(gridSize-1))}%`;
+        
+        // 注意：background-origin: border-box 在 CSS 中已設定，確保圖片能涵蓋邊框
+        if (gridSize > 1) {
+             el.style.backgroundPosition = `${orgX * (100/(gridSize-1))}% ${orgY * (100/(gridSize-1))}%`;
+        } else {
+             el.style.backgroundPosition = "0% 0%";
+        }
         
         el.onclick = () => onTileClick(currentPos);
         container.appendChild(el);
@@ -666,7 +730,6 @@ function playSfx(freq, type) {
     }
 }
 
-/* === 設定相關函數 === */
 function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
 function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
 function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
@@ -693,13 +756,11 @@ function changeLang() {
     document.getElementById('app-title').innerText = t.title;
     document.getElementById('msg').innerText = isLocked ? t.msgMemo : t.msgStart;
     
-    // 更新選單文字
     document.getElementById('img-sel').options[0].text = t.random;
     document.getElementById('lbl-diff').innerText = t.diff;
     document.getElementById('lbl-img').innerText = t.img;
     document.getElementById('btn-undo').innerText = "↩️ " + t.undo;
 
-    // 更新設定介面
     document.getElementById('lbl-theme').innerText = t.theme;
     document.getElementById('lbl-music').innerText = t.music;
     document.getElementById('btn-settings').innerHTML = "⚙️ " + t.settings;
@@ -720,7 +781,6 @@ function goHome() {
     } catch (e) { console.error("Error:", e); }
 }
 
-// 防護機制
 document.addEventListener('contextmenu', event => event.preventDefault());
 document.onkeydown = function(e) {
     if (e.keyCode == 123) return false;
