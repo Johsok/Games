@@ -17,6 +17,7 @@
             --safe-top: env(safe-area-inset-top, 0px); 
             --safe-left: env(safe-area-inset-left, 0px);
             --safe-right: env(safe-area-inset-right, 0px);
+            --header-width: 260px;
         }
 
         /* === 視覺風格定義 === */
@@ -42,49 +43,72 @@
             background: var(--bg-grad); 
             margin: 0; 
             display: flex; 
-            flex-direction: column; 
+            flex-direction: row; 
             align-items: center; 
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
             touch-action: none; 
             box-sizing: border-box; 
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
         }
 
-        /* === 頂部 UI === */
         header { 
-            width: 100%; height: auto; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
-            z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
-            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
-            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-            position: relative;
+            width: var(--header-width); 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 15px; 
+            flex-shrink: 0; 
+            z-index: 100; 
+            background: rgba(0,0,0,0.4); 
+            backdrop-filter: blur(8px); 
+            border-right: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 4px 0 10px rgba(0,0,0,0.2); 
             box-sizing: border-box;
-            transition: background 0.3s;
+            padding: 20px 10px;
         }
 
-        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
-        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
-        .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; }
+        .header-top { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-bottom: 10px; }
+        h2 { font-size: 1.2rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center; font-weight: 700; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; text-align: center; }
 
-        .btn-group { display: flex; gap: 8px; align-items: center; }
-        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
+        .btn { width: 85%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-align: center;}
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
-        
         .btn-hint { background: #e67e22; border: none; font-size: 0.8rem; padding: 4px 10px; height: 38px; border-radius: 8px; }
 
-        /* === 橫向 UI === */
-        body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
-        body.is-landscape header { width: 140px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; background: rgba(0,0,0,0.4); }
-        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
-        body.is-landscape h2 { white-space: normal; text-align: center; }
-        body.is-landscape .status { font-size: 1rem; margin-bottom: 10px; text-align: center; }
-        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
-        body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; }
+        @media (orientation: portrait) {
+            body {
+                flex-direction: column;
+                padding-top: var(--safe-top);
+                justify-content: flex-start;
+            }
+            
+            header {
+                width: 100%;
+                height: auto;
+                flex-direction: column;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                padding: 10px 0;
+                gap: 8px;
+                background: rgba(0,0,0,0.3);
+            }
 
-        /* === 設定面板 === */
+            .header-top { flex-direction: row; width: 95%; max-width: 600px; gap: 15px; margin-bottom: 0; }
+            h2 { font-size: 1.1rem; white-space: nowrap; }
+            .status { font-size: 0.9rem; }
+            
+            .btn-group { flex-direction: row; width: auto; gap: 8px; }
+            .btn { width: auto; padding: 5px 12px; font-size: 0.85rem; }
+        }
+
         #settings { 
             display: none; 
             position: fixed; 
@@ -109,9 +133,18 @@
         .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; box-sizing: border-box;}
 
-        /* === 遊戲容器與拼圖區 === */
-        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
-        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        #game-container { 
+            flex-grow: 1; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden; 
+            position: relative; 
+            width: 100%; 
+            height: 100%;
+            box-sizing: border-box; 
+            padding: 10px;
+        }
         
         .board-wrap { 
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
@@ -123,66 +156,96 @@
         
         .board-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 2px; }
         
-        /* 拼圖塊樣式 - 修正切割問題 (新增 background-origin) */
+        /* 拼圖塊樣式 - Canvas 切割版 */
         .tile {
             position: absolute;
             background-repeat: no-repeat;
+            background-size: 100% 100%; 
             box-sizing: border-box;
-            /* 修正關鍵：讓背景圖片計算包含邊框，防止圖片被切割錯位 */
-            background-origin: border-box; 
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: none;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); 
             transition: top 0.2s, left 0.2s, transform 0.1s, box-shadow 0.2s;
             cursor: pointer;
             z-index: 10;
         }
-        .tile:hover { z-index: 20; border-color: rgba(255,255,255,0.6); }
+        .tile:hover { z-index: 20; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
         .tile.selected {
             z-index: 30;
-            box-shadow: 0 0 15px #f1c40f, inset 0 0 5px #f1c40f;
-            border: 2px solid #f1c40f;
+            box-shadow: inset 0 0 0 2px #f1c40f, 0 0 15px #f1c40f; 
             transform: scale(1.02);
         }
 
-        /* 記憶預覽層 */
+        /* 提示層：移除 flex 置中，改用 absolute 定位邏輯 */
         #preview-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 500;
+            position: fixed; 
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: transparent; 
+            z-index: 9999;
             display: none;
-            justify-content: center; align-items: center;
-            opacity: 0; transition: opacity 0.5s;
+            opacity: 0; transition: opacity 0.3s;
+            pointer-events: none; /* 讓點擊穿透 */
         }
-        #preview-layer.show { display: flex; opacity: 1; }
-        #preview-img {
-            max-width: 80%; max-height: 80%;
-            border: 5px solid #fff;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            /* 允許拖曳的游標 */
-            cursor: grab;
-            touch-action: none; /* 防止手機上拖曳時觸發捲動 */
-        }
-        #preview-img:active { cursor: grabbing; }
+        #preview-layer.show { display: block; opacity: 1; }
         
-        /* 關閉按鈕樣式 */
+        /* 提示圖片容器 - 絕對定位以便全方位拖曳/縮放 */
+        #preview-box {
+            position: absolute; /* 改為 Absolute */
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border: 4px solid #fff;
+            cursor: move;
+            touch-action: none; 
+            pointer-events: auto; /* 恢復點擊 */
+            overflow: visible; /* 允許把手突出 */
+            min-width: 100px;
+            min-height: 100px;
+        }
+        
+        #preview-img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            user-select: none;
+            -webkit-user-drag: none;
+            object-fit: fill; 
+        }
+        
+        /* 關閉按鈕 */
         #hint-close-btn {
             position: absolute; 
-            top: 15px; right: 15px; 
+            top: 0; right: 0; 
             width: 44px; height: 44px;
             background: rgba(220, 20, 20, 0.9);
             color: #fff;
-            border: 3px solid #fff;
-            border-radius: 50%;
+            border: 2px solid #fff;
+            border-top: none; border-right: none; 
+            border-bottom-left-radius: 12px;
             font-size: 24px;
             font-weight: bold;
             display: none; 
             cursor: pointer;
             z-index: 600;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            line-height: 38px;
+            line-height: 40px;
             text-align: center;
-            transition: transform 0.1s;
         }
-        #hint-close-btn:active { transform: scale(0.9); }
+        #hint-close-btn:active { background: #b00; }
+
+        /* === 新增：4角縮放把手 === */
+        .resize-handle {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3); /* 半透明方便看到 */
+            border: 2px solid #fff;
+            border-radius: 50%;
+            z-index: 700;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        /* 四角定位與游標 */
+        .rh-nw { top: -12px; left: -12px; cursor: nwse-resize; }
+        .rh-ne { top: -12px; right: -12px; cursor: nesw-resize; }
+        .rh-sw { bottom: -12px; left: -12px; cursor: nesw-resize; }
+        .rh-se { bottom: -12px; right: -12px; cursor: nwse-resize; }
 
         @keyframes memorize {
             0% { transform: rotate(-5deg) scale(0.8); opacity: 0; }
@@ -236,8 +299,8 @@
             <label id="lbl-diff">難度等級</label>
             <select id="diff-sel" onchange="changeDiff()">
                 <option value="2">2 x 2 (新手)</option>
-                <option value="3">3 x 3</option>
-                <option value="4" selected>4 x 4 (預設)</option>
+                <option value="3" selected>3 x 3 (預設)</option>
+                <option value="4">4 x 4</option>
                 <option value="5">5 x 5</option>
                 <option value="7">7 x 7</option>
                 <option value="9">9 x 9</option>
@@ -336,11 +399,18 @@
         <div class="board-inner" id="board">
             <div id="tiles-container"></div>
             <div id="win-overlay"></div>
-            <div id="preview-layer">
-                <img id="preview-img" src="" alt="Preview">
-                <button id="hint-close-btn" onclick="closeHint()">✕</button>
-            </div>
         </div>
+    </div>
+</div>
+
+<div id="preview-layer">
+    <div id="preview-box">
+        <img id="preview-img" src="" alt="Preview">
+        <button id="hint-close-btn" onclick="closeHint()">✕</button>
+        <div class="resize-handle rh-nw" data-dir="nw"></div>
+        <div class="resize-handle rh-ne" data-dir="ne"></div>
+        <div class="resize-handle rh-se" data-dir="se"></div>
+        <div class="resize-handle rh-sw" data-dir="sw"></div>
     </div>
 </div>
 
@@ -355,25 +425,25 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === 圖片設定區 (使用 GitHub 路徑) === */
+/* === 圖片設定區 === */
 const IMAGE_FILES = [
     "01.jpg", "02.jpg", "03.jpg", "04.jpg", "05.jpg", "06.jpg", "07.jpg", "08.jpg", "09.jpg", "10.jpg",
     "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
     "21.jpg", "22.jpg"
 ];
-// 設定 GitHub 前綴
 const IMG_PATH_PREFIX = "https://johsok.github.io/Games/Pictures/";
 const USE_PLACEHOLDER = false; 
 
 /* === 遊戲變數 === */
-let gridSize = 4; // 預設 4x4
-let tiles = []; // 儲存目前的拼圖狀態 (值為原始索引)
+let gridSize = 3; 
+let tiles = []; 
 let currentImgUrl = "";
-let selectedIdx = -1; // 目前選取的方塊
-let isLocked = false; // 是否鎖定操作 (預覽時)
+let selectedIdx = -1; 
+let isLocked = false; 
 let historyStack = [];
 let currentLang = 'tw';
 let userInteracted = false;
+let slicedImages = []; 
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -423,68 +493,139 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
 document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
 
-/* === 拖曳功能變數與函數 === */
-let activeDrag = false;
-let currentX;
-let currentY;
-let initialX;
-let initialY;
-let xOffset = 0;
-let yOffset = 0;
-const dragItem = document.getElementById("preview-img");
+/* === 進階互動：拖曳移動 + 四角縮放 === */
+const pBox = document.getElementById("preview-box");
+let interactionState = {
+    isDragging: false,
+    isResizing: false,
+    resizeDir: '', // nw, ne, sw, se
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+    startWidth: 0,
+    startHeight: 0
+};
 
-function dragStart(e) {
-    if (e.type === "touchstart") {
-        initialX = e.touches[0].clientX - xOffset;
-        initialY = e.touches[0].clientY - yOffset;
-    } else {
-        initialX = e.clientX - xOffset;
-        initialY = e.clientY - yOffset;
-    }
+// 綁定主事件 (移動)
+pBox.addEventListener('mousedown', onInteractStart);
+pBox.addEventListener('touchstart', onInteractStart, {passive: false});
 
-    if (e.target === dragItem) {
-        activeDrag = true;
-    }
-}
+// 綁定縮放把手事件
+document.querySelectorAll('.resize-handle').forEach(el => {
+    el.addEventListener('mousedown', onResizeStart);
+    el.addEventListener('touchstart', onResizeStart, {passive: false});
+});
 
-function dragEnd(e) {
-    initialX = currentX;
-    initialY = currentY;
-    activeDrag = false;
-}
+// 全局移動與結束監聽
+window.addEventListener('mousemove', onInteractMove);
+window.addEventListener('touchmove', onInteractMove, {passive: false});
+window.addEventListener('mouseup', onInteractEnd);
+window.addEventListener('touchend', onInteractEnd);
 
-function drag(e) {
-    if (activeDrag) {
-        e.preventDefault();
+function onResizeStart(e) {
+    // 關鍵：阻止冒泡，避免觸發拖曳
+    e.stopPropagation();
+    e.preventDefault(); 
     
-        if (e.type === "touchmove") {
-            currentX = e.touches[0].clientX - initialX;
-            currentY = e.touches[0].clientY - initialY;
-        } else {
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
+    const touch = e.type.startsWith('touch') ? e.touches[0] : e;
+    const rect = pBox.getBoundingClientRect();
+    
+    interactionState.isResizing = true;
+    interactionState.resizeDir = e.target.getAttribute('data-dir');
+    interactionState.startX = touch.clientX;
+    interactionState.startY = touch.clientY;
+    
+    // 紀錄當前幾何狀態
+    interactionState.startWidth = rect.width;
+    interactionState.startHeight = rect.height;
+    interactionState.startLeft = pBox.offsetLeft;
+    interactionState.startTop = pBox.offsetTop;
+}
+
+function onInteractStart(e) {
+    if (e.target.id === 'hint-close-btn') return;
+    // 只有點擊圖片本身或Box才拖曳，避免誤觸其他
+    if (interactionState.isResizing) return;
+    
+    const touch = e.type.startsWith('touch') ? e.touches[0] : e;
+    
+    interactionState.isDragging = true;
+    interactionState.startX = touch.clientX;
+    interactionState.startY = touch.clientY;
+    interactionState.startLeft = pBox.offsetLeft;
+    interactionState.startTop = pBox.offsetTop;
+}
+
+function onInteractMove(e) {
+    if (!interactionState.isDragging && !interactionState.isResizing) return;
+    e.preventDefault(); // 防止滾動
+    
+    const touch = e.type.startsWith('touch') ? e.touches[0] : e;
+    const dx = touch.clientX - interactionState.startX;
+    const dy = touch.clientY - interactionState.startY;
+    
+    if (interactionState.isDragging) {
+        // 拖曳邏輯：單純更新 Top / Left
+        pBox.style.left = (interactionState.startLeft + dx) + 'px';
+        pBox.style.top = (interactionState.startTop + dy) + 'px';
+    } 
+    else if (interactionState.isResizing) {
+        // 縮放邏輯：根據角落調整 Top/Left/Width/Height
+        const s = interactionState;
+        const dir = s.resizeDir;
+        
+        let newW = s.startWidth;
+        let newH = s.startHeight;
+        let newL = s.startLeft;
+        let newT = s.startTop;
+        
+        // 最小尺寸限制
+        const MIN_SIZE = 100;
+        
+        if (dir.includes('e')) { // 右側：寬度增加
+            newW = Math.max(MIN_SIZE, s.startWidth + dx);
         }
-
-        xOffset = currentX;
-        yOffset = currentY;
-
-        setTranslate(currentX, currentY, dragItem);
+        if (dir.includes('s')) { // 下側：高度增加
+            newH = Math.max(MIN_SIZE, s.startHeight + dy);
+        }
+        if (dir.includes('w')) { // 左側：寬度增加(反向)，Left 改變
+            // 計算原本右邊界 X
+            const rightEdge = s.startLeft + s.startWidth;
+            // 新的寬度 = 原本寬度 - dx
+            // 但因為有 min-width，要反算
+            const rawNewW = s.startWidth - dx;
+            if (rawNewW >= MIN_SIZE) {
+                newW = rawNewW;
+                newL = s.startLeft + dx;
+            } else {
+                newW = MIN_SIZE;
+                newL = rightEdge - MIN_SIZE;
+            }
+        }
+        if (dir.includes('n')) { // 上側：高度增加(反向)，Top 改變
+            const bottomEdge = s.startTop + s.startHeight;
+            const rawNewH = s.startHeight - dy;
+            if (rawNewH >= MIN_SIZE) {
+                newH = rawNewH;
+                newT = s.startTop + dy;
+            } else {
+                newH = MIN_SIZE;
+                newT = bottomEdge - MIN_SIZE;
+            }
+        }
+        
+        pBox.style.width = newW + 'px';
+        pBox.style.height = newH + 'px';
+        pBox.style.left = newL + 'px';
+        pBox.style.top = newT + 'px';
     }
 }
 
-function setTranslate(xPos, yPos, el) {
-    el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+function onInteractEnd() {
+    interactionState.isDragging = false;
+    interactionState.isResizing = false;
 }
-
-// 綁定拖曳事件
-const container = document.getElementById("preview-layer");
-container.addEventListener("touchstart", dragStart, false);
-container.addEventListener("touchend", dragEnd, false);
-container.addEventListener("touchmove", drag, false);
-container.addEventListener("mousedown", dragStart, false);
-container.addEventListener("mouseup", dragEnd, false);
-container.addEventListener("mousemove", drag, false);
-
 
 window.onload = () => {
     initImgList();
@@ -511,28 +652,18 @@ function initImgList() {
     });
 }
 
-function checkOrientation() { 
-    const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
-    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape'); 
-    return isLand; 
-}
-
 function resizeBoard() { 
-    const isLand = checkOrientation(), wrap = document.getElementById('board-wrap'), header = document.getElementById('main-header');
-    wrap.style.width = wrap.style.height = wrap.style.margin = ''; 
-    header.style.marginRight = '0';
-    const winW = window.innerWidth, winH = window.innerHeight; 
-    let finalSize;
-    if (isLand) {
-        const headerW = 140, gap = winW * 0.02;
-        header.style.marginRight = `${gap}px`;
-        finalSize = Math.min(winW - headerW - gap - 20, winH - 20);
-    } else {
-        wrap.style.marginTop = '10px'; wrap.style.marginBottom = '10px';
-        finalSize = Math.min(winW - 20, winH - header.offsetHeight - 20);
-    }
-    wrap.style.width = wrap.style.height = `${finalSize}px`;
+    const wrap = document.getElementById('board-wrap');
+    const container = document.getElementById('game-container');
+    const cWidth = container.clientWidth;
+    const cHeight = container.clientHeight;
+    const padding = 20;
+    const finalSize = Math.min(cWidth - padding, cHeight - padding);
+    
+    wrap.style.width = `${finalSize}px`;
+    wrap.style.height = `${finalSize}px`;
     wrap.style.setProperty('--board-size', `${finalSize}px`);
+    
     renderTiles();
 }
 
@@ -551,51 +682,96 @@ function getImageUrl() {
     return `${IMG_PATH_PREFIX}${val}`;
 }
 
+async function sliceImage(url, grid) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous"; 
+        img.onload = () => {
+            const slices = [];
+            const pieceWidth = img.width / grid;
+            const pieceHeight = img.height / grid;
+            
+            for (let y = 0; y < grid; y++) {
+                for (let x = 0; x < grid; x++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = pieceWidth;
+                    canvas.height = pieceHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, 0, 0, canvas.width, canvas.height);
+                    slices.push(canvas.toDataURL());
+                }
+            }
+            resolve(slices);
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
 function showHint() {
     toggleSet(); 
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
+    const previewBox = document.getElementById('preview-box');
     const closeBtn = document.getElementById('hint-close-btn');
     
     previewImg.src = currentImgUrl;
-    previewImg.style.animation = 'none';
-    previewImg.style.opacity = '1';
     
-    // 重置拖曳位置
-    xOffset = 0;
-    yOffset = 0;
-    setTranslate(0, 0, previewImg);
-
+    // === 修正：重置為30%大小且置中 ===
+    previewBox.style.animation = 'none';
+    
+    // 1. 設定寬度為螢幕 30%
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const targetW = winW * 0.3; 
+    
+    previewBox.style.width = targetW + 'px';
+    previewBox.style.height = 'auto'; // 高度自適應
+    
+    // 2. 強制渲染以獲取正確高度 (Reflow)
+    previewBox.offsetHeight; 
+    
+    // 3. 計算置中位置 (Left/Top)
+    const boxRect = previewBox.getBoundingClientRect();
+    const centerX = (winW - boxRect.width) / 2;
+    const centerY = (winH - boxRect.height) / 2;
+    
+    previewBox.style.left = centerX + 'px';
+    previewBox.style.top = centerY + 'px';
+    
+    // 顯示
     closeBtn.style.display = 'block';
     previewLayer.classList.add('show');
 }
 
 function closeHint() {
     const previewLayer = document.getElementById('preview-layer');
-    const previewImg = document.getElementById('preview-img');
     const closeBtn = document.getElementById('hint-close-btn');
-
     previewLayer.classList.remove('show');
     closeBtn.style.display = 'none'; 
-    previewImg.style.opacity = '';
-    
-    // 重置拖曳位置
-    xOffset = 0;
-    yOffset = 0;
-    setTranslate(0, 0, previewImg);
 }
 
-function restart() {
+async function restart() {
     isLocked = true;
+    updateStatus("準備圖片中...");
+    
     document.getElementById('win-overlay').classList.remove('show');
     gridSize = parseInt(document.getElementById('diff-sel').value);
     currentImgUrl = getImageUrl();
     historyStack = [];
     selectedIdx = -1;
+
+    try {
+        slicedImages = await sliceImage(currentImgUrl, gridSize);
+    } catch (e) {
+        console.error("切割失敗", e);
+        updateStatus("圖片載入失敗");
+        return;
+    }
+
     updateStatus(TRANSLATIONS[currentLang].msgMemo);
 
     tiles = Array.from({length: gridSize * gridSize}, (_, i) => i);
-    
     for (let i = tiles.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
@@ -603,24 +779,31 @@ function restart() {
 
     renderTiles();
 
+    // 記憶時間：顯示預覽
     const previewLayer = document.getElementById('preview-layer');
     const previewImg = document.getElementById('preview-img');
+    const previewBox = document.getElementById('preview-box');
     const closeBtn = document.getElementById('hint-close-btn');
 
     closeBtn.style.display = 'none';
-
     previewImg.src = currentImgUrl;
     
-    // 重置拖曳位置 (以防萬一)
-    xOffset = 0;
-    yOffset = 0;
-    setTranslate(0, 0, previewImg);
+    // 記憶模式也套用 30% 置中邏輯
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const targetW = winW * 0.3; 
+    previewBox.style.width = targetW + 'px';
+    previewBox.style.height = 'auto';
+    previewBox.offsetHeight;
+    const boxRect = previewBox.getBoundingClientRect();
+    previewBox.style.left = ((winW - boxRect.width) / 2) + 'px';
+    previewBox.style.top = ((winH - boxRect.height) / 2) + 'px';
 
     previewLayer.classList.add('show');
     
-    previewImg.style.animation = 'none';
-    previewImg.offsetHeight; 
-    previewImg.style.animation = 'memorize 3.5s ease-in-out forwards';
+    previewBox.style.animation = 'none';
+    previewBox.offsetHeight; 
+    previewBox.style.animation = 'memorize 3.5s ease-in-out forwards';
 
     setTimeout(() => {
         previewLayer.classList.remove('show');
@@ -647,16 +830,8 @@ function renderTiles() {
         el.style.left = `${curX * tileSize}%`;
         el.style.top = `${curY * tileSize}%`;
         
-        const orgX = originalIdx % gridSize;
-        const orgY = Math.floor(originalIdx / gridSize);
-        el.style.backgroundImage = `url('${currentImgUrl}')`;
-        el.style.backgroundSize = `${gridSize * 100}%`;
-        
-        // 注意：background-origin: border-box 在 CSS 中已設定，確保圖片能涵蓋邊框
-        if (gridSize > 1) {
-             el.style.backgroundPosition = `${orgX * (100/(gridSize-1))}% ${orgY * (100/(gridSize-1))}%`;
-        } else {
-             el.style.backgroundPosition = "0% 0%";
+        if (slicedImages[originalIdx]) {
+            el.style.backgroundImage = `url('${slicedImages[originalIdx]}')`;
         }
         
         el.onclick = () => onTileClick(currentPos);
