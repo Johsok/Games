@@ -116,7 +116,7 @@
             transform: translate(-50%, -50%); 
             z-index: 2000; 
             background: rgba(30, 30, 30, 0.95); 
-            width: 340px; 
+            width: 360px; /* 稍微加寬以容納雙選單 */
             padding: 20px; 
             border-radius: 16px; 
             box-shadow: 0 20px 60px rgba(0,0,0,0.9); 
@@ -156,23 +156,49 @@
         
         .board-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 2px; }
         
-        /* 拼圖塊樣式 - Canvas 切割版 */
+        /* 拼圖塊樣式 - 加上更精緻的立體感與內陰影 */
         .tile {
             position: absolute;
             background-repeat: no-repeat;
             background-size: 100% 100%; 
             box-sizing: border-box;
             border: none;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); 
+            /* 更精緻的外框立體效果 */
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 
+                        inset 2px 2px 4px rgba(255, 255, 255, 0.3), 
+                        inset -2px -2px 4px rgba(0, 0, 0, 0.4),
+                        1px 1px 3px rgba(0,0,0,0.5); 
             transition: top 0.2s, left 0.2s, transform 0.1s, box-shadow 0.2s;
-            cursor: pointer;
+            cursor: grab; /* 游標變更為抓取狀 */
             z-index: 10;
         }
-        .tile:hover { z-index: 20; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
-        .tile.selected {
-            z-index: 30;
-            box-shadow: inset 0 0 0 2px #f1c40f, 0 0 15px #f1c40f; 
-            transform: scale(1.02);
+        .tile:hover { z-index: 20; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 2px 2px 5px rgba(0,0,0,0.6); }
+        .tile:active { cursor: grabbing; }
+
+        /* 拖曳時的飄浮與藍色外框 */
+        .tile.dragging {
+            z-index: 50;
+            box-shadow: inset 0 0 0 3px #00aaff, 0 15px 25px rgba(0,0,0,0.6); /* 藍色外框與下方陰影 */
+            transform: scale(1.08); /* 微微放大 */
+            transition: none; /* 拖曳時取消 CSS 動畫，讓跟隨游標更順暢 */
+            cursor: grabbing;
+        }
+
+        /* 原位置的半透圖 */
+        .tile.ghost {
+            opacity: 0.4;
+            box-shadow: none; 
+            z-index: 5;
+            transition: none;
+            filter: grayscale(30%); /* 略帶灰色讓它看起來像佔位符 */
+        }
+
+        /* 獲勝後，去除所有框線，顯示完整圖片 */
+        .board-inner.win-state .tile {
+            box-shadow: none !important;
+            border: none !important;
+            transform: scale(1.005); /* 微微放大以彌補切割縫隙 */
+            z-index: 1;
         }
 
         /* 提示層：移除 flex 置中，改用 absolute 定位邏輯 */
@@ -230,7 +256,7 @@
         }
         #hint-close-btn:active { background: #b00; }
 
-        /* === 新增：4角縮放把手 === */
+        /* 4角縮放把手 */
         .resize-handle {
             position: absolute;
             width: 24px;
@@ -265,6 +291,7 @@
             letter-spacing: calc(var(--board-size, 300px) * 0.01); 
             color: #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
             line-height: 1.2;
+            transition: opacity 0.5s; /* 讓消失過程更平滑 */
         }
         #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite; }
         @keyframes win { 
@@ -329,11 +356,11 @@
     </div>
 
     <div class="set-row">
-        <label id="lbl-img">關卡圖片</label>
-        <div style="display: flex; gap: 10px; width: 100%;">
-            <select id="img-sel" onchange="changeImage()" style="flex: 1; width: 0;">
-            </select>
-            <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="flex: 1; width: 0; margin-left: auto; display:flex; align-items:center; justify-content:center;">👁️ 圖片提示</button>
+        <label id="lbl-img">關卡 / 圖片</label>
+        <div style="display: flex; gap: 5px; width: 100%;">
+            <select id="level-sel" onchange="changeLevel()" style="flex: 1.2; width: 0;"></select>
+            <select id="img-sel" onchange="changeImage()" style="flex: 1; width: 0;"></select>
+            <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="flex: 0.8; width: 0; display:flex; align-items:center; justify-content:center; padding: 4px;">👁️ 提示</button>
         </div>
     </div>
 
@@ -387,7 +414,7 @@
         <ul id="rules-ul-basic" style="padding-left: 20px; line-height: 1.6;">
             <li>遊戲開始前，完整圖片會旋轉展示 3 秒，請記住它！</li>
             <li>背景中的圖片已被隨機打亂。</li>
-            <li>點擊一個方塊選取，再點擊另一個方塊進行<b>交換</b>。</li>
+            <li id="rules-drag-text">按住並拖曳方塊到目標位置，放開後即可<b>交換</b>位置。</li>
             <li>將所有方塊還原到正確位置即可獲勝。</li>
         </ul>
         <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
@@ -425,12 +452,19 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === 圖片設定區 === */
-const IMAGE_FILES = [
-    "01.jpg", "02.jpg", "03.jpg", "04.jpg", "05.jpg", "06.jpg", "07.jpg", "08.jpg", "09.jpg", "10.jpg",
-    "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
-    "21.jpg", "22.jpg"
-];
+/* === 1_關卡與圖片資料夾設定：改成「自然風景」和「卡通動畫」，各22張圖 === */
+const FOLDER_STRUCTURE = {
+    "自然風景": [
+        "01.jpg", "02.jpg", "03.jpg", "04.jpg", "05.jpg", "06.jpg", "07.jpg", "08.jpg", "09.jpg", "10.jpg",
+        "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
+        "21.jpg", "22.jpg"
+    ],
+    "卡通動畫": [
+        "01.jpg", "02.jpg", "03.jpg", "04.jpg", "05.jpg", "06.jpg", "07.jpg", "08.jpg", "09.jpg", "10.jpg",
+        "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
+        "21.jpg", "22.jpg"
+    ]
+};
 const IMG_PATH_PREFIX = "https://johsok.github.io/Games/Pictures/";
 const USE_PLACEHOLDER = false; 
 
@@ -438,33 +472,42 @@ const USE_PLACEHOLDER = false;
 let gridSize = 3; 
 let tiles = []; 
 let currentImgUrl = "";
-let selectedIdx = -1; 
 let isLocked = false; 
 let historyStack = [];
 let currentLang = 'tw';
 let userInteracted = false;
 let slicedImages = []; 
 
+/* 拖曳專用變數 */
+let dragSrcIdx = -1;
+let dragEl = null;
+let ghostEl = null;
+let dStartX = 0, dStartY = 0;
+let elStartX = 0, elStartY = 0;
+
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const TRANSLATIONS = {
     tw: { 
-        title: "拼圖大師 2026", msgStart: "請點擊任意兩塊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
-        random: "🎲 隨機圖片", diff: "難度等級", img: "關卡圖片", undo: "復原", rules: "規則", home: "回首頁",
-        theme: "視覺風格", music: "背景音樂", settings: "設定", hint: "圖片提示", 
-        done: "完成設定", closeRules: "關閉說明", volBgm: "音樂音量", volSfx: "音效音量"
+        title: "拼圖大師 2026", msgStart: "請拖曳方塊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
+        random: "🎲 隨機", diff: "難度等級", img: "關卡 / 圖片", undo: "復原", rules: "規則", home: "回首頁",
+        theme: "視覺風格", music: "背景音樂", settings: "設定", hint: "提示", 
+        done: "完成設定", closeRules: "關閉說明", volBgm: "音樂音量", volSfx: "音效音量",
+        ruleDrag: "按住並拖曳方塊到目標位置，放開後即可<b>交換</b>位置。"
     },
     cn: { 
-        title: "拼图大师 2026", msgStart: "请点击任意两块进行交换", msgWin: "拼 图 完 成 !", msgMemo: "记忆时间...", 
-        random: "🎲 随机图片", diff: "难度等级", img: "关卡图片", undo: "撤销", rules: "规则", home: "回首页",
-        theme: "视觉风格", music: "背景音乐", settings: "设置", hint: "图片提示", 
-        done: "完成设置", closeRules: "关闭说明", volBgm: "音乐音量", volSfx: "音效音量"
+        title: "拼图大师 2026", msgStart: "请拖拽方块进行交换", msgWin: "拼 图 完 成 !", msgMemo: "记忆时间...", 
+        random: "🎲 随机", diff: "难度等级", img: "关卡 / 图片", undo: "撤销", rules: "规则", home: "回首页",
+        theme: "视觉风格", music: "背景音乐", settings: "设置", hint: "提示", 
+        done: "完成设置", closeRules: "关闭说明", volBgm: "音乐音量", volSfx: "音效音量",
+        ruleDrag: "按住并拖拽方块到目标位置，松开即可<b>交换</b>。"
     },
     en: { 
-        title: "Puzzle Master", msgStart: "Click two tiles to swap", msgWin: "SOLVED!", msgMemo: "Memorize...", 
-        random: "🎲 Random", diff: "Difficulty", img: "Level Image", undo: "Undo", rules: "Rules", home: "Home",
-        theme: "Theme", music: "Music", settings: "Settings", hint: "Image Hint", 
-        done: "Done", closeRules: "Close", volBgm: "BGM Volume", volSfx: "SFX Volume"
+        title: "Puzzle Master", msgStart: "Drag and drop tiles to swap", msgWin: "SOLVED!", msgMemo: "Memorize...", 
+        random: "🎲 Random", diff: "Difficulty", img: "Level / Image", undo: "Undo", rules: "Rules", home: "Home",
+        theme: "Theme", music: "Music", settings: "Settings", hint: "Hint", 
+        done: "Done", closeRules: "Close", volBgm: "BGM Volume", volSfx: "SFX Volume",
+        ruleDrag: "Drag and drop a tile to its target position to <b>swap</b>."
     }
 };
 
@@ -590,10 +633,7 @@ function onInteractMove(e) {
             newH = Math.max(MIN_SIZE, s.startHeight + dy);
         }
         if (dir.includes('w')) { // 左側：寬度增加(反向)，Left 改變
-            // 計算原本右邊界 X
             const rightEdge = s.startLeft + s.startWidth;
-            // 新的寬度 = 原本寬度 - dx
-            // 但因為有 min-width，要反算
             const rawNewW = s.startWidth - dx;
             if (rawNewW >= MIN_SIZE) {
                 newW = rawNewW;
@@ -622,34 +662,54 @@ function onInteractMove(e) {
     }
 }
 
-function onInteractEnd() {
-    interactionState.isDragging = false;
-    interactionState.isResizing = false;
-}
-
 window.onload = () => {
     initImgList();
     resizeBoard(); 
     audio.src = getMp3Path(document.getElementById('music-sel').value);
-    restart(); 
     window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
 };
 
+// 初始化關卡(資料夾)選單
 function initImgList() {
-    const sel = document.getElementById('img-sel');
-    sel.innerHTML = "";
+    const lvlSel = document.getElementById('level-sel');
+    lvlSel.innerHTML = "";
+    
+    // 依據 FOLDER_STRUCTURE 產生存檔資料夾選項
+    // 第一個分類(自然風景)將被自動預設選擇，並觸發 changeLevel
+    for (let folder in FOLDER_STRUCTURE) {
+        let opt = document.createElement('option');
+        opt.value = folder;
+        opt.text = folder;
+        lvlSel.appendChild(opt);
+    }
+    // 觸發更新第二層圖片選單
+    changeLevel();
+}
+
+// 當關卡改變時，更新圖片選單
+function changeLevel() {
+    const lvl = document.getElementById('level-sel').value;
+    const imgSel = document.getElementById('img-sel');
+    imgSel.innerHTML = "";
+    
+    // 將 "隨機" 放在第一個選項，確保初始狀態為隨機圖片
     let optR = document.createElement('option');
     optR.value = "random";
     optR.text = TRANSLATIONS[currentLang].random;
-    sel.appendChild(optR);
+    imgSel.appendChild(optR);
 
-    IMAGE_FILES.forEach(f => {
+    // 從對應的資料夾中載入圖片清單
+    const imgArray = FOLDER_STRUCTURE[lvl] || [];
+    imgArray.forEach(f => {
         let opt = document.createElement('option');
         opt.value = f; 
+        // 只顯示檔名，自動去除副檔名
         let displayName = f.substring(0, f.lastIndexOf('.')) || f;
         opt.text = displayName;
-        sel.appendChild(opt);
+        imgSel.appendChild(opt);
     });
+    
+    restart(); // 切換關卡後自動重新開始
 }
 
 function resizeBoard() { 
@@ -664,14 +724,19 @@ function resizeBoard() {
     wrap.style.height = `${finalSize}px`;
     wrap.style.setProperty('--board-size', `${finalSize}px`);
     
-    renderTiles();
+    if (tiles.length > 0) renderTiles();
 }
 
+// 依照「關卡資料夾」+「檔名」組合成正確的圖片 URL
 function getImageUrl() {
+    let lvl = document.getElementById('level-sel').value;
     let val = document.getElementById('img-sel').value;
+    
+    // 若選擇 "隨機"，則從該資料夾陣列中隨機抽取一張
     if (val === 'random') {
-        const randIdx = Math.floor(Math.random() * IMAGE_FILES.length);
-        val = IMAGE_FILES[randIdx];
+        const imgArray = FOLDER_STRUCTURE[lvl];
+        const randIdx = Math.floor(Math.random() * imgArray.length);
+        val = imgArray[randIdx];
     }
     
     if(USE_PLACEHOLDER) {
@@ -679,7 +744,10 @@ function getImageUrl() {
         for(let i=0; i<val.length; i++) seed += val.charCodeAt(i);
         return `https://picsum.photos/seed/${seed}/800/800`;
     }
-    return `${IMG_PATH_PREFIX}${val}`;
+    
+    // 直接將目前的關卡分類做為資料夾名稱
+    let folderPath = lvl + "/";
+    return `${IMG_PATH_PREFIX}${folderPath}${val}`;
 }
 
 async function sliceImage(url, grid) {
@@ -717,7 +785,6 @@ function showHint() {
     
     previewImg.src = currentImgUrl;
     
-    // === 修正：重置為30%大小且置中 ===
     previewBox.style.animation = 'none';
     
     // 1. 設定寬度為螢幕 30%
@@ -755,11 +822,13 @@ async function restart() {
     isLocked = true;
     updateStatus("準備圖片中...");
     
+    // 確保重開時消除先前的獲勝狀態 (無外框狀態)
     document.getElementById('win-overlay').classList.remove('show');
+    document.getElementById('board').classList.remove('win-state');
+    
     gridSize = parseInt(document.getElementById('diff-sel').value);
     currentImgUrl = getImageUrl();
     historyStack = [];
-    selectedIdx = -1;
 
     try {
         slicedImages = await sliceImage(currentImgUrl, gridSize);
@@ -812,6 +881,7 @@ async function restart() {
     }, 3500);
 }
 
+// 渲染並綁定新的拖曳邏輯
 function renderTiles() {
     const container = document.getElementById('tiles-container');
     container.innerHTML = '';
@@ -820,7 +890,6 @@ function renderTiles() {
     tiles.forEach((originalIdx, currentPos) => {
         const el = document.createElement('div');
         el.className = 'tile';
-        if (currentPos === selectedIdx) el.classList.add('selected');
         
         el.style.width = `${tileSize}%`;
         el.style.height = `${tileSize}%`;
@@ -834,32 +903,116 @@ function renderTiles() {
             el.style.backgroundImage = `url('${slicedImages[originalIdx]}')`;
         }
         
-        el.onclick = () => onTileClick(currentPos);
+        // 紀錄當下所在的格子位置，方便拖曳判斷
+        el.dataset.idx = currentPos;
+        
+        // 綁定拖曳開始事件
+        el.addEventListener('mousedown', handleDragStart);
+        el.addEventListener('touchstart', handleDragStart, {passive: false});
+        
         container.appendChild(el);
     });
 }
 
-function onTileClick(idx) {
+// 全新的拖放交換邏輯 (Drag & Drop)
+function handleDragStart(e) {
     if (isLocked) return;
+    // 排除右鍵點擊
+    if (e.type === 'mousedown' && e.button !== 0) return; 
+    
+    e.preventDefault();
+    const touch = e.type.includes('touch') ? e.touches[0] : e;
+    
+    dragEl = e.target;
+    dragSrcIdx = parseInt(dragEl.dataset.idx);
+    
+    // 建立半透明的佔位圖 (Ghost)
+    ghostEl = dragEl.cloneNode(true);
+    ghostEl.className = 'tile ghost';
+    document.getElementById('tiles-container').appendChild(ghostEl);
+    
+    // 套用拖曳中的 CSS (藍色外框、放大、置頂)
+    dragEl.classList.add('dragging');
+    
+    // 紀錄起始滑鼠/觸控位置與元件絕對位置
+    dStartX = touch.clientX;
+    dStartY = touch.clientY;
+    elStartX = dragEl.offsetLeft;
+    elStartY = dragEl.offsetTop;
+    
+    // 綁定全域的移動與放開事件
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('touchmove', handleDragMove, {passive: false});
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
     
     playSfx(400); 
-
-    if (selectedIdx === -1) {
-        selectedIdx = idx;
-        renderTiles();
-    } else if (selectedIdx === idx) {
-        selectedIdx = -1;
-        renderTiles();
-    } else {
-        historyStack.push([...tiles]);
-        [tiles[selectedIdx], tiles[idx]] = [tiles[idx], tiles[selectedIdx]];
-        selectedIdx = -1;
-        playSfx(600);
-        renderTiles();
-        checkWin();
-    }
 }
 
+function handleDragMove(e) {
+    if (!dragEl) return;
+    e.preventDefault(); // 阻止手機在拖曳時捲動畫面
+    const touch = e.type.includes('touch') ? e.touches[0] : e;
+    
+    const dx = touch.clientX - dStartX;
+    const dy = touch.clientY - dStartY;
+    
+    // 即時更新被拖曳方塊的像素座標
+    dragEl.style.left = (elStartX + dx) + 'px';
+    dragEl.style.top = (elStartY + dy) + 'px';
+}
+
+function handleDragEnd(e) {
+    if (!dragEl) return;
+    const touch = e.type.includes('touch') ? e.changedTouches[0] : e;
+    
+    // 移除全域監聽器
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('touchmove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener('touchend', handleDragEnd);
+    
+    // 利用數學計算釋放點落在哪一個格子，比 elementFromPoint 更精準穩定
+    const container = document.getElementById('tiles-container');
+    const rect = container.getBoundingClientRect();
+    
+    let dropX = touch.clientX - rect.left;
+    let dropY = touch.clientY - rect.top;
+    let targetIdx = -1;
+    
+    // 判斷是否在合法範圍內
+    if (dropX >= 0 && dropX <= rect.width && dropY >= 0 && dropY <= rect.height) {
+        let gridX = Math.floor(dropX / (rect.width / gridSize));
+        let gridY = Math.floor(dropY / (rect.height / gridSize));
+        targetIdx = gridY * gridSize + gridX;
+    }
+    
+    // 清除 Ghost 與拖曳狀態
+    if (ghostEl && ghostEl.parentNode) {
+        ghostEl.parentNode.removeChild(ghostEl);
+    }
+    ghostEl = null;
+    dragEl.classList.remove('dragging');
+    dragEl = null;
+    
+    // 若放開的位置不是原本的位置，則執行交換
+    if (targetIdx !== -1 && targetIdx !== dragSrcIdx) {
+        historyStack.push([...tiles]);
+        [tiles[dragSrcIdx], tiles[targetIdx]] = [tiles[targetIdx], tiles[dragSrcIdx]];
+        playSfx(600);
+    }
+    
+    // 重新渲染畫面使方塊回到網格的 % 佈局
+    renderTiles();
+    
+    if (targetIdx !== -1 && targetIdx !== dragSrcIdx) {
+        checkWin();
+    }
+    
+    dragSrcIdx = -1;
+}
+
+// 獲勝後3秒讓宣告消失並清除方塊外框
 function checkWin() {
     let isWin = true;
     for (let i = 0; i < tiles.length; i++) {
@@ -874,13 +1027,18 @@ function checkWin() {
         const ol = document.getElementById('win-overlay');
         ol.innerText = TRANSLATIONS[currentLang].msgWin;
         ol.classList.add('show');
+        
+        // 3秒後隱藏勝利文字，並為棋盤加上 win-state 以消除外框
+        setTimeout(() => {
+            ol.classList.remove('show');
+            document.getElementById('board').classList.add('win-state');
+        }, 3000);
     }
 }
 
 function undo() {
     if (isLocked || historyStack.length === 0) return;
     tiles = historyStack.pop();
-    selectedIdx = -1;
     renderTiles();
 }
 
@@ -947,6 +1105,7 @@ function changeLang() {
     document.getElementById('btn-close-rules').innerText = t.closeRules;
     document.getElementById('lbl-vol-bgm').childNodes[0].nodeValue = t.volBgm;
     document.getElementById('lbl-vol-sfx').childNodes[0].nodeValue = t.volSfx;
+    document.getElementById('rules-drag-text').innerHTML = t.ruleDrag; // 更新拖曳規則文字
 }
 
 function goHome() {
