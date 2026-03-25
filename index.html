@@ -108,6 +108,20 @@
             100% { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 20px var(--neon-purple); }
         }
 
+        /* === 8. 大富翁動畫：棋子環繞地圖邊緣 === */
+        @keyframes monopoly-patrol {
+            0%, 100% { top: -5px; left: -5px; }
+            25% { top: -5px; left: calc(100% - 5px); }
+            50% { top: calc(100% - 5px); left: calc(100% - 5px); }
+            75% { top: calc(100% - 5px); left: -5px; }
+        }
+        @keyframes monopoly-patrol-reverse {
+            0%, 100% { bottom: -5px; right: -5px; }
+            25% { bottom: -5px; right: calc(100% - 5px); }
+            50% { bottom: calc(100% - 5px); right: calc(100% - 5px); }
+            75% { bottom: calc(100% - 5px); right: -5px; }
+        }
+
         /* 其他通用動畫 */
         @keyframes slow-rotate {
             from { transform: rotate(0deg); }
@@ -185,7 +199,7 @@
             animation: fade-in-up 0.8s ease-out forwards, border-pulse 4s ease-in-out infinite;
         }
 
-        /* 順序動畫，多加第7、8個順位給新增的遊戲 */
+        /* 順序動畫，多加第7、8、9個順位給新增的遊戲 */
         .game-card:nth-child(1) { animation-delay: 0.1s, 0s; }
         .game-card:nth-child(2) { animation-delay: 0.2s, 1s; }
         .game-card:nth-child(3) { animation-delay: 0.3s, 2s; }
@@ -194,6 +208,7 @@
         .game-card:nth-child(6) { animation-delay: 0.6s, 5s; }
         .game-card:nth-child(7) { animation-delay: 0.7s, 6s; }
         .game-card:nth-child(8) { animation-delay: 0.8s, 7s; } /* 為三角棋新增的動畫延遲 */
+        .game-card:nth-child(9) { animation-delay: 0.9s, 8s; } /* 為大富翁新增的動畫延遲 */
 
         .game-card::before, .game-card::after {
             content: ""; position: absolute; width: 20px; height: 20px;
@@ -444,6 +459,52 @@
         .game-card:hover .t-node { background: var(--jade-glow); box-shadow: 0 0 20px #fff; }
         .game-card:hover .t-center { background: #fff; box-shadow: 0 0 30px var(--neon-purple); }
 
+        /* === 8. 大富翁圖示專屬 CSS === */
+        .icon-monopoly-box {
+            width: 60px; height: 60px;
+            position: relative;
+            border: 4px solid var(--glass-border);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+        /* 內部地圖裝飾 (模擬大富翁中間的空地與機會命運卡) */
+        .icon-monopoly-box::before {
+            content: "?";
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px dashed var(--glass-border);
+            background: var(--bg-deep);
+            color: var(--glass-border);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace; font-size: 14px; font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        /* 兩顆跑動的棋子 */
+        .m-token {
+            width: 10px; height: 10px;
+            position: absolute;
+            border-radius: 50%;
+            z-index: 2;
+        }
+        .m-token.t1 {
+            background: var(--chess-red);
+            box-shadow: 0 0 8px var(--chess-red);
+            animation: monopoly-patrol 4s linear infinite;
+        }
+        .m-token.t2 {
+            background: var(--cyber-blue);
+            box-shadow: 0 0 8px var(--cyber-blue);
+            animation: monopoly-patrol-reverse 5s linear infinite;
+        }
+
+        /* HOVER GLOW FOR MONOPOLY */
+        .game-card:hover .icon-monopoly-box { border-color: var(--jade-glow); box-shadow: 0 0 15px rgba(100, 255, 218, 0.3); }
+        .game-card:hover .icon-monopoly-box::before { border-color: var(--cyber-blue); color: var(--jade-glow); text-shadow: 0 0 5px var(--jade-glow); }
+        .game-card:hover .m-token.t1 { box-shadow: 0 0 15px #fff; background: #fff; }
+        .game-card:hover .m-token.t2 { box-shadow: 0 0 15px #fff; background: #fff; }
+
         /* 文字樣式 */
         .game-title {
             font-size: 1.3rem; /* 微幅縮小 */
@@ -496,6 +557,10 @@
             .icon-triangle-box::before { border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid rgba(100,255,218,0.2); top: 15%; }
             .t-node { width: 10px; height: 10px; }
             .t-center { width: 12px; height: 12px; }
+
+            /* 大富翁手機版微調 */
+            .icon-monopoly-box { width: 50px; height: 50px; }
+            .icon-monopoly-box::before { top: 8px; left: 8px; right: 8px; bottom: 8px; font-size: 12px;}
         }
     </style>
 </head>
@@ -605,6 +670,17 @@
             </div>
             <span class="game-title">三角棋</span>
             <span class="game-en-title">TRIANGLE CHESS</span>
+        </a>
+
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Monopoly.html')">
+            <div class="icon-box">
+                <div class="icon-monopoly-box">
+                    <div class="m-token t1"></div>
+                    <div class="m-token t2"></div>
+                </div>
+            </div>
+            <span class="game-title">大富翁</span>
+            <span class="game-en-title">MONOPOLY</span>
         </a>
 
     </div>
