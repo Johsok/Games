@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>大富翁(Monopoly) 2026</title>
+    <style>
+        :root {
+            /* 基本環境變數 */
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: rgba(93, 64, 55, 0.4); 
+            --piece-border: #8b4513;
+            
+            /* 玩家專屬顏色預設 */
+            --p1-c: #e74c3c; 
+            --p2-c: #3498db; 
+            --p3-c: #f1c40f; 
+            --p4-c: #2ecc71; 
+            --p5-c: #9b59b6; 
+
+            --border-style: 8px solid #5d4037;
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+
+        /* === 風格定義 === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93,64,55,0.3); --piece-border: #8b5a2b; --border-style: 10px ridge #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: rgba(66,66,66,0.3); --piece-border: #666; --border-style: 8px double #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: rgba(0,77,64,0.3); --piece-border: #00695c; --border-style: 10px inset #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: rgba(62,39,35,0.3); --piece-border: #3e2723; --border-style: 10px groove #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: rgba(255,215,0,0.3); --piece-border: #b8860b; --border-style: 8px solid #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: rgba(187,222,251,0.3); --piece-border: #0d47a1; --border-style: 8px double #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: rgba(225,190,231,0.3); --piece-border: #4a0072; --border-style: 8px solid #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: rgba(94,49,5,0.3); --piece-border: #5e3105; --border-style: 10px dashed #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%); --board-bg: #fff0f5; --line-color: rgba(255,105,180,0.3); --piece-border: #ff1493; --border-style: 8px dotted #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: rgba(93,109,126,0.3); --piece-border: #34495e; --border-style: 8px double #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: rgba(77,208,225,0.3); --piece-border: #b39ddb; --border-style: 10px solid #b39ddb; border-radius: 12px; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: rgba(0,255,255,0.2); --piece-border: #0ff; --border-style: 8px solid #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: rgba(34,34,34,0.1); --piece-border: #222; --border-style: 6px solid #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: rgba(119,119,119,0.3); --piece-border: #888; --border-style: 8px solid #555; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; padding: 0; margin: 0; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; transition: background 0.5s; touch-action: none; box-sizing: border-box; 
+        }
+
+        /* === Header & Status === */
+        header { 
+            width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; 
+            z-index: 100; padding: calc(var(--safe-top) + 6px) 0 6px 0; background: rgba(0,0,0,0.3); 
+            backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s ease; flex-shrink: 0;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 800px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #fff; font-weight: bold; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.2; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center;}
+        
+        .score-box { 
+            padding: 4px 8px; border-radius: 8px; font-weight: 900; 
+            min-width: 75px; text-align: center;
+            background: rgba(0,0,0,0.4); border: 2px solid; transition: all 0.3s ease; 
+        }
+        .score-box span { display: block; font-size: 0.75rem; font-weight: normal; opacity: 0.9; }
+        .score-p1 { color: var(--p1-c); border-color: var(--p1-c); }
+        .score-p2 { color: var(--p2-c); border-color: var(--p2-c); }
+        .score-p3 { color: var(--p3-c); border-color: var(--p3-c); }
+        .score-p4 { color: var(--p4-c); border-color: var(--p4-c); }
+        .score-p5 { color: var(--p5-c); border-color: var(--p5-c); }
+        
+        .active-turn { box-shadow: 0 0 15px currentColor, inset 0 0 8px currentColor; background: rgba(255,255,255,0.25); }
+        .bankrupt { opacity: 0.4; filter: grayscale(100%); text-decoration: line-through; }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 4px 10px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; font-weight: bold; }
+        .btn-green { background: rgba(46, 204, 113, 0.85); border: none; font-weight: bold; }
+
+        /* === 橫向模式 === */
+        body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
+        body.is-landscape header { width: 160px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status { flex-direction: column; }
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+
+        /* Settings Panel */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); color: #fff; width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .set-row label { display: block; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; color: #aaa; white-space: nowrap; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
+
+        /* === 遊戲容器 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; height: 100%; padding: 4px; box-sizing: border-box; touch-action: none; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; 
+            background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 8px; 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 3px 10px rgba(255,255,255,0.3), inset 0 -4px 10px rgba(0,0,0,0.3);
+            padding: 1%; box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .board-inner { position: relative; width: 100%; height: 100%; }
+        #game-svg { width: 100%; height: 100%; overflow: visible; user-select: none; }
+
+        /* 大富翁專屬 SVG 樣式 */
+        .svg-tile { fill: rgba(255,255,255,0.7); stroke: var(--piece-border); stroke-width: 0.3; transition: fill 0.3s; }
+        .svg-tile-owner { stroke: none; opacity: 0.6; }
+        .svg-text { font-family: sans-serif; font-size: 2px; font-weight: bold; fill: #222; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+        .svg-text-small { font-size: 1.55px; font-weight:bold; fill: #444; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+        .svg-house { fill: #c0392b; stroke: #fff; stroke-width: 0.1; }
+
+        /* === 中央事件推播與操作 UI 區塊 === */
+        #center-ui {
+            position: absolute; top: 16%; left: 16%; width: 68%; height: 68%;
+            background: rgba(0, 0, 0, 0.65); border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.2); box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+            padding: 8px; box-sizing: border-box; backdrop-filter: blur(4px); z-index: 50;
+        }
+        
+        /* 事件日誌區：兩列排版，滿6格自動推擠 */
+        #event-log {
+            width: 100%; height: 60%; display: grid; 
+            grid-template-columns: 1fr 1fr; grid-template-rows: repeat(6, 1fr); grid-auto-flow: column; 
+            gap: 2px 8px; overflow: hidden; font-size: 0.8rem; font-weight: bold;
+        }
+        .log-item {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            text-shadow: 1px 1px 2px #000, 0 0 3px rgba(0,0,0,0.8);
+            display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* 底部操作區 */
+        #action-area {
+            height: 40%; width: 100%; display: flex; flex-direction: column; 
+            align-items: center; justify-content: flex-end; padding-bottom: 2px;
+        }
+        #action-msg { font-size: 0.95rem; font-weight: bold; margin-bottom: 4px; text-shadow: 0 2px 4px #000; text-align: center; line-height: 1.3; color: #fff;}
+        #dice-display { font-size: 3rem; margin-bottom: 4px; display: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: bounce 0.3s ease-out; }
+        
+        @keyframes bounce { 0% { transform: scale(0.5) translateY(20px); } 50% { transform: scale(1.2) translateY(-10px); } 100% { transform: scale(1) translateY(0); } }
+
+        /* 終局勝利宣告 */
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            width: 90%; box-sizing: border-box; text-align: center;
+            pointer-events: none; opacity: 0; z-index: 1000; white-space: normal; 
+            font: 900 2em "Microsoft JhengHei", sans-serif; letter-spacing: 4px; 
+            color: #fff; -webkit-text-stroke: 1px #fff; 
+            text-shadow: 0 0 10px #f1c40f, 0 0 20px #f1c40f, 0 0 40px #f39c12; 
+        }
+        #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite, hue 4s linear infinite; pointer-events: auto; }
+        @keyframes win { 0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 20%, 100% { transform: translate(-50%,-50%) rotate(-3deg); opacity: 1; } 60% { transform: translate(-50%,-52%) rotate(3deg); } }
+        @keyframes hue { to { filter: hue-rotate(360deg); } }
+
+        /* Rules Modal */
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; max-height: 80%; border-radius: 12px; border: 1px solid #555; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow-y: auto; color: #ddd; line-height: 1.6; }
+        .rules-content h3 { color: #f1c40f; border-bottom: 1px solid #555; padding-bottom: 10px; margin-top: 0; text-align: center; }
+        .rules-content h4 { color: #fff; margin: 15px 0 5px 0; border-left: 4px solid var(--p1-c); padding-left: 8px; }
+        .rules-content ul { padding-left: 20px; margin: 5px 0; }
+        .rules-content li { margin-bottom: 6px; font-size: 0.95rem; }
+        .close-rules { display: block; width: 100%; padding: 10px; background: var(--p1-c); color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
+
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">大富翁 2026</h2>
+        <div class="status" id="msg">
+            <div id="score-1" class="score-box score-p1 active-turn"></div>
+            <div id="score-2" class="score-box score-p2"></div>
+            <div id="score-3" class="score-box score-p3" style="display:none"></div>
+            <div id="score-4" class="score-box score-p4" style="display:none"></div>
+            <div id="score-5" class="score-box score-p5" style="display:none"></div>
+        </div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-mode">遊戲模式 (對手數量)</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="pve1" selected>💻 單人 (1v1電腦)</option>
+                <option value="pve2">💻 單人 (1v2電腦)</option>
+                <option value="pve3">💻 單人 (1v3電腦)</option>
+                <option value="pve4">💻 單人 (1v4電腦)</option>
+                <option value="pvp2">👥 雙人 (2P)</option>
+                <option value="pvp3">👥 三人 (3P)</option>
+                <option value="pvp4">👥 四人 (4P)</option>
+                <option value="pvp5">👥 五人 (5P)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-start-money">初始資金</label>
+            <select id="start-money-sel" onchange="changeMode()">
+                <option value="5000">$5,000</option>
+                <option value="10000">$10,000</option>
+                <option value="30000">$30,000</option>
+                <option value="50000" selected>$50,000</option>
+                <option value="100000">$100,000</option>
+                <option value="500000">$500,000</option>
+                <option value="1000000">$1,000,000</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-country">地理國家</label>
+            <select id="country-sel" onchange="changeMode()">
+                <option value="random" selected>🎲 隨機</option>
+                <option value="tw">🇹🇼 台灣</option>
+                <option value="us">🇺🇸 美國</option>
+                <option value="jp">🇯🇵 日本</option>
+                <option value="cn">🇨🇳 大陸</option>
+                <option value="au">🇦🇺 澳洲</option>
+                <option value="uk">🇬🇧 英國</option>
+                <option value="eu">🇪🇺 歐洲</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04" selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量</label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="40" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量</label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="70" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+    
+    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 50%;">
+             <button class="btn" id="btn-rules" style="width:100%; height:38px; background:#2c3e50; border:1px solid #456; padding: 0;" onclick="toggleRules()">📖 規則</button>
+        </div>
+         <div style="flex: 50%;">
+             <button class="btn" id="btn-home" onclick="goHome()" style="width:100%; height:38px; background:#c0392b; border:1px solid #e74c3c; padding: 0;">🏠 回首頁</button>
+        </div>
+    </div>
+
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">大富翁 (Monopoly) 規則</h3>
+        <h4 id="rules-h-nature">遊戲目標</h4>
+        <p id="rules-p-nature">透過擲骰子移動、購買土地、收租金，讓其他玩家破產，成為最後的贏家！</p>
+        <h4 id="rules-h-basic">基本玩法</h4>
+        <ul id="rules-ul-basic">
+            <li>每回合點擊<b>「擲骰子」</b>前進。</li>
+            <li>走到無人空地時，可選擇是否花費現金<b>購買土地</b>。(房價與租金各自獨立隨機)</li>
+            <li>走到自己的土地時，可花費一半地價<b>升級房屋</b>（最多可蓋3棟，租金倍增）。</li>
+            <li>走到他人的土地時，必須<b>強制支付租金</b>。</li>
+            <li>經過起點時，可獲得獎勵金 <b>$2000</b>。</li>
+            <li>走到「機會」或「命運」格，會真實觸發具備<b>逆轉機制</b>的隨機事件（如強制入獄、奪取土地、免費升級等）！</li>
+        </ul>
+        <h4 id="rules-h-win">勝負條件</h4>
+        <ul id="rules-ul-win">
+            <li>當現金低於 $0 時，該玩家宣告破產並出局，其土地將歸空。</li>
+            <li>存活到最後的一名玩家即為勝利者！</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <svg id="game-svg" viewBox="0 0 100 100"></svg>
+            
+            <div id="center-ui">
+                <div id="event-log"></div>
+                
+                <div id="action-area">
+                    <div id="action-msg">準備開始遊戲</div>
+                    <div id="dice-display">🎲</div>
+                    <button id="btn-roll" class="btn btn-red" onclick="rollDice()" style="font-size:1.1rem; padding: 10px 24px; width: 80%;">🎲 擲骰子</button>
+                    <div id="action-btns" style="display:none; gap:10px; width:100%; justify-content:center;">
+                        <button class="btn btn-green" id="btn-act-yes" onclick="confirmAction()" style="flex:1; padding: 10px;">確定購買</button>
+                        <button class="btn" id="btn-act-no" onclick="passAction()" style="flex:1; padding: 10px; background:rgba(200,50,50,0.8)">跳過</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div id="win-overlay" style="cursor:pointer;" onclick="document.getElementById('win-overlay').classList.remove('show'); restart();"></div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* ================= 大富翁核心邏輯 ================= */
+
+// 國家真實城市資料庫
+const CITIES_DATA = {
+    tw: ["台北","新北","桃園","台中","台南","高雄","基隆","新竹","嘉義","苗栗","彰化","南投","雲林","屏東","宜蘭","花蓮","台東","澎湖","金門"],
+    us: ["紐約","洛杉磯","芝加哥","休士頓","鳳凰城","費城","聖地牙哥","達拉斯","奧斯汀","西雅圖","丹佛","波士頓","底特律","邁阿密","亞特蘭大","賭城","奧蘭多","華盛頓","夏威夷"],
+    jp: ["東京","大阪","橫濱","名古屋","札幌","福岡","神戶","京都","川崎","埼玉","廣島","仙台","千葉","熊本","新潟","濱松","長崎","沖繩","奈良"],
+    cn: ["北京","上海","廣州","深圳","成都","杭州","重慶","武漢","西安","蘇州","天津","南京","長沙","鄭州","東莞","青島","瀋陽","寧波","昆明"],
+    au: ["雪梨","墨爾本","布里斯本","伯斯","阿得雷德","坎培拉","荷巴特","達爾文","黃金海岸","紐卡索","臥龍崗","吉朗","凱恩斯","湯斯維爾","巴拉瑞特","本迪戈","麥覺理","陽光海岸","愛麗斯泉"],
+    uk: ["倫敦","曼徹斯特","伯明罕","利物浦","愛丁堡","格拉斯哥","里茲","布里斯托","雪菲爾","卡地夫","貝爾法斯特","諾丁漢","紐卡索","劍橋","牛津","布萊頓","約克","巴斯","溫莎"],
+    eu: ["巴黎","柏林","羅馬","馬德里","維也納","阿姆斯特丹","布魯塞爾","斯德哥爾摩","雅典","里斯本","華沙","布拉格","布達佩斯","哥本哈根","都柏林","赫爾辛基","奧斯陸","慕尼黑","米蘭"]
+};
+
+// 語系文本與真實事件庫
+const TRANSLATIONS = {
+    tw: {
+        title: "大富翁 2026", player: "玩家", computer: "電腦", win: " 獲勝！",
+        roll: "🎲 擲骰子", buyPrompt: "是否購買？", upgPrompt: "是否升級房屋？",
+        buyBtn: "💰 購買", upgBtn: "🏠 升級", passBtn: "跳過",
+        rentMsg: "支付租金給", chanceMsg: "【機會】", chestMsg: "【命運】", taxMsg: "繳納稅款：",
+        bankrupt: " 破產出局！", passStart: "經過起點，獲得 $2000",
+        safeNames: ["起點","監獄","公園","休息","稅務"],
+        optPve1: "💻 單人 (1v1電腦)", optPve2: "💻 單人 (1v2電腦)", optPve3: "💻 單人 (1v3電腦)", optPve4: "💻 單人 (1v4電腦)",
+        lblStartMoney: "初始資金", lblCountry: "地理國家",
+        chanceEvents: [
+            { text: "政府補助金 +$3000", action: "money", val: 3000 },
+            { text: "投資失利 -$2000", action: "money", val: -2000 },
+            { text: "強制入獄！暫停一回合", action: "jail", val: 0 },
+            { text: "房產熱絡：房產全部免費升級！", action: "upgrade_all", val: 0 },
+            { text: "惡意併購：隨機奪取他人土地！", action: "steal", val: 0 },
+            { text: "意外之財 +$5000", action: "money", val: 5000 }
+        ],
+        chestEvents: [
+            { text: "中樂透頭獎 +$8000", action: "money", val: 8000 },
+            { text: "繳納房屋稅 -$3000", action: "money", val: -3000 },
+            { text: "直達起點，並領取 $2000", action: "move", target: 0, val: 2000 },
+            { text: "遭網路詐騙 -$5000", action: "money", val: -5000 },
+            { text: "土地徵收：失去一地獲賠 $10000", action: "lose_prop", val: 10000 },
+            { text: "交通意外：進醫院暫停一回合", action: "jail", val: 0 }
+        ]
+    },
+    cn: {
+        title: "大富翁 2026", player: "玩家", computer: "电脑", win: " 获胜！",
+        roll: "🎲 掷骰子", buyPrompt: "是否购买？", upgPrompt: "是否升级房屋？",
+        buyBtn: "💰 购买", upgBtn: "🏠 升级", passBtn: "跳过",
+        rentMsg: "支付租金给", chanceMsg: "【机会】", chestMsg: "【命运】", taxMsg: "缴纳税款：",
+        bankrupt: " 破产出局！", passStart: "经过起点，获得 $2000",
+        safeNames: ["起点","监狱","公园","休息","税务"],
+        optPve1: "💻 单人 (1v1电脑)", optPve2: "💻 单人 (1v2电脑)", optPve3: "💻 单人 (1v3电脑)", optPve4: "💻 单人 (1v4电脑)",
+        lblStartMoney: "初始资金", lblCountry: "地理国家",
+        chanceEvents: [
+            { text: "政府补助金 +$3000", action: "money", val: 3000 },
+            { text: "投资失利 -$2000", action: "money", val: -2000 },
+            { text: "强制入狱！暂停一回合", action: "jail", val: 0 },
+            { text: "房产热络：房产全部免费升级！", action: "upgrade_all", val: 0 },
+            { text: "恶意并购：随机夺取他人土地！", action: "steal", val: 0 },
+            { text: "意外之财 +$5000", action: "money", val: 5000 }
+        ],
+        chestEvents: [
+            { text: "中乐透头奖 +$8000", action: "money", val: 8000 },
+            { text: "缴纳房屋税 -$3000", action: "money", val: -3000 },
+            { text: "直达起点，并领取 $2000", action: "move", target: 0, val: 2000 },
+            { text: "遭网络诈骗 -$5000", action: "money", val: -5000 },
+            { text: "土地征收：失去一地获赔 $10000", action: "lose_prop", val: 10000 },
+            { text: "交通意外：进医院暂停一回合", action: "jail", val: 0 }
+        ]
+    },
+    en: {
+        title: "Monopoly 2026", player: "Player", computer: "CPU", win: " WINS!",
+        roll: "🎲 Roll Dice", buyPrompt: "Buy property?", upgPrompt: "Upgrade property?",
+        buyBtn: "💰 Buy", upgBtn: "🏠 Upgrade", passBtn: "Pass",
+        rentMsg: "Paid rent to", chanceMsg: "[Chance]", chestMsg: "[Chest]", taxMsg: "Paid Tax: ",
+        bankrupt: " Bankrupt!", passStart: "Passed GO, +$2000",
+        safeNames: ["GO","Jail","Park","Rest","Tax"],
+        optPve1: "💻 1v1 CPU", optPve2: "💻 1v2 CPU", optPve3: "💻 1v3 CPU", optPve4: "💻 1v4 CPU",
+        lblStartMoney: "Start Money", lblCountry: "Country",
+        chanceEvents: [
+            { text: "Subsidy +$3000", action: "money", val: 3000 },
+            { text: "Bad investment -$2000", action: "money", val: -2000 },
+            { text: "Jail! Skip 1 turn.", action: "jail", val: 0 },
+            { text: "Boom: All your properties upgraded!", action: "upgrade_all", val: 0 },
+            { text: "Takeover: Steal 1 property!", action: "steal", val: 0 },
+            { text: "Windfall +$5000", action: "money", val: 5000 }
+        ],
+        chestEvents: [
+            { text: "Won lottery +$8000", action: "money", val: 8000 },
+            { text: "Property Tax -$3000", action: "money", val: -3000 },
+            { text: "Advance to GO, collect $2000", action: "move", target: 0, val: 2000 },
+            { text: "Internet Scam -$5000", action: "money", val: -5000 },
+            { text: "Eminent Domain: Lose 1 property, gain $10000", action: "lose_prop", val: 10000 },
+            { text: "Accident! Skip 1 turn.", action: "jail", val: 0 }
+        ]
+    }
+};
+
+let currentLang = 'tw';
+const TILE_SIZE = 12.5;
+let MAP_DATA = [];
+let eventLogs = []; // 事件日誌陣列 (最多 12 筆)
+
+// 根據玩家ID取得正確稱呼 (單人模式P1為玩家，其餘為電腦)
+function getPlayerName(id) {
+    const t = TRANSLATIONS[currentLang];
+    if (state.isPve) {
+        return id === 0 ? t.player : `${t.computer}${id}`;
+    }
+    return `P${id+1}`;
+}
+
+// 寫入事件並推播顯示
+function addLog(text, color) {
+    eventLogs.unshift({text, color});
+    if(eventLogs.length > 12) eventLogs.pop(); // 保持左右排各6個(總共12個)
+    renderLogs();
+}
+
+function renderLogs() {
+    const el = document.getElementById('event-log');
+    el.innerHTML = eventLogs.map(l => `<div class="log-item" style="color:${l.color};">➤ ${l.text}</div>`).join('');
+}
+
+// 每次重開都會完全大洗牌的地圖生成器
+function initMap() {
+    MAP_DATA = [];
+    
+    // 洗牌池：3個安全區, 1個稅務, 2個機會, 2個命運, 19個房子
+    let typePool = ['safe','safe','safe','chance','chance','chest','chest','tax'];
+    for(let i=0; i<19; i++) typePool.push('prop');
+    typePool.sort(() => Math.random() - 0.5); 
+    
+    // 取得選擇的國家與城市
+    let selCountry = document.getElementById('country-sel').value;
+    if(selCountry === 'random') {
+        const keys = ['tw','us','jp','cn','au','uk','eu'];
+        selCountry = keys[Math.floor(Math.random() * keys.length)];
+    }
+    let cityPool = [...CITIES_DATA[selCountry]];
+    cityPool.sort(() => Math.random() - 0.5);
+
+    for(let i=0; i<28; i++) {
+        let type = (i === 0) ? 'start' : typePool[i-1];
+        
+        let px, py;
+        if(i < 8) { px = i; py = 7; }
+        else if(i < 15) { px = 7; py = 7 - (i - 7); }
+        else if(i < 22) { px = 7 - (i - 14); py = 0; }
+        else { px = 0; py = i - 21; }
+
+        let tile = {
+            id: i, type: type, 
+            x: px * TILE_SIZE, y: py * TILE_SIZE,
+            owner: null, level: 0
+        };
+
+        if (type === 'prop') {
+            tile.cityName = cityPool.pop(); // 放入該國家隨機城市名稱
+            tile.price = Math.floor(Math.random() * 71 + 10) * 100; // 價格 1000 ~ 8000
+            tile.baseRent = Math.floor(tile.price * (Math.random() * 0.2 + 0.1)); // 租金獨立隨機 (10% ~ 30%)
+        } else if (type === 'safe') {
+            tile.safeId = Math.floor(Math.random() * 3) + 1; // 1:監獄 2:公園 3:休息
+        }
+
+        MAP_DATA.push(tile);
+    }
+}
+
+let state = {
+    players: [], numPlayers: 2, turn: 0, isPve: true
+};
+
+const DICE_EMOJIS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let userInteracted = false;
+
+window.onload = () => {
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    audio.src = getMp3Path(document.getElementById('music-sel').value); 
+    
+    resizeBoard();
+    setTimeout(resizeBoard, 100); 
+    
+    restart(); 
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); resizeBoard(); });
+    document.body.addEventListener('click', unlockAudio, {once:true}); 
+};
+
+function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
+
+function restart() {
+    initMap();
+    let modeVal = document.getElementById('mode-sel').value;
+    let startMoney = parseInt(document.getElementById('start-money-sel').value);
+    
+    pendingAction = null;
+    eventLogs = [];
+    renderLogs();
+    document.getElementById('action-btns').style.display = 'none';
+    
+    if (modeVal.startsWith('pve')) {
+        state.isPve = true;
+        state.numPlayers = parseInt(modeVal.replace('pve', '')) + 1; 
+    } else {
+        state.isPve = false;
+        state.numPlayers = parseInt(modeVal.replace('pvp', ''));
+    }
+    
+    state.players = [];
+    for(let i=0; i<state.numPlayers; i++) {
+        state.players.push({
+            id: i, active: true, pos: 0, money: startMoney, 
+            color: `var(--p${i+1}-c)`, skipTurns: 0
+        });
+    }
+    state.turn = 0;
+    
+    for(let i=1; i<=5; i++) {
+        document.getElementById(`score-${i}`).style.display = i <= state.numPlayers ? 'block' : 'none';
+        document.getElementById(`score-${i}`).className = `score-box score-p${i}`;
+    }
+
+    document.getElementById('win-overlay').classList.remove('show');
+    changeLang(); 
+    renderBoard();
+    
+    addLog("遊戲開始，請擲骰子！", "#fff");
+    startTurn();
+}
+
+// === 回合開始控制點 ===
+function startTurn() {
+    let p = state.players[state.turn];
+    if (!p.active) { endTurn(); return; }
+
+    updateUI();
+
+    if (p.skipTurns > 0) {
+        p.skipTurns--;
+        addLog(`[${getPlayerName(state.turn)}] 暫停行動 (剩${p.skipTurns}回合)`, '#e74c3c');
+        document.getElementById('btn-roll').style.display = 'none';
+        document.getElementById('action-btns').style.display = 'none';
+        setTimeout(endTurn, 1500);
+        return;
+    }
+
+    setCenterMsg(`[${getPlayerName(state.turn)}] 的回合`);
+    document.getElementById('action-btns').style.display = 'none';
+    document.getElementById('dice-display').style.display = 'none';
+
+    // AI 自動擲骰
+    if (state.isPve && state.turn !== 0) {
+        document.getElementById('btn-roll').style.display = 'none';
+        setTimeout(aiPlay, 800);
+    } else {
+        document.getElementById('btn-roll').style.display = 'block';
+    }
+}
+
+// === 核心算繪：產生極致可愛香蕉造型的 SVG ===
+function getBananaSVG(id, cx, cy, color) {
+    let svg = `<g transform="translate(${cx}, ${cy}) scale(1.1)">`;
+    let bananaPath = `M -1.5,-1.5 C -0.5,-2.5 1.5,-1.5 1.5,-0.5 C 1.5,1.5 0.5,2.5 -1.5,1.5 C -0.5,0.5 -0.5,-0.5 -1.5,-1.5 Z`;
+    svg += `<path d="${bananaPath}" fill="${color}" stroke="#fff" stroke-width="0.3" filter="drop-shadow(0px 2px 2px rgba(0,0,0,0.6))"/>`;
+    
+    // 可愛大眼與腮紅
+    let cuteFace = `
+        <ellipse cx="-0.5" cy="-0.2" rx="0.25" ry="0.12" fill="#ff9999" opacity="0.8"/>
+        <ellipse cx="0.3" cy="0.4" rx="0.25" ry="0.12" fill="#ff9999" opacity="0.8"/>
+        <circle cx="-0.4" cy="-0.6" r="0.22" fill="#222"/>
+        <circle cx="-0.45" cy="-0.65" r="0.08" fill="#fff"/>
+        <circle cx="0.2" cy="-0.1" r="0.22" fill="#222"/>
+        <circle cx="0.15" cy="-0.15" r="0.08" fill="#fff"/>
+        <path d="M-0.2,-0.3 Q0,-0.1 0.1,-0.2" fill="none" stroke="#222" stroke-width="0.1" stroke-linecap="round"/>
+    `;
+
+    if (id === 0) svg += cuteFace;
+    else if (id === 1) { // 墨鏡酷香蕉
+        svg += `<ellipse cx="-0.5" cy="-0.2" rx="0.25" ry="0.12" fill="#ff9999" opacity="0.8"/>
+                <ellipse cx="0.3" cy="0.4" rx="0.25" ry="0.12" fill="#ff9999" opacity="0.8"/>
+                <path d="M-0.1,-0.3 Q0,-0.1 0.1,-0.2" fill="none" stroke="#222" stroke-width="0.1" stroke-linecap="round"/>`;
+        svg += `<rect x="-0.8" y="-0.8" width="0.8" height="0.4" rx="0.1" fill="#222"/>
+                <rect x="0.1" y="-0.3" width="0.8" height="0.4" rx="0.1" fill="#222"/>
+                <line x1="-0.1" y1="-0.5" x2="0.2" y2="-0.2" stroke="#222" stroke-width="0.15"/>`;
+    } else if (id === 2) { // 紳士香蕉
+        svg += cuteFace;
+        svg += `<path d="M-0.3,-0.1 Q-0.1,-0.3 0.1,0.2 Q-0.1,0 -0.3,-0.1 Z" fill="#222"/>
+                <path d="M0.1,0.2 Q0.3,0.4 0.6,0 Q0.3,0.1 0.1,0.2 Z" fill="#222"/>`;
+    } else if (id === 3) { // 剝皮香蕉
+        svg += `<path d="M-1.5,1.5 Q-2.5,0.5 -1,-0.5" fill="none" stroke="${color}" stroke-width="0.4" stroke-linecap="round"/>
+                <path d="M1.5,-0.5 Q2.5,0.5 0.5,2" fill="none" stroke="${color}" stroke-width="0.4" stroke-linecap="round"/>`;
+        svg += `<path d="${bananaPath}" fill="rgba(255,255,255,0.5)"/>`; 
+        svg += cuteFace;
+    } else if (id === 4) { // 忍者香蕉
+        svg += cuteFace;
+        svg += `<path d="M-1,-1.1 L0.8,-0.1 L1.0,-0.4 L-0.8,-1.4 Z" fill="#e74c3c"/>
+                <path d="M0.8,-0.1 Q1.5,-0.2 1.2,0.4" fill="none" stroke="#e74c3c" stroke-width="0.3" stroke-linecap="round"/>`;
+    }
+    
+    svg += `</g>`;
+    return svg;
+}
+
+function renderBoard() {
+    const svg = document.getElementById('game-svg');
+    let output = [];
+    const t = TRANSLATIONS[currentLang];
+
+    MAP_DATA.forEach((tile, i) => {
+        let name = "";
+        if (tile.type === 'start') name = t.safeNames[0];
+        else if (tile.type === 'tax') name = t.safeNames[4];
+        else if (tile.type === 'safe') name = t.safeNames[tile.safeId];
+        else if (tile.type === 'chance') name = "機會";
+        else if (tile.type === 'chest') name = "命運";
+        else if (tile.type === 'prop') name = tile.cityName;
+
+        output.push(`<rect x="${tile.x}" y="${tile.y}" width="${TILE_SIZE}" height="${TILE_SIZE}" class="svg-tile" />`);
+        
+        if (tile.owner !== null) {
+            let pColor = state.players[tile.owner].color;
+            output.push(`<rect x="${tile.x+0.5}" y="${tile.y+0.5}" width="${TILE_SIZE-1}" height="${TILE_SIZE-1}" fill="${pColor}" class="svg-tile-owner" />`);
+            for(let h=0; h<tile.level; h++) {
+                output.push(`<rect x="${tile.x + 1.5 + h*3}" y="${tile.y + 1.5}" width="2.5" height="2.5" class="svg-house" />`);
+            }
+        }
+        
+        let textY = tile.y + TILE_SIZE/2 - 1.5;
+        output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY}" class="svg-text">${name}</text>`);
+        
+        if(tile.type === 'prop') {
+            let currentRent = tile.baseRent * Math.pow(2, tile.level); 
+            if (tile.owner === null) {
+                output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 3.2}" class="svg-text-small">價 $${tile.price}</text>`);
+                output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 5.5}" class="svg-text-small" fill="#c0392b">租 $${currentRent}</text>`);
+            } else {
+                output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.5}" class="svg-text-small" fill="#800">租 $${currentRent}</text>`);
+            }
+        } else if (tile.type === 'start') {
+            output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4}" class="svg-text-small">+ $2K</text>`);
+        }
+    });
+
+    state.players.forEach(p => {
+        if(!p.active) return;
+        let t = MAP_DATA[p.pos];
+        let offset = [ {x:-3,y:-3}, {x:3,y:-3}, {x:-3,y:3}, {x:3,y:3}, {x:0,y:0} ];
+        let cx = t.x + TILE_SIZE/2 + offset[p.id].x;
+        let cy = t.y + TILE_SIZE/2 + offset[p.id].y;
+        output.push(getBananaSVG(p.id, cx, cy, p.color));
+    });
+
+    svg.innerHTML = output.join('');
+}
+
+function updateUI() {
+    for(let i=0; i<state.numPlayers; i++) {
+        let sBox = document.getElementById(`score-${i+1}`);
+        let pName = getPlayerName(i);
+        sBox.innerHTML = `<div style="font-size:0.85rem">${pName}</div><span id="mon-${i+1}"></span>`;
+        document.getElementById(`mon-${i+1}`).innerText = state.players[i].active ? `$${state.players[i].money}` : "OUT";
+        
+        sBox.classList.remove('active-turn', 'bankrupt');
+        if(!state.players[i].active) sBox.classList.add('bankrupt');
+        else if(state.turn === i) sBox.classList.add('active-turn');
+    }
+}
+
+// 玩家行動流程
+function setCenterMsg(msg) { document.getElementById('action-msg').innerText = msg; }
+
+function rollDice() {
+    if(!state.players[state.turn].active) { endTurn(); return; }
+    playSfx(400, "snap");
+    document.getElementById('btn-roll').style.display = 'none';
+    
+    let roll = Math.floor(Math.random() * 6) + 1;
+    let dDisp = document.getElementById('dice-display');
+    dDisp.innerText = DICE_EMOJIS[roll-1];
+    dDisp.style.display = 'block';
+    
+    setTimeout(() => { movePlayer(roll); }, 600);
+}
+
+function movePlayer(steps) {
+    let p = state.players[state.turn];
+    let newPos = p.pos + steps;
+    let passedStart = false;
+    
+    if(newPos >= 28) {
+        newPos = newPos % 28;
+        passedStart = true;
+        p.money += 2000;
+        playSfx(800, "score");
+        addLog(`[${getPlayerName(state.turn)}] 經過起點 +$2000`, '#2ecc71');
+    }
+    
+    p.pos = newPos;
+    renderBoard();
+    updateUI();
+    
+    setTimeout(() => { handleTileAction(); }, 400);
+}
+
+let pendingAction = null; 
+
+function handleTileAction() {
+    let p = state.players[state.turn];
+    let tile = MAP_DATA[p.pos];
+    const t = TRANSLATIONS[currentLang];
+    let isAI = state.isPve && state.turn !== 0;
+
+    document.getElementById('action-btns').style.display = 'none';
+
+    if (tile.type === 'prop') {
+        let cityName = tile.cityName;
+        if (tile.owner === null) {
+            // 無人地
+            if(p.money >= tile.price) {
+                pendingAction = 'buy';
+                if (isAI) {
+                    setTimeout(confirmAction, 800); // AI 自動隱藏購買
+                } else {
+                    setCenterMsg(`${cityName} 售價$${tile.price}\n${t.buyPrompt}`);
+                    document.getElementById('action-btns').style.display = 'flex';
+                    document.getElementById('btn-act-yes').innerText = t.buyBtn;
+                    document.getElementById('btn-act-no').innerText = t.passBtn;
+                }
+            } else {
+                if(!isAI) setCenterMsg(`${cityName}\n現金不足無法購買`);
+                setTimeout(endTurn, 1000);
+            }
+        } else if (tile.owner === state.turn) {
+            // 自己的地升級
+            let upgCost = Math.floor(tile.price / 2);
+            if (tile.level < 3 && p.money >= upgCost) {
+                pendingAction = 'upgrade';
+                if (isAI) {
+                    setTimeout(confirmAction, 800);
+                } else {
+                    setCenterMsg(`${cityName} 升級需$${upgCost}\n${t.upgPrompt}`);
+                    document.getElementById('action-btns').style.display = 'flex';
+                    document.getElementById('btn-act-yes').innerText = t.upgBtn;
+                    document.getElementById('btn-act-no').innerText = t.passBtn;
+                }
+            } else {
+                if(!isAI) setCenterMsg(`${cityName} (已滿級或缺錢)`);
+                setTimeout(endTurn, 1000);
+            }
+        } else {
+            // 別人的地付租金
+            let rent = tile.baseRent * Math.pow(2, tile.level);
+            p.money -= rent;
+            state.players[tile.owner].money += rent;
+            let ownerName = getPlayerName(tile.owner);
+            
+            addLog(`[${getPlayerName(state.turn)}] 付租金 $${rent} 給 ${ownerName}`, '#e67e22');
+            playSfx(200, "snap");
+            updateUI();
+            checkBankrupt();
+            setTimeout(endTurn, 1500); // 自動換人免按鍵
+        }
+    } else if (tile.type === 'chance' || tile.type === 'chest') {
+        // 機會命運事件
+        let isChance = (tile.type === 'chance');
+        let evList = isChance ? t.chanceEvents : t.chestEvents;
+        let ev = evList[Math.floor(Math.random() * 6)];
+        let title = isChance ? t.chanceMsg : t.chestMsg;
+        let color = isChance ? '#3498db' : '#9b59b6';
+        
+        addLog(`[${getPlayerName(state.turn)}] ${title} ${ev.text}`, color);
+
+        if (ev.action === "money") {
+            p.money += ev.val;
+            if(ev.val > 0) playSfx(800, "score"); else playSfx(200, "snap");
+        } 
+        else if (ev.action === "move") {
+            p.money += ev.val; 
+            p.pos = ev.target; 
+            if(ev.val > 0) playSfx(800, "score"); else playSfx(200, "snap");
+            renderBoard(); 
+        } 
+        else if (ev.action === "jail") {
+            p.skipTurns = 1;
+            playSfx(200, "snap");
+        } 
+        else if (ev.action === "steal") {
+            let othersProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner !== null && tile.owner !== state.turn);
+            if(othersProps.length > 0) {
+                let targetProp = othersProps[Math.floor(Math.random()*othersProps.length)];
+                targetProp.owner = state.turn;
+                addLog(`(成功奪取了 ${targetProp.cityName}!)`, '#2ecc71');
+                playSfx(800, "score");
+                renderBoard();
+            } else { addLog(`(無地可奪)`, '#888'); }
+        } 
+        else if (ev.action === "upgrade_all") {
+            let myProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner === state.turn);
+            myProps.forEach(prop => { prop.level = Math.min(prop.level + 1, 3); });
+            addLog(`(共免費升級了 ${myProps.length} 棟房產!)`, '#2ecc71');
+            playSfx(800, "score");
+            renderBoard();
+        } 
+        else if (ev.action === "lose_prop") {
+            let myProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner === state.turn);
+            p.money += ev.val;
+            if(myProps.length > 0) {
+                let targetProp = myProps[Math.floor(Math.random()*myProps.length)];
+                targetProp.owner = null; targetProp.level = 0;
+                addLog(`(被徵收了 ${targetProp.cityName})`, '#e74c3c');
+            } else { addLog(`(無地可徵收)`, '#888'); }
+            playSfx(800, "score");
+            renderBoard();
+        }
+
+        updateUI();
+        checkBankrupt();
+        setTimeout(endTurn, 2500); // 延長閱讀時間，自動換人免按鍵
+    } else if (tile.type === 'tax') {
+        p.money -= 1000;
+        addLog(`[${getPlayerName(state.turn)}] 繳納稅款 $1000`, '#e74c3c');
+        playSfx(200, "snap");
+        updateUI();
+        checkBankrupt();
+        setTimeout(endTurn, 1500);
+    } else {
+        // 安全區
+        let safeName = tile.type === 'start' ? t.safeNames[0] : t.safeNames[tile.safeId];
+        if(!isAI) setCenterMsg(`抵達 ${safeName}`);
+        setTimeout(endTurn, 1000);
+    }
+}
+
+function confirmAction() {
+    let p = state.players[state.turn];
+    let tile = MAP_DATA[p.pos];
+    
+    if (pendingAction === 'buy') {
+        p.money -= tile.price;
+        tile.owner = state.turn;
+        addLog(`[${getPlayerName(state.turn)}] 買下 ${tile.cityName}`, '#f1c40f');
+        playSfx(600, "score");
+    } else if (pendingAction === 'upgrade') {
+        p.money -= Math.floor(tile.price / 2);
+        tile.level += 1;
+        addLog(`[${getPlayerName(state.turn)}] 升級 ${tile.cityName}`, '#3498db');
+        playSfx(600, "score");
+    }
+    
+    document.getElementById('action-btns').style.display = 'none';
+    setCenterMsg("");
+    renderBoard();
+    updateUI();
+    endTurn();
+}
+
+function passAction() {
+    document.getElementById('action-btns').style.display = 'none';
+    setCenterMsg("");
+    endTurn();
+}
+
+function checkBankrupt() {
+    state.players.forEach((p, idx) => {
+        if(p.active && p.money < 0) {
+            p.active = false;
+            addLog(`[${getPlayerName(idx)}] 破產出局！`, '#e74c3c');
+            MAP_DATA.forEach(t => { if(t.owner === idx) { t.owner = null; t.level = 0; } });
+            playSfx(150, "snap");
+        }
+    });
+}
+
+function endTurn() {
+    pendingAction = null;
+    
+    let activePlayers = state.players.filter(p => p.active);
+    if(activePlayers.length <= 1) {
+        let winnerName = "";
+        const t = TRANSLATIONS[currentLang];
+        if(activePlayers.length === 1) winnerName = getPlayerName(activePlayers[0].id);
+        
+        const overlay = document.getElementById('win-overlay'); 
+        overlay.innerText = `${winnerName}${t.win}`;
+        overlay.classList.add('show');
+        playWinSfx();
+        
+        document.getElementById('action-area').style.display = 'none';
+        return;
+    }
+
+    do {
+        state.turn = (state.turn + 1) % state.numPlayers;
+    } while (!state.players[state.turn].active);
+    
+    startTurn(); // 直接串接下回合
+}
+
+function aiPlay() {
+    if(!state.players[state.turn].active) return;
+    rollDice();
+}
+
+// === UI 與系統層 ===
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value;
+    const t = TRANSLATIONS[currentLang];
+    
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('lbl-mode').innerText = "遊戲模式 (對手數量)";
+    document.getElementById('lbl-theme').innerText = "視覺風格";
+    document.getElementById('lbl-country').innerText = t.lblCountry;
+    document.getElementById('lbl-start-money').innerText = t.lblStartMoney;
+    
+    document.getElementById('mode-sel').options[0].text = t.optPve1;
+    document.getElementById('mode-sel').options[1].text = t.optPve2;
+    document.getElementById('mode-sel').options[2].text = t.optPve3;
+    document.getElementById('mode-sel').options[3].text = t.optPve4;
+    
+    document.getElementById('btn-rules').innerText = "📖 規則";
+    document.getElementById('btn-home').innerText = "🏠 回首頁";
+    document.getElementById('btn-done').innerText = "完成設定";
+    document.getElementById('rules-title').innerText = t.title + " 規則";
+    
+    updateUI();
+    renderBoard();
+}
+
+function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
+
+function resizeBoard() { 
+    const isLandscape = checkOrientation(); 
+    const header = document.getElementById('main-header'); 
+    const boardWrap = document.getElementById('board-wrap');
+    
+    boardWrap.style.width = ''; boardWrap.style.height = ''; boardWrap.style.margin = '0'; header.style.marginRight = '0';
+    const winW = window.innerWidth; const winH = window.innerHeight; 
+    let finalW, finalH;
+    
+    if (isLandscape) {
+        const headerW = 160; const margin = 8; 
+        let maxH = winH - margin * 2; let maxW = maxH; 
+        if (headerW + maxW + margin * 2 > winW) { maxW = winW - headerW - margin * 2; maxH = maxW; }
+        finalW = maxW; finalH = maxH; 
+    } else {
+        const headerH = header.offsetHeight || 60; const margin = 8; 
+        let availW = winW - margin * 2; let availH = winH - headerH - margin * 2; 
+        finalW = availW; finalH = finalW;
+        if (finalH > availH) { finalH = availH; finalW = finalH; }
+    }
+    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; 
+}
+
+function unlockAudio() { userInteracted = true; if(audioCtx.state === 'suspended') audioCtx.resume(); audio.volume = document.getElementById('bgm-vol').value/100; if (!audio.src || audio.src === "" || audio.src.endsWith("/")) { const val = document.getElementById('music-sel').value; if(val !== 'none') audio.src = getMp3Path(val); } if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); }
+function playSfx(freq, type) { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); osc.connect(g); g.connect(audioCtx.destination); if(type === "snap") { osc.type = "sawtooth"; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1); g.gain.setValueAtTime(v*0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1); } else { osc.type = "sine"; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(freq*1.5, audioCtx.currentTime + 0.15); g.gain.setValueAtTime(v*0.6, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime+0.2); } }
+function playWinSfx() { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const notes = [523.25, 659.25, 783.99, 1046.50]; const now = audioCtx.currentTime; for (let i = 0; i < 12; i++) { const freq = notes[i % notes.length]; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = "square"; osc.connect(g); g.connect(audioCtx.destination); const startTime = now + i * 0.12; osc.frequency.setValueAtTime(freq, startTime); g.gain.setValueAtTime(0, startTime); g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12); osc.start(startTime); osc.stop(startTime + 0.12); } }
+
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; renderBoard(); }
+function changeMode() { restart(); }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; } 
+function adjSfx() { }
+function changeMusic() { if(!userInteracted) unlockAudio(); const val = document.getElementById('music-sel').value; if(val === 'none') { audio.pause(); audio.src = ""; document.getElementById('bgm-vol').value = 0; document.getElementById('sfx-vol').value = 0; adjBgm(); adjSfx(); } else { const newPath = getMp3Path(val); if (audio.src !== newPath) { audio.src = newPath; audio.load(); audio.play().catch(e => {}); } } }
+function goHome() { try { if (window.parent && typeof window.parent.closeGame === 'function') window.parent.closeGame(); } catch (e) { console.error(e); } }
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+</script>
+</body>
+</html>
