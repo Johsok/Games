@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>三角棋(Triggle) 2026 </title>
+    <style>
+        :root {
+            /* 基本環境變數 */
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: #e0c38c;
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
+            --line-color: rgba(93, 64, 55, 0.4); 
+            --piece-border: #8b4513;
+            
+            /* 玩家專屬顏色預設 */
+            --p1-c: #e74c3c; 
+            --p2-c: #3498db; 
+            --p3-c: #f1c40f; 
+            --p4-c: #2ecc71; 
+
+            --kill-color: #f1c40f;
+            --border-style: 8px solid #5d4037;
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+
+        /* === 風格定義 === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93,64,55,0.3); --piece-border: #8b5a2b; --p1-c: #c0392b; --p2-c: #2980b9; --p3-c: #f39c12; --p4-c: #27ae60; --border-style: 10px ridge #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: rgba(66,66,66,0.3); --piece-border: #666; --p1-c: #c0392b; --p2-c: #2c3e50; --p3-c: #7f8c8d; --p4-c: #16a085; --border-style: 8px double #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: rgba(0,77,64,0.3); --piece-border: #00695c; --p1-c: #d32f2f; --p2-c: #0277bd; --p3-c: #fbc02d; --p4-c: #004d40; --border-style: 10px inset #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: rgba(62,39,35,0.3); --piece-border: #3e2723; --p1-c: #bf360c; --p2-c: #1565c0; --p3-c: #f9a825; --p4-c: #1b5e20; --border-style: 10px groove #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: rgba(255,215,0,0.3); --piece-border: #b8860b; --p1-c: #e74c3c; --p2-c: #3498db; --p3-c: #ffd700; --p4-c: #9b59b6; --border-style: 8px solid #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: rgba(187,222,251,0.3); --piece-border: #0d47a1; --p1-c: #ff5252; --p2-c: #00bcd4; --p3-c: #ffeb3b; --p4-c: #00e676; --border-style: 8px double #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: rgba(225,190,231,0.3); --piece-border: #4a0072; --p1-c: #ff4081; --p2-c: #18ffff; --p3-c: #ffeb3b; --p4-c: #69f0ae; --border-style: 8px solid #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: rgba(94,49,5,0.3); --piece-border: #5e3105; --p1-c: #c0392b; --p2-c: #2980b9; --p3-c: #f1c40f; --p4-c: #8e44ad; --border-style: 10px dashed #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%); --board-bg: #fff0f5; --line-color: rgba(255,105,180,0.3); --piece-border: #ff1493; --p1-c: #ff1493; --p2-c: #00bfff; --p3-c: #ffd700; --p4-c: #32cd32; --border-style: 8px dotted #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: rgba(93,109,126,0.3); --piece-border: #34495e; --p1-c: #e74c3c; --p2-c: #34495e; --p3-c: #d35400; --p4-c: #2ecc71; --border-style: 8px double #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: rgba(77,208,225,0.3); --piece-border: #b39ddb; --p1-c: #ff8a80; --p2-c: #80d8ff; --p3-c: #ffd180; --p4-c: #64ffda; --border-style: 10px solid #b39ddb; border-radius: 12px; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: rgba(0,255,255,0.2); --piece-border: #0ff; --p1-c: #f0f; --p2-c: #0ff; --p3-c: #ff0; --p4-c: #0f0; --border-style: 8px solid #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: rgba(34,34,34,0.1); --piece-border: #222; --p1-c: #555; --p2-c: #888; --p3-c: #aaa; --p4-c: #000; --border-style: 6px solid #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: rgba(119,119,119,0.3); --piece-border: #888; --p1-c: #ff5252; --p2-c: #448aff; --p3-c: #ffd740; --p4-c: #69f0ae; --border-style: 8px solid #555; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; padding: 0; margin: 0; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; transition: background 0.5s; touch-action: none; box-sizing: border-box; 
+        }
+
+        /* === Header & Status === */
+        header { 
+            width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; 
+            z-index: 100; padding: calc(var(--safe-top) + 6px) 0 6px 0; background: rgba(0,0,0,0.3); 
+            backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s ease; flex-shrink: 0;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        .status { color: #fff; font-weight: bold; font-size: 0.95rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;}
+        
+        .score-box { padding: 2px 8px; border-radius: 12px; font-weight: 900; background: rgba(0,0,0,0.4); border: 2px solid; transition: all 0.3s; }
+        .score-p1 { color: var(--p1-c); border-color: var(--p1-c); }
+        .score-p2 { color: var(--p2-c); border-color: var(--p2-c); }
+        .score-p3 { color: var(--p3-c); border-color: var(--p3-c); }
+        .score-p4 { color: var(--p4-c); border-color: var(--p4-c); }
+        .active-turn { box-shadow: 0 0 12px currentColor; transform: scale(1.15); background: rgba(255,255,255,0.1); }
+
+        .btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 4px 10px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* === 橫向模式 (Mobile Landscape Only) === */
+        body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
+        body.is-landscape header { width: 140px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status { flex-direction: column; font-size: 1rem; margin-bottom: 10px; }
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+
+        /* Settings Panel */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); color: #fff; width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .set-row label { display: block; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; color: #aaa; white-space: nowrap; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
+
+        /* === 遊戲容器 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; height: 100%; padding: 5px; box-sizing: border-box; touch-action: none; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; background: var(--board-bg); background-image: var(--board-texture); 
+            border: var(--border-style); border-radius: 20px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            padding: 2px; box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .board-inner { position: relative; width: 100%; height: 100%; }
+        #game-svg { width: 100%; height: 100%; overflow: visible; touch-action: none; cursor: crosshair; }
+
+        /* SVG 精緻化樣式 */
+        .svg-grid-line { stroke: var(--line-color); stroke-width: 0.04; opacity: 0.8; pointer-events: none; }
+        
+        .svg-peg { filter: drop-shadow(0.1px 0.2px 0.3px rgba(0,0,0,0.8)); pointer-events: bounding-box; cursor: pointer; transition: transform 0.2s; }
+        .svg-peg-inner { pointer-events: none; }
+        
+        /* 動態連線提示 */
+        .svg-hint-line { stroke: rgba(255,255,255,0.5); stroke-width: 0.15; stroke-dasharray: 0.2 0.2; pointer-events: none; animation: dashMove 0.5s linear infinite; }
+        @keyframes dashMove { to { stroke-dashoffset: -0.4; } }
+
+        /* 脈衝提示圈 */
+        .pulse-ring { animation: pulseAnim 1s ease-out infinite; pointer-events: none; }
+        @keyframes pulseAnim { 0% { r: 0.25; stroke-width: 0.1; opacity: 1; } 100% { r: 0.6; stroke-width: 0.02; opacity: 0; } }
+
+        /* 放置的橡皮筋 */
+        .svg-line-placed { stroke-width: 0.35; stroke-linecap: round; filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.7)); transition: all 0.3s; }
+        .svg-line-placed-inner { stroke: rgba(255,255,255,0.4); stroke-width: 0.1; stroke-linecap: round; pointer-events: none; }
+        
+        /* 最後一步專屬特效 */
+        .svg-line-last-halo { stroke-width: 0.8; opacity: 0.6; filter: blur(3px); animation: haloPulse 0.6s alternate infinite; pointer-events: none; }
+        @keyframes haloPulse { 0% { opacity: 0.3; stroke-width: 0.5; } 100% { opacity: 0.9; stroke-width: 1.1; } }
+        
+        .svg-line-last-dash { stroke: #ffffff; stroke-width: 0.15; stroke-dasharray: 0.2 0.3; pointer-events: none; animation: lastDashMove 0.3s linear infinite; filter: drop-shadow(0px 0px 2px #fff); }
+        @keyframes lastDashMove { to { stroke-dashoffset: -0.5; } }
+
+        /* 佔領三角形與棋子 */
+        .svg-triangle { stroke: none; opacity: 0; transition: opacity 0.3s ease; }
+        .svg-triangle.claimed { opacity: 0.35; } 
+
+        .svg-piece { stroke-width: 0.05; filter: drop-shadow(0px 5px 4px rgba(0,0,0,0.7)); }
+        .svg-piece-hl { fill: url(#pieceGlare); pointer-events: none; } /* 琉璃高光點 */
+
+        /* 終局勝利宣言 UI */
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            opacity: 0; z-index: 1000; background: rgba(20, 20, 20, 0.95); 
+            padding: 30px 40px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.2); 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: none; transition: opacity 0.5s; backdrop-filter: blur(10px);
+        }
+        #win-overlay.show { opacity: 1; pointer-events: auto; animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .victory-title { font: 900 2.2em "Microsoft JhengHei", sans-serif; letter-spacing: 2px; color: #fff; text-shadow: 0 0 15px #f1c40f, 0 0 30px #f1c40f; margin-bottom: 20px; white-space: nowrap; }
+        .victory-scores { font-size: 1.2em; font-weight: bold; width: 100%; text-align: left; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; }
+        .victory-scores div { margin: 8px 0; text-shadow: 0 1px 3px rgba(0,0,0,0.8); display: flex; justify-content: space-between; }
+        @keyframes popIn { 0% { transform: translate(-50%,-50%) scale(0.5); } 100% { transform: translate(-50%,-50%) scale(1); } }
+
+        /* Rules Modal */
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; max-height: 80%; border-radius: 12px; border: 1px solid #555; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow-y: auto; color: #ddd; line-height: 1.6; }
+        .rules-content h3 { color: #f1c40f; border-bottom: 1px solid #555; padding-bottom: 10px; margin-top: 0; text-align: center; }
+        .rules-content h4 { color: #fff; margin: 15px 0 5px 0; border-left: 4px solid var(--p1-c); padding-left: 8px; }
+        .rules-content ul { padding-left: 20px; margin: 5px 0; }
+        .rules-content li { margin-bottom: 6px; font-size: 0.95rem; }
+        .close-rules { display: block; width: 100%; padding: 10px; background: var(--p1-c); color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
+
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">三角棋 2026</h2>
+        <div class="status" id="msg">
+            <div id="score-1" class="score-box score-p1 active-turn">P1: 0</div>
+            <div id="score-2" class="score-box score-p2">P2: 0</div>
+            <div id="score-3" class="score-box score-p3" style="display:none">P3: 0</div>
+            <div id="score-4" class="score-box score-p4" style="display:none">P4: 0</div>
+        </div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-mode">對戰模式</label>
+            <select id="mode-sel" onchange="changeMode()">
+                <option value="pve" selected>💻 單人 (1vCPU)</option>
+                <option value="pvp2">👥 雙人 (2P)</option>
+                <option value="pvp3">👥 三人 (3P)</option>
+                <option value="pvp4">👥 四人 (4P)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-theme">視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-diff">電腦難度 (單人)</label>
+            <select id="diff-sel">
+                <option value="easy">簡單 (菜鳥)</option>
+                <option value="medium" selected>中等 (正常)</option>
+                <option value="hard">困難 (高手)</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-side">單人模式：玩家</label>
+            <select id="side-sel" onchange="changeSide()">
+                <option value="1" selected>先手 (P1)</option>
+                <option value="2">後手 (P2)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-music">背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04" selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-lang">語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label id="lbl-vol-bgm">音樂音量</label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="40" oninput="adjBgm()">
+        </div>
+        <div>
+            <label id="lbl-vol-sfx">音效音量</label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="70" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+    
+    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 50%;">
+             <button class="btn" id="btn-rules" style="width:100%; height:38px; background:#2c3e50; border:1px solid #456; padding: 0;" onclick="toggleRules()">📖 規則</button>
+        </div>
+         <div style="flex: 50%;">
+             <button class="btn" id="btn-home" onclick="goHome()" style="width:100%; height:38px; background:#c0392b; border:1px solid #e74c3c; padding: 0;">🏠 回首頁</button>
+        </div>
+    </div>
+
+    <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">三角棋 (Triggle) 規則</h3>
+        <h4 id="rules-h-nature">遊戲目標</h4>
+        <p id="rules-p-nature">透過拉橡皮筋佔領最多的三角形。</p>
+        <h4 id="rules-h-basic">基本玩法</h4>
+        <ul id="rules-ul-basic">
+            <li>每次輪到你時，<b>點擊一個棋柱，接著點擊提示發光的可連線目標 (跨越4格)</b> 來放置橡皮筋。</li>
+            <li>如果你的橡皮筋剛好讓一個或多個「小三角形」的三個邊都被包圍，你就佔領了該三角形（會放上你的專屬顏色琉璃棋子）。</li>
+            <li><b>規則修正：</b>每人每次只能進行一步，放完橡皮筋後立刻換下一位玩家。</li>
+            <li><b>最後一步：</b>上一手放置的橡皮筋會呈現「流動光弧與脈衝發光」狀態提示。</li>
+        </ul>
+        <h4 id="rules-h-win">勝負條件</h4>
+        <ul id="rules-ul-win">
+            <li>當棋盤上無法再拉橡皮筋（或所有三角形都被佔領）時遊戲結束。</li>
+            <li>佔領最多三角形的玩家獲勝！</li>
+        </ul>
+        <button class="close-rules" id="btn-close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board-wrap">
+        <div class="board-inner" id="board">
+            <svg id="game-svg" viewBox="-6 -5.2 12 10.4">
+                <defs>
+                    <radialGradient id="pieceGlare" cx="30%" cy="30%" r="70%">
+                        <stop offset="0%" stop-color="rgba(255,255,255,0.7)" />
+                        <stop offset="50%" stop-color="rgba(255,255,255,0.15)" />
+                        <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+                    </radialGradient>
+                </defs>
+            </svg>
+            <div id="win-overlay"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* ================= WORKER SCRIPT (AI引擎) ================= */
+const workerScript = `
+let TOPOLOGY = null;
+let numPlayers = 2; // AI固定為2人模式 (1vCPU)
+
+function generateTopology() {
+    let pegs = [];
+    for(let q=-3; q<=3; q++) {
+        for(let r=-3; r<=3; r++) {
+            if(Math.abs(q+r) <= 3) pegs.push({q, r});
+        }
+    }
+    let segId = (p1, p2) => {
+        let a = (p1.q+5)*10 + (p1.r+5);
+        let b = (p2.q+5)*10 + (p2.r+5);
+        return a<b ? a+"_"+b : b+"_"+a;
+    };
+    
+    let moves = [];
+    let dirs = [[1,0], [0,1], [1,-1]];
+    pegs.forEach(p => {
+        dirs.forEach(d => {
+            let p4 = {q: p.q + d[0]*3, r: p.r + d[1]*3};
+            if(pegs.find(x => x.q===p4.q && x.r===p4.r)) {
+                let p2 = {q: p.q + d[0], r: p.r + d[1]};
+                let p3 = {q: p.q + d[0]*2, r: p.r + d[1]*2};
+                moves.push({
+                    id: moves.length,
+                    segs: [segId(p,p2), segId(p2,p3), segId(p3,p4)]
+                });
+            }
+        });
+    });
+    
+    let triangles = [];
+    pegs.forEach(p => {
+        // T1 (Upward)
+        let p2 = {q: p.q+1, r: p.r}, p3 = {q: p.q, r: p.r+1};
+        if(pegs.find(x=>x.q===p2.q && x.r===p2.r) && pegs.find(x=>x.q===p3.q && x.r===p3.r)) {
+            triangles.push({ id: triangles.length, segs: [segId(p,p2), segId(p2,p3), segId(p3,p)] });
+        }
+        // T2 (Downward)
+        let p4 = {q: p.q+1, r: p.r}, p5 = {q: p.q+1, r: p.r-1};
+        if(pegs.find(x=>x.q===p4.q && x.r===p4.r) && pegs.find(x=>x.q===p5.q && x.r===p5.r)) {
+            triangles.push({ id: triangles.length, segs: [segId(p,p4), segId(p4,p5), segId(p5,p)] });
+        }
+    });
+    return {moves, triangles};
+}
+
+TOPOLOGY = generateTopology();
+
+function evaluate(state, aiPlayer) {
+    let myScore = state.scores[aiPlayer] || 0;
+    let oppScore = state.scores[3 - aiPlayer] || 0; 
+    let score = (myScore - oppScore) * 1000;
+    
+    let freeTriangles = 0;
+    TOPOLOGY.triangles.forEach(t => {
+        if (!state.claimed[t.id]) {
+            let c = (state.covered[t.segs[0]]?1:0) + (state.covered[t.segs[1]]?1:0) + (state.covered[t.segs[2]]?1:0);
+            if(c === 2) freeTriangles++;
+        }
+    });
+    if (state.turn !== aiPlayer) score -= freeTriangles * 500;
+    else score += freeTriangles * 500;
+    return score + (Math.random() * 10);
+}
+
+function alphaBeta(state, depth, alpha, beta, aiPlayer) {
+    // 若達到搜尋深度，或所有可能的線已拉完，或所有三角形已佔領
+    let claimedCount = state.claimed.filter(Boolean).length;
+    if (depth === 0 || state.playedCount === TOPOLOGY.moves.length || claimedCount === TOPOLOGY.triangles.length) {
+        return evaluate(state, aiPlayer);
+    }
+    let bestScore = state.turn === aiPlayer ? -Infinity : Infinity;
+    
+    for (let i = 0; i < TOPOLOGY.moves.length; i++) {
+        if (!state.played[i]) {
+            let move = TOPOLOGY.moves[i];
+            
+            state.played[i] = true;
+            state.playedCount++;
+            let newlyCovered = [];
+            move.segs.forEach(s => { if(!state.covered[s]) { state.covered[s] = true; newlyCovered.push(s); } });
+            
+            let scoredCount = 0;
+            let newlyClaimed = [];
+            TOPOLOGY.triangles.forEach(t => {
+                if(!state.claimed[t.id] && state.covered[t.segs[0]] && state.covered[t.segs[1]] && state.covered[t.segs[2]]) {
+                    state.claimed[t.id] = true;
+                    newlyClaimed.push(t.id);
+                    scoredCount++;
+                }
+            });
+            
+            let oldTurn = state.turn;
+            if (scoredCount > 0) state.scores[state.turn] = (state.scores[state.turn]||0) + scoredCount;
+            state.turn = (state.turn % numPlayers) + 1;
+            
+            let score = alphaBeta(state, depth - 1, alpha, beta, aiPlayer);
+            
+            // Undo
+            state.played[i] = false;
+            state.playedCount--;
+            newlyCovered.forEach(s => state.covered[s] = false);
+            newlyClaimed.forEach(tid => state.claimed[tid] = false);
+            if (scoredCount > 0) state.scores[oldTurn] -= scoredCount;
+            state.turn = oldTurn;
+            
+            if (state.turn === aiPlayer) {
+                if (score > bestScore) bestScore = score;
+                if (bestScore > alpha) alpha = bestScore;
+                if (alpha >= beta) break;
+            } else {
+                if (score < bestScore) bestScore = score;
+                if (bestScore < beta) beta = bestScore;
+                if (alpha >= beta) break;
+            }
+        }
+    }
+    return bestScore;
+}
+
+self.onmessage = function(e) {
+    const { playedMoves, scores, claimedTriangles, turn, level, playersCount } = e.data;
+    let depth = level === 'easy' ? 1 : (level === 'medium' ? 2 : 4);
+    numPlayers = playersCount; 
+
+    let state = {
+        played: new Array(TOPOLOGY.moves.length).fill(false),
+        covered: {},
+        claimed: new Array(TOPOLOGY.triangles.length).fill(false),
+        scores: {...scores},
+        turn: turn,
+        playedCount: playedMoves.length
+    };
+    
+    playedMoves.forEach(mId => {
+        state.played[mId] = true;
+        TOPOLOGY.moves[mId].segs.forEach(s => state.covered[s] = true);
+    });
+    claimedTriangles.forEach(tid => state.claimed[tid] = true);
+
+    let bestMove = -1;
+    let bestScore = -Infinity;
+    
+    let scoringMoves = [];
+    for(let i=0; i<TOPOLOGY.moves.length; i++){
+        if(!state.played[i]){
+            let s1 = state.covered[TOPOLOGY.moves[i].segs[0]] || false;
+            let s2 = state.covered[TOPOLOGY.moves[i].segs[1]] || false;
+            let s3 = state.covered[TOPOLOGY.moves[i].segs[2]] || false;
+            state.covered[TOPOLOGY.moves[i].segs[0]] = true;
+            state.covered[TOPOLOGY.moves[i].segs[1]] = true;
+            state.covered[TOPOLOGY.moves[i].segs[2]] = true;
+            let count = 0;
+            TOPOLOGY.triangles.forEach(t => {
+                if(!state.claimed[t.id] && state.covered[t.segs[0]] && state.covered[t.segs[1]] && state.covered[t.segs[2]]) count++;
+            });
+            if(count > 0) scoringMoves.push({id: i, count});
+            if(!s1) delete state.covered[TOPOLOGY.moves[i].segs[0]];
+            if(!s2) delete state.covered[TOPOLOGY.moves[i].segs[1]];
+            if(!s3) delete state.covered[TOPOLOGY.moves[i].segs[2]];
+        }
+    }
+    if (scoringMoves.length > 0) {
+        scoringMoves.sort((a,b)=>b.count-a.count);
+        self.postMessage(scoringMoves[0].id);
+        return;
+    }
+
+    for (let i = 0; i < TOPOLOGY.moves.length; i++) {
+        if (!state.played[i]) {
+            let move = TOPOLOGY.moves[i];
+            state.played[i] = true;
+            state.playedCount++;
+            let newlyCovered = [];
+            move.segs.forEach(s => { if(!state.covered[s]) { state.covered[s] = true; newlyCovered.push(s); } });
+            
+            let oldTurn = state.turn;
+            state.turn = (state.turn % numPlayers) + 1;
+            
+            let score = alphaBeta(state, depth - 1, -Infinity, Infinity, turn);
+            
+            state.played[i] = false;
+            state.playedCount--;
+            newlyCovered.forEach(s => delete state.covered[s]);
+            state.turn = oldTurn;
+            
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = i;
+            }
+        }
+    }
+    self.postMessage(bestMove !== -1 ? bestMove : TOPOLOGY.moves.findIndex((v,i)=>!state.played[i]));
+};
+`;
+
+const TRANSLATIONS = {
+    tw: {
+        title: "三角棋 2026",
+        p1Name: "P1", p2Name: "P2", p3Name: "P3", p4Name: "P4",
+        thinking: "思考中...", winSuffix: " 獲 勝", draw: "平 局",
+        settings: "⚙️ 設定", undo: "↩️ 悔棋", restart: "再來一局",
+        lblMode: "對戰模式", optPve: "💻 單人 (1vCPU)", optPvp2: "👥 雙人 (2P)", optPvp3: "👥 三人 (3P)", optPvp4: "👥 四人 (4P)",
+        lblTheme: "視覺風格", lblDiff: "電腦難度 (單人)", lblSide: "單人模式：玩家", 
+        lblMusic: "背景音樂", lblLang: "語言", lblBgmVol: "音樂音量", lblSfxVol: "音效音量",
+        btnRules: "📖 規則", btnHome: "🏠 回首頁", btnDone: "完成設定", btnCloseRules: "關閉說明",
+        rulesTitle: "三角棋 (Triggle) 規則", rulesHNature: "遊戲目標", rulesPNature: "透過拉橡皮筋佔領最多的三角形。",
+        rulesHBasic: "基本玩法",
+        rulesUlBasic: `<li>每次輪到你時，<b>點擊一個棋柱，接著點擊提示發光的可連線目標 (跨越4格)</b> 來放置橡皮筋。</li><li>如果你的橡皮筋剛好讓一個或多個「小三角形」的三個邊都被包圍，你就佔領了該三角形（會放上你的專屬顏色琉璃棋子）。</li><li><b>規則修正：</b>每人每次只能進行一步，放完橡皮筋後立刻換下一位玩家。</li><li><b>最後一步：</b>上一手放置的橡皮筋會呈現「流動光弧與脈衝發光」狀態提示。</li>`,
+        rulesHWin: "勝負條件",
+        rulesUlWin: `<li>當棋盤上無法再拉橡皮筋（或所有三角形都被佔領滿時），遊戲立即結束。</li><li>佔領最多三角形的玩家獲勝！</li>`,
+        diffOpts: { easy: "簡單 (菜鳥)", medium: "中等 (正常)", hard: "困難 (高手)" },
+        musicOpts: { none: "🔇 靜音", '01': "🎵 樂曲 01", '02': "🎵 樂曲 02", '03': "🎵 樂曲 03", '04': "🎵 樂曲 04", '05': "🎵 樂曲 05", '06': "🎵 樂曲 06", '07': "🎵 樂曲 07" },
+        themeOpts: { 't-classic': "💎 經典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 紅木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野獸", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 賽博", 't-sketch': "✏️ 素描" },
+        sideOpts: { '1': "先手 (P1)", '2': "後手 (P2)" } 
+    },
+    cn: {
+        title: "三角棋 2026",
+        p1Name: "P1", p2Name: "P2", p3Name: "P3", p4Name: "P4",
+        thinking: "思考中...", winSuffix: " 获 胜", draw: "平 局",
+        settings: "⚙️ 设置", undo: "↩️ 悔棋", restart: "再来一局",
+        lblMode: "对战模式", optPve: "💻 单人 (1vCPU)", optPvp2: "👥 双人 (2P)", optPvp3: "👥 三人 (3P)", optPvp4: "👥 四人 (4P)",
+        lblTheme: "视觉风格", lblDiff: "电脑难度 (单人)", lblSide: "单人模式：玩家", 
+        lblMusic: "背景音乐", lblLang: "语言", lblBgmVol: "音乐音量", lblSfxVol: "音效音量",
+        btnRules: "📖 规则", btnHome: "🏠 回首页", btnDone: "完成设置", btnCloseRules: "关闭说明",
+        rulesTitle: "三角棋 (Triggle) 规则", rulesHNature: "游戏目标", rulesPNature: "通过拉橡皮筋占领最多的三角形。",
+        rulesHBasic: "基本玩法",
+        rulesUlBasic: `<li>每次轮到你时，<b>点击一个棋柱，接着点击提示发光的可连线目标 (跨越4格)</b> 来放置橡皮筋。</li><li>如果你的橡皮筋刚好让一个或多个「小三角形」的三个边都被包围，你就占领了该三角形（会放上你的专属颜色琉璃棋子）。</li><li><b>规则修正：</b>每人每次只能进行一步，放完橡皮筋后立刻换下一位玩家。</li><li><b>最后一步：</b>上一手放置的橡皮筋会呈现「流动光弧与脉冲发光」状态提示。</li>`,
+        rulesHWin: "胜负条件",
+        rulesUlWin: `<li>当棋盘上无法再拉橡皮筋（或所有三角形都被占领满时），游戏立即结束。</li><li>占领最多三角形的玩家获胜！</li>`,
+        diffOpts: { easy: "简单 (菜鸟)", medium: "中等 (正常)", hard: "困难 (高手)" },
+        musicOpts: { none: "🔇 静音", '01': "🎵 乐曲 01", '02': "🎵 乐曲 02", '03': "🎵 乐曲 03", '04': "🎵 乐曲 04", '05': "🎵 乐曲 05", '06': "🎵 乐曲 06", '07': "🎵 乐曲 07" },
+        themeOpts: { 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 红木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
+        sideOpts: { '1': "先手 (P1)", '2': "后手 (P2)" } 
+    },
+    en: {
+        title: "Triggle 2026",
+        p1Name: "P1", p2Name: "P2", p3Name: "P3", p4Name: "P4",
+        thinking: "Thinking...", winSuffix: " WINS", draw: "DRAW",
+        settings: "⚙️ Settings", undo: "↩️ Undo", restart: "Play Again",
+        lblMode: "Game Mode", optPve: "💻 1vCPU", optPvp2: "👥 2P", optPvp3: "👥 3P", optPvp4: "👥 4P",
+        lblTheme: "Theme", lblDiff: "AI Difficulty", lblSide: "PVE Player", 
+        lblMusic: "Music", lblLang: "Language", lblBgmVol: "Music Vol", lblSfxVol: "SFX Vol",
+        btnRules: "📖 Rules", btnHome: "🏠 Home", btnDone: "Done", btnCloseRules: "Close",
+        rulesTitle: "Triggle Rules", rulesHNature: "Goal", rulesPNature: "Claim the most triangles by placing rubber bands.",
+        rulesHBasic: "How to Play",
+        rulesUlBasic: `<li>On your turn, <b>tap a peg, then tap a highlighted target peg (4 spaces away)</b> to place a band.</li><li>If you complete a small triangle (all 3 sides covered), you claim it with your glowing color token.</li><li><b>Rule update:</b> Only 1 move per turn. Turn immediately passes to the next player.</li><li><b>Last Move:</b> The last placed band will glow brightly and flow with dashed animation.</li>`,
+        rulesHWin: "Victory",
+        rulesUlWin: `<li>The game ends when no more rubber bands can be placed, or all triangles are claimed.</li><li>The player with the most claimed triangles wins!</li>`,
+        diffOpts: { easy: "Easy", medium: "Medium", hard: "Hard" },
+        musicOpts: { none: "🔇 Mute", '01': "🎵 Track 01", '02': "🎵 Track 02", '03': "🎵 Track 03", '04': "🎵 Track 04", '05': "🎵 Track 05", '06': "🎵 Track 06", '07': "🎵 Track 07" },
+        themeOpts: { 't-classic': "💎 Classic", 't-ink': "🏔️ Ink", 't-dark': "🌃 Dark", 't-jade': "📿 Jade", 't-wood': "🪵 Wood", 't-gold': "👑 Gold", 't-ocean': "🌊 Ocean", 't-royal': "🏛️ Royal", 't-beast': "🦁 Beast", 't-playful': "🎈 Playful", 't-shan': "🖌️ Shan", 't-cute': "🍬 Cute", 't-cyber': "🤖 Cyber", 't-sketch': "✏️ Sketch" },
+        sideOpts: { '1': "P1 (First)", '2': "P2 (Second)" } 
+    }
+};
+
+let TOPOLOGY = null;
+let state = { played: [], moveOwners: {}, scores: {1:0, 2:0, 3:0, 4:0}, turn: 1, claimedList: [], history: [] };
+let over = false, numPlayers = 2, worker, isAiThinking = false, userInteracted = false;
+let currentLang = 'tw', playerSide = 1;
+
+// 點擊連線系統變數
+let selectedPeg = null;
+let validTargets = [];
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
+
+window.onload = () => {
+    generateTopology();
+    initWorker();
+    setupTapToConnect();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    audio.src = getMp3Path(document.getElementById('music-sel').value); 
+    
+    // 確保一開始直接最大化RWD排版
+    resizeBoard();
+    setTimeout(resizeBoard, 100); 
+    
+    restart(); 
+    updateVolLabels();
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); resizeBoard(); });
+    document.body.addEventListener('click', unlockAudio, {once:true}); 
+    document.body.addEventListener('touchstart', unlockAudio, {once:true}); 
+    audio.addEventListener('error', (e) => { if(userInteracted && document.getElementById('music-sel').value !== 'none') setTimeout(() => { audio.load(); audio.play().catch(()=>{}); }, 1000); });
+    audio.addEventListener('ended', () => { if(userInteracted && document.getElementById('music-sel').value !== 'none') audio.play().catch(()=>{}); });
+};
+
+function generateTopology() {
+    let pegs = [];
+    for(let q=-3; q<=3; q++) {
+        for(let r=-3; r<=3; r++) {
+            if(Math.abs(q+r) <= 3) {
+                let x = Math.sqrt(3) * (q + r/2);
+                let y = 1.5 * r;
+                pegs.push({q, r, x, y});
+            }
+        }
+    }
+    let segId = (p1, p2) => { let a = (p1.q+5)*10 + (p1.r+5); let b = (p2.q+5)*10 + (p2.r+5); return a<b ? a+"_"+b : b+"_"+a; };
+    
+    let moves = [];
+    let dirs = [[1,0], [0,1], [1,-1]];
+    pegs.forEach(p => {
+        dirs.forEach(d => {
+            let p4 = {q: p.q + d[0]*3, r: p.r + d[1]*3};
+            let p4Obj = pegs.find(x => x.q===p4.q && x.r===p4.r);
+            if(p4Obj) {
+                let p2 = pegs.find(x => x.q===p.q + d[0] && x.r===p.r + d[1]);
+                let p3 = pegs.find(x => x.q===p.q + d[0]*2 && x.r===p.r + d[1]*2);
+                moves.push({ id: moves.length, p1: p, p4: p4Obj, segs: [segId(p,p2), segId(p2,p3), segId(p3,p4Obj)] });
+            }
+        });
+    });
+    
+    let triangles = [];
+    let gridLines = [];
+    let segSet = new Set();
+    pegs.forEach(p => {
+        let p2 = pegs.find(x=>x.q===p.q+1 && x.r===p.r);
+        let p3 = pegs.find(x=>x.q===p.q && x.r===p.r+1);
+        if(p2 && p3) {
+            let cx = (p.x + p2.x + p3.x)/3; let cy = (p.y + p2.y + p3.y)/3;
+            let segs = [segId(p,p2), segId(p2,p3), segId(p3,p)];
+            triangles.push({ id: triangles.length, pts: [p,p2,p3], segs, cx, cy });
+            [ {pa: p, pb: p2, s: segs[0]}, {pa: p2, pb: p3, s: segs[1]}, {pa: p3, pb: p, s: segs[2]} ].forEach(pair => {
+                if(!segSet.has(pair.s)) { segSet.add(pair.s); gridLines.push({x1:pair.pa.x, y1:pair.pa.y, x2:pair.pb.x, y2:pair.pb.y}); }
+            });
+        }
+        let p4 = pegs.find(x=>x.q===p.q+1 && x.r===p.r);
+        let p5 = pegs.find(x=>x.q===p.q+1 && x.r===p.r-1);
+        if(p4 && p5) {
+            let cx = (p.x + p4.x + p5.x)/3; let cy = (p.y + p4.y + p5.y)/3;
+            let segs = [segId(p,p4), segId(p4,p5), segId(p5,p)];
+            triangles.push({ id: triangles.length, pts: [p,p4,p5], segs, cx, cy });
+            [ {pa: p, pb: p4, s: segs[0]}, {pa: p4, pb: p5, s: segs[1]}, {pa: p5, pb: p, s: segs[2]} ].forEach(pair => {
+                if(!segSet.has(pair.s)) { segSet.add(pair.s); gridLines.push({x1:pair.pa.x, y1:pair.pa.y, x2:pair.pb.x, y2:pair.pb.y}); }
+            });
+        }
+    });
+    TOPOLOGY = {pegs, moves, triangles, gridLines};
+}
+
+// === 點擊連線處理邏輯 ===
+function setupTapToConnect() {
+    const svg = document.getElementById('game-svg');
+    
+    function getMousePoint(e) {
+        let pt = svg.createSVGPoint();
+        pt.x = e.clientX || (e.touches && e.touches.length > 0 ? e.touches[0].clientX : 0);
+        pt.y = e.clientY || (e.touches && e.touches.length > 0 ? e.touches[0].clientY : 0);
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    svg.addEventListener('click', e => {
+        let isPve = document.getElementById('mode-sel').value === 'pve';
+        if(over || (isPve && state.turn !== playerSide)) return;
+        
+        let pt = getMousePoint(e);
+        let nearest = null; let minDist = 0.5;
+        TOPOLOGY.pegs.forEach(p => {
+            let d = Math.hypot(p.x - pt.x, p.y - pt.y);
+            if(d < minDist) { minDist = d; nearest = p; }
+        });
+        
+        if(nearest) {
+            if(selectedPeg === nearest) {
+                // 取消選取
+                selectedPeg = null; validTargets = [];
+            } else if (selectedPeg) {
+                // 檢查是否點擊合法目標
+                let move = validTargets.find(m => m.target === nearest);
+                if(move) {
+                    makeMove(move.id);
+                    selectedPeg = null; validTargets = [];
+                } else {
+                    // 若點擊其他非目標棋柱，則直接改選此棋柱
+                    selectPeg(nearest);
+                }
+            } else {
+                selectPeg(nearest);
+            }
+            renderBoard();
+        } else {
+            // 點擊空白處取消選取
+            selectedPeg = null; validTargets = [];
+            renderBoard();
+        }
+    });
+}
+
+function selectPeg(p) {
+    selectedPeg = p;
+    validTargets = [];
+    TOPOLOGY.moves.forEach(m => {
+        if (!state.played.includes(m.id)) {
+            if (m.p1 === p) validTargets.push({ target: m.p4, id: m.id });
+            if (m.p4 === p) validTargets.push({ target: m.p1, id: m.id });
+        }
+    });
+}
+
+function initWorker() {
+    const blob = new Blob([workerScript], {type: 'application/javascript'}); 
+    worker = new Worker(URL.createObjectURL(blob)); 
+    worker.onmessage = e => { 
+        isAiThinking = false; 
+        const mId = e.data; 
+        if(mId !== undefined && mId !== -1) makeMove(mId); 
+    }; 
+}
+
+function restart() { 
+    state = { played: [], moveOwners: {}, scores: {1:0, 2:0, 3:0, 4:0}, turn: 1, claimedList: [], history: [] };
+    over = false; isAiThinking = false; 
+    selectedPeg = null; validTargets = [];
+    
+    let modeVal = document.getElementById('mode-sel').value;
+    numPlayers = modeVal === 'pve' ? 2 : parseInt(modeVal.replace('pvp',''));
+    
+    document.getElementById('score-3').style.display = numPlayers >= 3 ? 'block' : 'none';
+    document.getElementById('score-4').style.display = numPlayers === 4 ? 'block' : 'none';
+    
+    document.getElementById('win-overlay').classList.remove('show');
+    updateStatus(); 
+    renderBoard(); 
+    checkAiTurn();
+}
+
+function checkAiTurn() {
+    let modeVal = document.getElementById('mode-sel').value;
+    if(!over && modeVal === 'pve' && state.turn !== playerSide) {
+        isAiThinking = true;
+        updateStatus();
+        setTimeout(() => {
+            worker.postMessage({
+                playedMoves: state.played,
+                scores: state.scores,
+                claimedTriangles: state.claimedList.map(c=>c.id),
+                turn: state.turn,
+                level: document.getElementById('diff-sel').value,
+                playersCount: numPlayers
+            });
+        }, 50);
+    }
+}
+
+function changeSide() { if(isAiThinking) return; playerSide = parseInt(document.getElementById('side-sel').value); restart(); }
+
+function getPlayerColor(p) {
+    if(p===1) return 'var(--p1-c)'; if(p===2) return 'var(--p2-c)';
+    if(p===3) return 'var(--p3-c)'; return 'var(--p4-c)';
+}
+
+function makeMove(mId) {
+    if(state.played.includes(mId)) return;
+    
+    // Save state
+    state.history.push({
+        played: [...state.played], moveOwners: {...state.moveOwners}, scores: {...state.scores}, turn: state.turn, claimedList: [...state.claimedList]
+    });
+
+    state.played.push(mId);
+    state.moveOwners[mId] = state.turn; 
+    
+    let covered = {};
+    state.played.forEach(id => TOPOLOGY.moves[id].segs.forEach(s => covered[s] = true));
+    
+    let scoredThisTurn = 0;
+    TOPOLOGY.triangles.forEach(t => {
+        if (!state.claimedList.find(c => c.id === t.id)) {
+            if (covered[t.segs[0]] && covered[t.segs[1]] && covered[t.segs[2]]) {
+                state.claimedList.push({ id: t.id, owner: state.turn });
+                scoredThisTurn++;
+            }
+        }
+    });
+
+    if (scoredThisTurn > 0) {
+        state.scores[state.turn] += scoredThisTurn;
+        playSfx(800, "score");
+    } else {
+        playSfx(300, "snap");
+    }
+
+    // 強制換下一位玩家
+    state.turn = (state.turn % numPlayers) + 1;
+
+    renderBoard();
+    updateStatus();
+
+    // ★ 判斷終局：所有線拉完，或所有三角形(棋格)皆被佔滿時立即結算 ★
+    if (state.played.length === TOPOLOGY.moves.length || state.claimedList.length === TOPOLOGY.triangles.length) {
+        over = true;
+        
+        let maxScore = -1; let winner = [];
+        for(let i=1; i<=numPlayers; i++) {
+            if(state.scores[i] > maxScore) { maxScore = state.scores[i]; winner = [i]; }
+            else if(state.scores[i] === maxScore) { winner.push(i); }
+        }
+        
+        const t = TRANSLATIONS[currentLang];
+        let titleMsg = "";
+        if(winner.length > 1) titleMsg = `🌟 ${t.draw} 🌟`;
+        else titleMsg = `🏆 P${winner[0]}${t.winSuffix} 🏆`;
+
+        // 構建華麗的終局結算畫面
+        let scoreHtml = `<div class="victory-scores">`;
+        for(let i=1; i<=numPlayers; i++) {
+            scoreHtml += `<div style="color: ${getPlayerColor(i)};"><span>P${i} 玩家</span> <span>${state.scores[i] || 0}</span></div>`;
+        }
+        scoreHtml += `</div>`;
+        
+        // 加入再來一局按鈕
+        scoreHtml += `<button class="btn btn-red" style="margin-top:20px; font-size: 1rem; padding: 10px 25px;" onclick="document.getElementById('win-overlay').classList.remove('show'); restart();">🔄 ${t.restart}</button>`;
+
+        const overlay = document.getElementById('win-overlay'); 
+        overlay.innerHTML = `<div class="victory-title">${titleMsg}</div>${scoreHtml}`; 
+        overlay.classList.add('show');
+        
+        playWinSfx();
+    } else {
+        checkAiTurn();
+    }
+}
+
+function undo() { 
+    if(over || isAiThinking || state.history.length === 0) return; 
+    let h = state.history.pop(); 
+    state.played = [...h.played]; state.moveOwners = {...h.moveOwners}; state.scores = {...h.scores}; state.turn = h.turn; state.claimedList = [...h.claimedList];
+    
+    let isPve = document.getElementById('mode-sel').value === 'pve';
+    if(isPve && state.turn !== playerSide && state.history.length > 0) { 
+        h = state.history.pop(); 
+        state.played = [...h.played]; state.moveOwners = {...h.moveOwners}; state.scores = {...h.scores}; state.turn = h.turn; state.claimedList = [...h.claimedList];
+    } 
+    selectedPeg = null; validTargets = [];
+    updateStatus(); renderBoard(); 
+}
+
+function renderBoard() {
+    const svg = document.getElementById('game-svg');
+    // 保留 defs (琉璃漸層高光)
+    let html = `
+        <defs>
+            <radialGradient id="pieceGlare" cx="30%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.7)" />
+                <stop offset="50%" stop-color="rgba(255,255,255,0.15)" />
+                <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+            </radialGradient>
+        </defs>
+    `;
+
+    // 0. 底部網格線
+    TOPOLOGY.gridLines.forEach(l => {
+        html += `<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" class="svg-grid-line" />`;
+    });
+
+    // 1. Claimed Triangles (背景底色)
+    state.claimedList.forEach(c => {
+        let t = TOPOLOGY.triangles[c.id];
+        let colorVar = getPlayerColor(c.owner);
+        html += `<polygon points="${t.pts[0].x},${t.pts[0].y} ${t.pts[1].x},${t.pts[1].y} ${t.pts[2].x},${t.pts[2].y}" fill="${colorVar}" class="svg-triangle claimed" />`;
+    });
+
+    // 2. Played Moves (帶顏色的橡皮筋)
+    let lastMoveId = state.played.length > 0 ? state.played[state.played.length - 1] : -1;
+    state.played.forEach(mId => {
+        let m = TOPOLOGY.moves[mId];
+        let ownerColor = getPlayerColor(state.moveOwners[mId]);
+        let isLast = (mId === lastMoveId);
+        
+        // 最後一步發散光環特效
+        if (isLast) {
+            html += `<line x1="${m.p1.x}" y1="${m.p1.y}" x2="${m.p4.x}" y2="${m.p4.y}" class="svg-line-last-halo" stroke="${ownerColor}" />`;
+        }
+        
+        html += `<line x1="${m.p1.x}" y1="${m.p1.y}" x2="${m.p4.x}" y2="${m.p4.y}" class="svg-line-placed" stroke="${ownerColor}" />`;
+        html += `<line x1="${m.p1.x}" y1="${m.p1.y}" x2="${m.p4.x}" y2="${m.p4.y}" class="svg-line-placed-inner" />`;
+        
+        // 最後一步流動虛線特效
+        if (isLast) {
+            html += `<line x1="${m.p1.x}" y1="${m.p1.y}" x2="${m.p4.x}" y2="${m.p4.y}" class="svg-line-last-dash" />`;
+        }
+    });
+
+    // 3. Pegs (棋柱)
+    TOPOLOGY.pegs.forEach(p => {
+        html += `<circle cx="${p.x}" cy="${p.y}" r="0.25" class="svg-peg" fill="var(--board-bg)" stroke="var(--piece-border)" stroke-width="0.1" />`;
+        html += `<circle cx="${p.x}" cy="${p.y}" r="0.12" fill="var(--piece-border)" class="svg-peg-inner" />`;
+    });
+
+    // 4. Triangle Tokens (精緻立體琉璃棋子)
+    state.claimedList.forEach(c => {
+        let t = TOPOLOGY.triangles[c.id];
+        let colorVar = getPlayerColor(c.owner);
+        // 主體色 + 深層陰影
+        html += `<circle cx="${t.cx}" cy="${t.cy}" r="0.28" fill="${colorVar}" stroke="#fff" class="svg-piece" />`;
+        // 頂層反光亮點
+        html += `<circle cx="${t.cx}" cy="${t.cy}" r="0.28" class="svg-piece-hl" />`;
+    });
+
+    // 5. 點擊連線互動提示
+    if(selectedPeg && !over) {
+        // 發光環繞選取的棋柱
+        html += `<circle cx="${selectedPeg.x}" cy="${selectedPeg.y}" r="0.4" fill="none" stroke="#fff" stroke-width="0.08" class="pulse-ring" />`;
+        
+        validTargets.forEach(tgt => {
+            // 與合法目標連線的虛線提示
+            html += `<line x1="${selectedPeg.x}" y1="${selectedPeg.y}" x2="${tgt.target.x}" y2="${tgt.target.y}" class="svg-hint-line" />`;
+            // 發光環繞目標棋柱
+            html += `<circle cx="${tgt.target.x}" cy="${tgt.target.y}" r="0.38" fill="none" stroke="${getPlayerColor(state.turn)}" stroke-width="0.08" class="pulse-ring" />`;
+        });
+    }
+
+    svg.innerHTML = html;
+}
+
+function updateStatus() { 
+    const t = TRANSLATIONS[currentLang];
+    for(let i=1; i<=4; i++) {
+        const s = document.getElementById(`score-${i}`);
+        if(s) {
+            s.innerText = `P${i}: ${state.scores[i] || 0}`;
+            s.classList.remove('active-turn');
+            if(!over && state.turn === i) s.classList.add('active-turn');
+        }
+    }
+}
+
+function changeLang() {
+    currentLang = document.getElementById('lang-sel').value;
+    const t = TRANSLATIONS[currentLang];
+    
+    document.getElementById('app-title').innerText = t.title;
+    document.getElementById('btn-settings').innerText = t.settings;
+    document.getElementById('btn-undo').innerText = t.undo;
+    document.getElementById('btn-restart').innerText = t.restart;
+    
+    document.getElementById('lbl-mode').innerText = t.lblMode;
+    document.getElementById('mode-sel').options[0].text = t.optPve;
+    document.getElementById('mode-sel').options[1].text = t.optPvp2;
+    document.getElementById('mode-sel').options[2].text = t.optPvp3;
+    document.getElementById('mode-sel').options[3].text = t.optPvp4;
+
+    document.getElementById('lbl-theme').innerText = t.lblTheme;
+    document.getElementById('lbl-diff').innerText = t.lblDiff;
+    document.getElementById('lbl-side').innerText = t.lblSide; 
+    document.getElementById('lbl-music').innerText = t.lblMusic;
+    document.getElementById('lbl-lang').innerText = t.lblLang;
+    document.getElementById('btn-rules').innerText = t.btnRules;
+    document.getElementById('btn-home').innerText = t.btnHome;
+    document.getElementById('btn-done').innerText = t.btnDone;
+
+    const diffSel = document.getElementById('diff-sel'); Array.from(diffSel.options).forEach(opt => { if(t.diffOpts[opt.value]) opt.text = t.diffOpts[opt.value]; });
+    const musicSel = document.getElementById('music-sel'); Array.from(musicSel.options).forEach(opt => { if(t.musicOpts[opt.value]) opt.text = t.musicOpts[opt.value]; });
+    const themeSel = document.getElementById('theme-sel'); Array.from(themeSel.options).forEach(opt => { if(t.themeOpts[opt.value]) opt.text = t.themeOpts[opt.value]; });
+    const sideSel = document.getElementById('side-sel'); Array.from(sideSel.options).forEach(opt => { if(t.sideOpts[opt.value]) opt.text = t.sideOpts[opt.value]; });
+
+    document.getElementById('rules-title').innerText = t.rulesTitle;
+    document.getElementById('rules-h-nature').innerText = t.rulesHNature;
+    document.getElementById('rules-p-nature').innerText = t.rulesPNature;
+    document.getElementById('rules-h-basic').innerText = t.rulesHBasic;
+    document.getElementById('rules-h-win').innerText = t.rulesHWin;
+    document.getElementById('btn-close-rules').innerText = t.btnCloseRules;
+    document.getElementById('rules-ul-basic').innerHTML = t.rulesUlBasic;
+    document.getElementById('rules-ul-win').innerHTML = t.rulesUlWin;
+
+    updateStatus(); updateVolLabels(); 
+}
+
+function updateVolLabels() {
+    const t = TRANSLATIONS[currentLang];
+    document.getElementById('lbl-vol-bgm').innerText = `${t.lblBgmVol} (${document.getElementById('bgm-vol').value}%)`;
+    document.getElementById('lbl-vol-sfx').innerText = `${t.lblSfxVol} (${document.getElementById('sfx-vol').value}%)`;
+}
+
+function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
+
+// 最大化版面與 RWD 動態排版 (確保初始即充滿畫面)
+function resizeBoard() { 
+    const isLandscape = checkOrientation(); 
+    const header = document.getElementById('main-header'); 
+    const boardWrap = document.getElementById('board-wrap');
+    
+    boardWrap.style.width = ''; boardWrap.style.height = ''; boardWrap.style.margin = '0'; header.style.marginRight = '0';
+    const winW = window.innerWidth; const winH = window.innerHeight; 
+    let finalW, finalH;
+    
+    if (isLandscape) {
+        const headerW = 140; 
+        const margin = 10;
+        let maxH = winH - margin; 
+        let maxW = maxH * 1.15; 
+        if (headerW + maxW + margin * 2 > winW) {
+            maxW = winW - headerW - margin * 2;
+            maxH = maxW / 1.15;
+        }
+        finalW = maxW; finalH = maxH; 
+    } else {
+        const headerH = header.offsetHeight || 60; 
+        const margin = 10;
+        let availW = winW - margin; 
+        let availH = winH - headerH - margin; 
+        
+        let ratio = 1.15; 
+        finalW = availW; 
+        finalH = finalW / ratio;
+        
+        if (finalH > availH) { finalH = availH; finalW = finalH * ratio; }
+    }
+    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; 
+}
+
+function unlockAudio() { userInteracted = true; if(audioCtx.state === 'suspended') audioCtx.resume(); audio.volume = document.getElementById('bgm-vol').value/100; if (!audio.src || audio.src === "" || audio.src.endsWith("/")) { const val = document.getElementById('music-sel').value; if(val !== 'none') audio.src = getMp3Path(val); } if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); }
+function playSfx(freq, type) { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); osc.connect(g); g.connect(audioCtx.destination); if(type === "snap") { osc.type = "sawtooth"; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1); g.gain.setValueAtTime(v*0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1); } else { osc.type = "sine"; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(freq*1.5, audioCtx.currentTime + 0.15); g.gain.setValueAtTime(v*0.6, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime+0.2); } }
+function playWinSfx() { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const notes = [523.25, 659.25, 783.99, 1046.50]; const now = audioCtx.currentTime; for (let i = 0; i < 12; i++) { const freq = notes[i % notes.length]; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = "square"; osc.connect(g); g.connect(audioCtx.destination); const startTime = now + i * 0.12; osc.frequency.setValueAtTime(freq, startTime); g.gain.setValueAtTime(0, startTime); g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12); osc.start(startTime); osc.stop(startTime + 0.12); } }
+
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; checkOrientation(); renderBoard(); }
+function changeMode() { restart(); }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; updateVolLabels(); } 
+function adjSfx() { updateVolLabels(); }
+function changeMusic() { if(!userInteracted) unlockAudio(); const val = document.getElementById('music-sel').value; if(val === 'none') { audio.pause(); audio.src = ""; document.getElementById('bgm-vol').value = 0; document.getElementById('sfx-vol').value = 0; adjBgm(); adjSfx(); } else { const newPath = getMp3Path(val); if (audio.src !== newPath) { audio.src = newPath; audio.load(); audio.play().catch(e => {}); } } }
+function goHome() { try { if (window.parent && typeof window.parent.closeGame === 'function') window.parent.closeGame(); } catch (e) { console.error(e); } }
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 67 || e.keyCode == 74)) || (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) return false; };
+console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;"); console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+</script>
+</body>
+</html>
