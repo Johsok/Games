@@ -102,6 +102,12 @@
             50% { transform: translate(var(--tx), var(--ty)); box-shadow: 0 0 15px var(--glow-color); }
         }
 
+        /* === 5. 三角棋動畫：中心脈衝 === */
+        @keyframes triangle-pulse-inner {
+            0% { transform: translate(-50%, -50%) scale(0.8); box-shadow: 0 0 5px var(--neon-purple); }
+            100% { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 20px var(--neon-purple); }
+        }
+
         /* 其他通用動畫 */
         @keyframes slow-rotate {
             from { transform: rotate(0deg); }
@@ -179,7 +185,7 @@
             animation: fade-in-up 0.8s ease-out forwards, border-pulse 4s ease-in-out infinite;
         }
 
-        /* 順序動畫，多加第7個順位給新增的遊戲 */
+        /* 順序動畫，多加第7、8個順位給新增的遊戲 */
         .game-card:nth-child(1) { animation-delay: 0.1s, 0s; }
         .game-card:nth-child(2) { animation-delay: 0.2s, 1s; }
         .game-card:nth-child(3) { animation-delay: 0.3s, 2s; }
@@ -187,6 +193,7 @@
         .game-card:nth-child(5) { animation-delay: 0.5s, 4s; }
         .game-card:nth-child(6) { animation-delay: 0.6s, 5s; }
         .game-card:nth-child(7) { animation-delay: 0.7s, 6s; }
+        .game-card:nth-child(8) { animation-delay: 0.8s, 7s; } /* 為三角棋新增的動畫延遲 */
 
         .game-card::before, .game-card::after {
             content: ""; position: absolute; width: 20px; height: 20px;
@@ -401,6 +408,42 @@
         /* HOVER GLOW */
         .game-card:hover .p-piece { box-shadow: 0 0 20px var(--glow-color); border-color: #fff; }
 
+        /* 7. 三角棋 (常駐三角形輪廓旋轉 + 中心脈衝 + 懸停發光) */
+        .icon-triangle-box {
+            width: 60px; height: 60px; position: relative;
+            animation: slow-rotate 8s linear infinite; /* 常駐旋轉 */
+        }
+        .icon-triangle-box::before {
+            content: ""; position: absolute; top: 10%; left: 50%; width: 0; height: 0;
+            border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 35px solid rgba(100,255,218,0.2);
+            transform: translateX(-50%);
+            filter: drop-shadow(0 0 5px var(--jade-glow));
+            transition: all 0.3s;
+        }
+        .t-node {
+            width: 12px; height: 12px; background: var(--bg-deep);
+            border: 2px solid var(--jade-glow); border-radius: 50%; position: absolute;
+            box-shadow: 0 0 10px var(--jade-glow);
+            animation: piece-pulse 2s infinite;
+        }
+        /* 三角形頂點配置 */
+        .t-n1 { top: 5%; left: 50%; transform: translateX(-50%); }
+        .t-n2 { bottom: 15%; left: 5%; }
+        .t-n3 { bottom: 15%; right: 5%; }
+
+        /* 中心脈衝節點 */
+        .t-center {
+            width: 16px; height: 16px; background: var(--neon-purple); border-radius: 50%;
+            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px var(--neon-purple);
+            animation: triangle-pulse-inner 2s infinite alternate;
+        }
+
+        /* HOVER GLOW FOR TRIANGLE CHESS */
+        .game-card:hover .icon-triangle-box::before { border-bottom-color: rgba(100,255,218,0.6); filter: drop-shadow(0 0 10px var(--jade-glow)); }
+        .game-card:hover .t-node { background: var(--jade-glow); box-shadow: 0 0 20px #fff; }
+        .game-card:hover .t-center { background: #fff; box-shadow: 0 0 30px var(--neon-purple); }
+
         /* 文字樣式 */
         .game-title {
             font-size: 1.3rem; /* 微幅縮小 */
@@ -447,6 +490,12 @@
 
             .icon-puzzle-box { width: 60px; height: 60px; }
             .p-piece { width: 26px; height: 26px; }
+
+            /* 三角棋手機版微調 */
+            .icon-triangle-box { width: 50px; height: 50px; }
+            .icon-triangle-box::before { border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid rgba(100,255,218,0.2); top: 15%; }
+            .t-node { width: 10px; height: 10px; }
+            .t-center { width: 12px; height: 12px; }
         }
     </style>
 </head>
@@ -543,6 +592,19 @@
             </div>
             <span class="game-title">拼圖</span>
             <span class="game-en-title">PUZZLE</span>
+        </a>
+
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Triangle_Chess.html')">
+            <div class="icon-box">
+                <div class="icon-triangle-box">
+                    <div class="t-node t-n1"></div>
+                    <div class="t-node t-n2"></div>
+                    <div class="t-node t-n3"></div>
+                    <div class="t-center"></div>
+                </div>
+            </div>
+            <span class="game-title">三角棋</span>
+            <span class="game-en-title">TRIANGLE CHESS</span>
         </a>
 
     </div>
