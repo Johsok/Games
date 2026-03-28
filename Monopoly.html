@@ -125,8 +125,8 @@
         .svg-text { font-family: sans-serif; font-size: 2px; font-weight: bold; fill: #222; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
         .svg-text-small { font-size: 1.55px; font-weight:bold; fill: #444; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
         
-        /* [修正4] 新增的明亮房子樣式 */
-        .svg-house { fill: #ff1111; stroke: #fff; stroke-width: 0.2; }
+        /* [更新] 鮮明大紅色的房子 */
+        .svg-house { fill: #ff1111; stroke: #fff; stroke-width: 0.3; filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.8)); }
 
         /* === 中央事件推播與操作 UI 區塊 === */
         #center-ui {
@@ -155,7 +155,7 @@
             word-break: break-word; 
             overflow: hidden; 
             display: -webkit-box;
-            -webkit-line-clamp: 2; /* 限制最多兩行 */
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             line-height: 1.3;
             text-shadow: 1px 1px 2px #000, 0 0 3px rgba(0,0,0,0.8);
@@ -235,7 +235,6 @@
             background: transparent; 
             z-index: 5000;
             display: none; align-items: center; justify-content: center;
-            backdrop-filter: none;
             pointer-events: none; 
         }
         #event-card {
@@ -418,7 +417,7 @@
         <ul id="rules-ul-basic">
             <li>每回合點擊<b>「擲骰子」</b>前進。</li>
             <li>走到無人空地時，可選擇是否花費現金<b>購買土地</b>。(房價與租金各自獨立隨機)</li>
-            <li>走到自己的土地時，可花費一半地價<b>升級房屋</b>（最多可蓋3棟，租金倍增）。</li>
+            <li>走到自己的土地時，可花費一半地價<b>升級房屋</b>（支援無限升級，租金倍增）。</li>
             <li>走到他人的土地時，必須<b>強制支付租金</b>。</li>
             <li>經過起點時，可獲得獎勵金 <b>$20,000</b>。</li>
             <li>走到「機會」或「命運」格，會真實觸發具備<b>逆轉機制</b>的隨機事件（如強制入獄、奪取土地、免費升級等）！</li>
@@ -482,21 +481,22 @@
 <script>
 /* ================= 大富翁核心邏輯 ================= */
 
+// [更新] 加大城市數量以補足公園拔除後的 20 格地產空缺
 const CITIES_DATA = {
-    tw: ["台北","新北","桃園","台中","台南","高雄","基隆","新竹","嘉義","苗栗","彰化","南投","雲林","屏東","宜蘭","花蓮","台東","澎湖","金門"],
-    us: ["紐約","洛杉磯","芝加哥","休士頓","鳳凰城","費城","聖地牙哥","達拉斯","奧斯汀","西雅圖","丹佛","波士頓","底特律","邁阿密","亞特蘭大","賭城","奧蘭多","華盛頓","夏威夷"],
-    jp: ["東京","大阪","橫濱","名古屋","札幌","福岡","神戶","京都","川崎","埼玉","廣島","仙台","千葉","熊本","新潟","濱松","長崎","沖繩","奈良"],
-    cn: ["北京","上海","廣州","深圳","成都","杭州","重慶","武漢","西安","苏蘇州","天津","南京","長沙","鄭州","東莞","青島","瀋陽","寧波","昆明"],
-    au: ["雪梨","墨爾本","布里斯本","伯斯","阿得雷德","坎培拉","荷巴特","達爾文","黃金海岸","紐卡索","臥龍崗","吉朗","凱恩斯","湯斯維爾","巴拉瑞特","本迪戈","麥覺理","陽光海岸","愛麗斯泉"],
-    uk: ["倫敦","曼徹斯特","伯明罕","利物浦","愛丁堡","格拉斯哥","里茲","布里斯托","雪菲爾","卡地夫","貝爾法斯特","諾丁漢","紐卡索","劍橋","牛津","布萊頓","約克","巴斯","溫莎"],
-    eu: ["巴黎","柏林","羅馬","馬德里","維也納","阿姆斯特丹","布魯塞爾","斯德哥爾摩","雅典","里斯本","華沙","布拉格","布達佩斯","哥本哈根","都柏林","赫爾辛基","奧斯陸","慕尼黑","米蘭"]
+    tw: ["台北","新北","桃園","台中","台南","高雄","基隆","新竹","嘉義","苗栗","彰化","南投","雲林","屏東","宜蘭","花蓮","台東","澎湖","金門","馬祖"],
+    us: ["紐約","洛杉磯","芝加哥","休士頓","鳳凰城","費城","聖地牙哥","達拉斯","奧斯汀","西雅圖","丹佛","波士頓","底特律","邁阿密","亞特蘭大","賭城","奧蘭多","華盛頓","夏威夷","阿拉斯加"],
+    jp: ["東京","大阪","橫濱","名古屋","札幌","福岡","神戶","京都","川崎","埼玉","廣島","仙台","千葉","熊本","新潟","濱松","長崎","沖繩","奈良","北海道"],
+    cn: ["北京","上海","廣州","深圳","成都","杭州","重慶","武漢","西安","蘇州","天津","南京","長沙","鄭州","東莞","青島","瀋陽","寧波","昆明","哈爾濱"],
+    au: ["雪梨","墨爾本","布里斯本","伯斯","阿得雷德","坎培拉","荷巴特","達爾文","黃金海岸","紐卡索","臥龍崗","吉朗","凱恩斯","湯斯維爾","巴拉瑞特","本迪戈","麥覺理","陽光海岸","愛麗斯泉","拜倫灣"],
+    uk: ["倫敦","曼徹斯特","伯明罕","利物浦","愛丁堡","格拉斯哥","里茲","布里斯托","雪菲爾","卡地夫","貝爾法斯特","諾丁漢","紐卡索","劍橋","牛津","布萊頓","約克","巴斯","溫莎","南安普敦"],
+    eu: ["巴黎","柏林","羅馬","馬德里","維也納","阿姆斯特丹","布魯塞爾","斯德哥爾摩","雅典","里斯本","華沙","布拉格","布達佩斯","哥本哈根","都柏林","赫爾辛基","奧斯陸","慕尼黑","米蘭","威尼斯"]
 };
 
 const NORMAL_NAMES = ["阿土伯", "孫小美", "柳如烟", "羅峰", "錢夫人", "約翰", "愛麗絲", "田中", "金貝貝", "沙隆巴斯", "伊凡", "索菲亞", "木村", "李雷", "韓梅梅"];
 const HUMAN_TYPES = ['boy', 'girl', 'uncle', 'lady', 'ninja'];
 const PALETTE_COLORS = ['#ff4757', '#1e90ff', '#ffd32a', '#2ed573', '#a55eea', '#ff7f50', '#00d8d6', '#ff6b81', '#0be881', '#fbc531'];
 
-// [更新] 最新修訂事件配置與數值
+// [修訂] 事件數值與文字修正
 const TRANSLATIONS = {
     tw: {
         title: "大富翁 2026", player: "玩家", computer: "電腦", win: " 獲勝！",
@@ -611,7 +611,19 @@ function getPlayerName(id) {
     return state.players[id] ? state.players[id].name : `P${id+1}`;
 }
 
-// 事件推播系統
+// 支援 iOS 初始化音訊的延遲載入防呆機制
+let audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) audioCtx = new AudioContext();
+        } catch(e) { console.warn("AudioContext init failed", e); }
+    }
+    return audioCtx;
+}
+
+// 事件推播系統 (帶入玩家專屬顏色)
 function addLog(text, color) {
     eventLogs.unshift({text, color});
     if(eventLogs.length > 12) eventLogs.pop(); 
@@ -629,7 +641,7 @@ function renderLogs() {
     }).join('');
 }
 
-// [修正1] 洗牌地圖，確保4邊各自只有1個機會或命運，絕不相鄰
+// [修改1] 重新設計地圖演算法：保證四個邊各自最多1個機會或命運，絕不相鄰
 function initMap() {
     MAP_DATA = [];
     
@@ -641,33 +653,34 @@ function initMap() {
     let cityPool = [...CITIES_DATA[selCountry]];
     cityPool.sort(() => Math.random() - 0.5);
 
-    // 分配四邊的內部格子索引 (避開角落 0, 7, 14, 21)
+    // 四個街道內部格子 (排除角落 0, 7, 14, 21)
     let side0 = [1,2,3,4,5,6];
     let side1 = [8,9,10,11,12,13];
     let side2 = [15,16,17,18,19,20];
     let side3 = [22,23,24,25,26,27];
 
-    function getRandom(arr) {
+    function getRandomFrom(arr) {
         let idx = Math.floor(Math.random() * arr.length);
-        return arr.splice(idx, 1)[0];
+        return arr.splice(idx, 1)[0]; // splice保證不會被重複選到
     }
 
-    // 從四個邊各自抽取 1 個位置放特殊卡片，確保不相鄰
-    let specialIndices = [getRandom(side0), getRandom(side1), getRandom(side2), getRandom(side3)];
+    // 從每一條街隨機抽 1 個位置放置卡牌，徹底防撞與防相鄰
+    let specialIndices = [getRandomFrom(side0), getRandomFrom(side1), getRandomFrom(side2), getRandomFrom(side3)];
     let specials = ['chance', 'chance', 'chest', 'chest'];
-    specials.sort(() => Math.random() - 0.5);
+    specials.sort(() => Math.random() - 0.5); // 打亂卡片順序
 
-    let otherSpecials = ['safe', 'safe', 'safe', 'tax'];
-    // 剩下的格子全部倒進一個陣列抽籤
+    // 剩餘所有的格子全部倒入 remaining 中 (不會與上面抽出的索引重疊)
+    let otherSpecials = ['jail', 'travel', 'tax']; 
     let remaining = [7, 14, 21].concat(side0, side1, side2, side3);
     remaining.sort(() => Math.random() - 0.5);
 
     let mapTypes = new Array(28).fill('prop');
     mapTypes[0] = 'start';
 
-    // 寫入 4 張卡片與 4 個其他特殊地塊
+    // 寫入 4 張事件卡
     for(let i=0; i<4; i++) { mapTypes[specialIndices[i]] = specials[i]; }
-    for(let i=0; i<4; i++) { mapTypes[remaining[i]] = otherSpecials[i]; }
+    // 寫入 3 個特殊地塊 (監獄, 旅遊, 稅務)
+    for(let i=0; i<3; i++) { mapTypes[remaining[i]] = otherSpecials[i]; }
 
     // 建立棋盤物件
     for(let i=0; i<28; i++) {
@@ -684,8 +697,6 @@ function initMap() {
             tile.cityName = cityPool.pop(); 
             tile.price = Math.floor(Math.random() * 71 + 10) * 100; 
             tile.baseRent = Math.floor(tile.price * (Math.random() * 0.2 + 0.1)); 
-        } else if (type === 'safe') {
-            tile.safeId = Math.floor(Math.random() * 3) + 1; 
         } else if (type === 'start') {
             tile.countryKey = selCountry;
             tile.startColor = PALETTE_COLORS[Math.floor(Math.random() * PALETTE_COLORS.length)];
@@ -697,10 +708,11 @@ function initMap() {
 let state = { players: [], numPlayers: 2, turn: 0, isPve: true };
 
 const DICE_EMOJIS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
-const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audio = document.getElementById('bgm');
 let userInteracted = false;
 
-window.onload = () => {
+// 確保腳本載入後絕對執行
+document.addEventListener("DOMContentLoaded", () => {
     audio.volume = document.getElementById('bgm-vol').value/100;
     audio.src = getMp3Path(document.getElementById('music-sel').value); 
     resizeBoard();
@@ -717,7 +729,7 @@ window.onload = () => {
     });
     
     document.body.addEventListener('click', unlockAudio, {once:true}); 
-};
+});
 
 function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
 
@@ -843,8 +855,10 @@ function startTurn() {
     }
 }
 
+// [修改3] 防呆 CSS Filter，確保各瀏覽器皆相容
 function getHumanInnerSVG(type, color) {
-    let svg = `<circle cx="0" cy="0" r="1.4" fill="#ffe0bd" stroke="#fff" stroke-width="0.1" filter="drop-shadow(0px 2px 2px rgba(0,0,0,0.5))"/>`; 
+    let svg = `<g style="filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.8)); -webkit-filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.8));">`;
+    svg += `<circle cx="0" cy="0" r="1.4" fill="#ffe0bd" stroke="#fff" stroke-width="0.1" />`; 
     
     svg += `<circle cx="-0.5" cy="0.1" r="0.18" fill="#222"/>
             <circle cx="-0.55" cy="0.05" r="0.06" fill="#fff"/>
@@ -878,11 +892,12 @@ function getHumanInnerSVG(type, color) {
         svg += `<path d="M1.3,-0.3 L1.8,0.2 L1.5,0.5 Z" fill="${color}"/>`;
         svg += `<path d="M-0.2,0.6 Q0,0.8 0.2,0.6" fill="none" stroke="#222" stroke-width="0.15" stroke-linecap="round"/>`;
     }
+    svg += `</g>`;
     return svg;
 }
 
 function getStatusIcon(type, color) {
-    return `<svg viewBox="-2 -2 4 4" style="width:1.2rem;height:1.2rem;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));">${getHumanInnerSVG(type, color)}</svg>`;
+    return `<svg viewBox="-2 -2 4 4" style="width:1.2rem;height:1.2rem;vertical-align:middle;margin-right:4px;">${getHumanInnerSVG(type, color)}</svg>`;
 }
 
 function renderBoard() {
@@ -896,8 +911,9 @@ function renderBoard() {
     MAP_DATA.forEach((tile, i) => {
         let name = "";
         if (tile.type === 'start') name = t.safeNames[0];
-        else if (tile.type === 'tax') name = t.safeNames[4];
-        else if (tile.type === 'safe') name = t.safeNames[tile.safeId];
+        else if (tile.type === 'tax') name = "稅務";
+        else if (tile.type === 'jail') name = "監獄";
+        else if (tile.type === 'travel') name = "旅遊";
         else if (tile.type === 'chance') name = "機會";
         else if (tile.type === 'chest') name = "命運";
         else if (tile.type === 'prop') name = tile.cityName;
@@ -908,11 +924,12 @@ function renderBoard() {
             let pColor = state.players[tile.owner].color;
             output.push(`<rect x="${tile.x+0.5}" y="${tile.y+0.5}" width="${TILE_SIZE-1}" height="${TILE_SIZE-1}" fill="${pColor}" class="svg-tile-owner" />`);
             
-            // [修正4] 更鮮明的紅色房子圖形
-            for(let h=0; h<tile.level; h++) {
-                let hx = tile.x + 1.5 + h*3;
-                let hy = tile.y + 1.5;
-                output.push(`<path d="M ${hx},${hy+2.5} L ${hx+2.5},${hy+2.5} L ${hx+2.5},${hy+1} L ${hx+1.25},${hy} L ${hx},${hy+1} Z" class="svg-house" />`);
+            // 單一精緻紅房 + xN
+            if (tile.level > 0) {
+                let hx = tile.x + 2;
+                let hy = tile.y + 1;
+                output.push(`<path d="M ${hx},${hy+3.5} L ${hx+3.5},${hy+3.5} L ${hx+3.5},${hy+1.5} L ${hx+1.75},${hy} L ${hx},${hy+1.5} Z" class="svg-house" />`);
+                output.push(`<text x="${hx+4.5}" y="${hy+2.5}" class="svg-text-small" style="fill:#fff; font-weight:900; font-size:2.2px; filter:drop-shadow(1px 1px 0px #000); text-anchor:start; dominant-baseline:middle;">x${tile.level}</text>`);
             }
         }
         
@@ -922,7 +939,6 @@ function renderBoard() {
             let cName = t.countryNames[tile.countryKey];
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY - 1.2}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${cName}</text>`);
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 1.6}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${name}</text>`);
-            // [修正4] 起點標示為 20K
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.8}" class="svg-text-small" style="font-weight:bold; fill:#000;">+ $20K</text>`);
         } else {
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY}" class="svg-text">${name}</text>`);
@@ -956,12 +972,13 @@ function renderBoard() {
         let transitionTime = p.moveSpeed ? p.moveSpeed : 800; 
         let easing = p.moveSpeed ? 'linear' : 'cubic-bezier(0.25, 0.1, 0.25, 1)';
         
+        // 放大至 150% (0.85 * 1.5 = 1.275)
         if (!pEl) {
-            playersLayer.insertAdjacentHTML('beforeend', `<g id="player-svg-${p.id}" style="transition: transform ${transitionTime}ms ${easing};" transform="translate(${cx}, ${cy}) scale(0.85)">${getHumanInnerSVG(p.avatar, p.color)}</g>`);
+            playersLayer.insertAdjacentHTML('beforeend', `<g id="player-svg-${p.id}" style="transition: transform ${transitionTime}ms ${easing};" transform="translate(${cx}, ${cy}) scale(1.275)">${getHumanInnerSVG(p.avatar, p.color)}</g>`);
         } else {
             pEl.style.display = 'block';
             pEl.style.transition = `transform ${transitionTime}ms ${easing}`;
-            pEl.setAttribute('transform', `translate(${cx}, ${cy}) scale(0.85)`);
+            pEl.setAttribute('transform', `translate(${cx}, ${cy}) scale(1.275)`);
         }
     });
 }
@@ -990,12 +1007,11 @@ function updateUI() {
 
 function setCenterMsg(msg) { document.getElementById('action-msg').innerText = msg; }
 
-// [修正2,3] 根據「關閉動畫」勾選框決定是否播放動畫，並將顯示時間延至 2.5s
+// [修改2,3] 根據「關閉動畫」勾選決定，若播放則停留 2.5s 後以動畫 API 飛散
 function showEventCard(type, typeLabel, titleText, descText, pColor, pName, callback) {
-    // 檢查是否勾選關閉動畫
     if (document.getElementById('disable-anim').checked) {
         if(callback) callback();
-        return; // 直接略過所有特效
+        return; 
     }
 
     const overlay = document.getElementById('event-card-overlay');
@@ -1013,10 +1029,11 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
     overlay.style.display = 'flex';
     card.style.transform = 'scale(0)';
     card.style.opacity = '0';
-    card.style.animation = 'cardPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+    // 更快彈出
+    card.style.animation = 'cardPopIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
     playSfx(600, "score"); 
     
-    // 停留 2.5 秒後飛散
+    // 停留 2.5 秒
     setTimeout(() => {
         card.style.animation = ''; 
         
@@ -1024,15 +1041,25 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
         const rY = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 700 + 800);
         const rRot = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 720 + 360); 
 
-        const anim = card.animate([
-            { transform: 'scale(1) translate(0px, 0px) rotate(0deg)', opacity: 1 },
-            { transform: `scale(0.3) translate(${rX}px, ${rY}px) rotate(${rRot}deg)`, opacity: 0 }
-        ], { duration: 1000, easing: 'ease-in', fill: 'forwards' });
+        // 安全調用 animate API (若舊版瀏覽器不支援則 fallback)
+        if (card.animate) {
+            const anim = card.animate([
+                { transform: 'scale(1) translate(0px, 0px) rotate(0deg)', opacity: 1 },
+                { transform: `scale(0.3) translate(${rX}px, ${rY}px) rotate(${rRot}deg)`, opacity: 0 }
+            ], { duration: 1000, easing: 'ease-in', fill: 'forwards' });
 
-        anim.onfinish = () => {
-            overlay.style.display = 'none';
-            if(callback) callback();
-        };
+            anim.onfinish = () => {
+                overlay.style.display = 'none';
+                if(callback) callback();
+            };
+        } else {
+            card.style.transform = `scale(0.3) translate(${rX}px, ${rY}px) rotate(${rRot}deg)`;
+            card.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if(callback) callback();
+            }, 1000);
+        }
     }, 2500); 
 }
 
@@ -1062,7 +1089,6 @@ function movePlayer(steps) {
         if(p.pos === 0) {
             p.money += 20000;
             playSfx(800, "score");
-            // [修正5] 套用玩家顏色
             addLog(`[${getPlayerName(state.turn)}] 經過起點 +$20000`, p.color);
         }
         
@@ -1113,7 +1139,8 @@ function handleTileAction() {
             }
         } else if (tile.owner === state.turn) {
             let upgCost = Math.floor(tile.price / 2);
-            if (tile.level < 3 && p.money >= upgCost) {
+            // 無限升級判斷
+            if (p.money >= upgCost) {
                 pendingAction = 'upgrade';
                 if (isAI || autoPlay) {
                     setTimeout(confirmAction, 800);
@@ -1124,7 +1151,7 @@ function handleTileAction() {
                     document.getElementById('btn-act-no').innerText = tLang.passBtn;
                 }
             } else {
-                setCenterMsg(`${cityName} (滿級或缺錢)`);
+                setCenterMsg(`${cityName} (現金不足無法升級)`);
                 setTimeout(endTurn, 1000);
             }
         } else {
@@ -1204,7 +1231,7 @@ function handleTileAction() {
                 p.skipTurns += Math.abs(val);
                 playSfx(200, "snap");
             } else if (ev.action === "upg_rand") {
-                let myProps = MAP_DATA.filter(t => t.type === 'prop' && t.owner === state.turn && t.level < 3);
+                let myProps = MAP_DATA.filter(t => t.type === 'prop' && t.owner === state.turn);
                 myProps.sort(() => Math.random() - 0.5); 
                 let count = 0;
                 for(let i=0; i<Math.min(val, myProps.length); i++) {
@@ -1248,8 +1275,26 @@ function handleTileAction() {
             setTimeout(endTurn, 1000); 
         });
 
+    } else if (tile.type === 'travel') {
+        // [新增5] 旅遊系統
+        let cost = Math.floor(Math.random() * (250000 - 30000 + 1)) + 30000;
+        let dests = ["日本","美國","歐洲","英國","澳洲","韓國","泰國","埃及","法國","瑞士"];
+        let dest = dests[Math.floor(Math.random() * dests.length)];
+        let titleText = "出國旅遊";
+        let descText = `去 ${dest} 旅遊\n共花費為 $${cost}`;
+        let logText = `去 ${dest} 旅遊，花費 $${cost}`;
+
+        showEventCard('travel', "旅遊", titleText, descText, p.color, getPlayerName(state.turn), () => {
+            p.money -= cost;
+            addLog(`[${getPlayerName(state.turn)}] ${logText}`, p.color);
+            playSfx(200, "snap");
+            updateUI();
+            checkBankrupt();
+            setTimeout(endTurn, 1000);
+        });
+
     } else if (tile.type === 'tax') {
-        // [修正5] 總房租 2 倍的稅務計算
+        // 總房租 2 倍的稅務計算
         let totalRent = 0;
         MAP_DATA.forEach(t => {
             if (t.type === 'prop' && t.owner === state.turn) {
@@ -1259,13 +1304,13 @@ function handleTileAction() {
         let taxAmount = totalRent * 2;
 
         p.money -= taxAmount;
-        addLog(`[${getPlayerName(state.turn)}] 繳納稅務，共計$${taxAmount} (總房租2倍)`, p.color);
+        addLog(`[${getPlayerName(state.turn)}] 繳納稅務，共計 $${taxAmount} (總房租2倍)`, p.color);
         playSfx(200, "snap");
         updateUI();
         checkBankrupt();
         setTimeout(endTurn, 1500);
     } else {
-        let safeName = tile.type === 'start' ? tLang.safeNames[0] : tLang.safeNames[tile.safeId];
+        let safeName = tile.type === 'start' ? tLang.safeNames[0] : "監獄";
         setCenterMsg(`抵達 ${safeName}`);
         setTimeout(endTurn, 1000);
     }
@@ -1393,9 +1438,63 @@ function resizeBoard() {
     boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; 
 }
 
-function unlockAudio() { userInteracted = true; if(audioCtx.state === 'suspended') audioCtx.resume(); audio.volume = document.getElementById('bgm-vol').value/100; if (!audio.src || audio.src === "" || audio.src.endsWith("/")) { const val = document.getElementById('music-sel').value; if(val !== 'none') audio.src = getMp3Path(val); } if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); }
-function playSfx(freq, type) { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); osc.connect(g); g.connect(audioCtx.destination); if(type === "snap") { osc.type = "sawtooth"; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1); g.gain.setValueAtTime(v*0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1); } else { osc.type = "sine"; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(freq*1.5, audioCtx.currentTime + 0.15); g.gain.setValueAtTime(v*0.6, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime+0.2); } }
-function playWinSfx() { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const notes = [523.25, 659.25, 783.99, 1046.50]; const now = audioCtx.currentTime; for (let i = 0; i < 12; i++) { const freq = notes[i % notes.length]; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = "square"; osc.connect(g); g.connect(audioCtx.destination); const startTime = now + i * 0.12; osc.frequency.setValueAtTime(freq, startTime); g.gain.setValueAtTime(0, startTime); g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12); osc.start(startTime); osc.stop(startTime + 0.12); } }
+function unlockAudio() { 
+    userInteracted = true; 
+    let ctx = getAudioCtx();
+    if(ctx && ctx.state === 'suspended') ctx.resume(); 
+    audio.volume = document.getElementById('bgm-vol').value/100; 
+    if (!audio.src || audio.src === "" || audio.src.endsWith("/")) { 
+        const val = document.getElementById('music-sel').value; 
+        if(val !== 'none') audio.src = getMp3Path(val); 
+    } 
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); 
+}
+
+function playSfx(freq, type) { 
+    let ctx = getAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended') ctx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; 
+    if(v <= 0.01) return; 
+    const osc = ctx.createOscillator(), g = ctx.createGain(); 
+    osc.connect(g); g.connect(ctx.destination); 
+    if(type === "snap") { 
+        osc.type = "sawtooth"; osc.frequency.setValueAtTime(300, ctx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1); 
+        g.gain.setValueAtTime(v*0.3, ctx.currentTime); 
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); 
+        osc.start(); osc.stop(ctx.currentTime+0.1); 
+    } else { 
+        osc.type = "sine"; osc.frequency.setValueAtTime(freq, ctx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(freq*1.5, ctx.currentTime + 0.15); 
+        g.gain.setValueAtTime(v*0.6, ctx.currentTime); 
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2); 
+        osc.start(); osc.stop(ctx.currentTime+0.2); 
+    } 
+}
+
+function playWinSfx() { 
+    let ctx = getAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended') ctx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; 
+    if(v <= 0.01) return; 
+    const notes = [523.25, 659.25, 783.99, 1046.50]; 
+    const now = ctx.currentTime; 
+    for (let i = 0; i < 12; i++) { 
+        const freq = notes[i % notes.length]; 
+        const osc = ctx.createOscillator(); 
+        const g = ctx.createGain(); 
+        osc.type = "square"; 
+        osc.connect(g); g.connect(ctx.destination); 
+        const startTime = now + i * 0.12; 
+        osc.frequency.setValueAtTime(freq, startTime); 
+        g.gain.setValueAtTime(0, startTime); 
+        g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); 
+        g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12); 
+        osc.start(startTime); osc.stop(startTime + 0.12); 
+    } 
+}
 
 function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
 function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
