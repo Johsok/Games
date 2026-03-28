@@ -209,7 +209,7 @@
         .game-card:nth-child(7) { animation-delay: 0.7s, 6s; }
         .game-card:nth-child(8) { animation-delay: 0.8s, 7s; } /* 為三角棋新增的動畫延遲 */
         .game-card:nth-child(9) { animation-delay: 0.9s, 8s; } /* 為大富翁新增的動畫延遲 */
-        .game-card:nth-child(10) { animation-delay: 1.0s, 9s; } /* [NEW] 為數獨新增的動畫延遲 */
+        .game-card:nth-child(10) { animation-delay: 1.0s, 9s; } /* 為數獨新增的動畫延遲 */
 
         .game-card::before, .game-card::after {
             content: ""; position: absolute; width: 20px; height: 20px;
@@ -743,7 +743,7 @@
     </div>
 
     <div class="footer">
-        © 2026 Johsok's Games. All rights reserved.
+        © 2026 Johsok All rights reserved.
     </div>
 </div>
 
@@ -875,19 +875,23 @@
         setInterval(changeHand, 2000);
     })();
 
-    // === [NEW] 數獨動畫邏輯 (定時刷新 1~9 與顏色) ===
+    // === 數獨動畫邏輯 (定時刷新 1~9 與 9種顏色) ===
     (function startSudokuAnimation() {
         const container = document.getElementById('sudoku-container');
         if (!container) return;
         const cells = container.querySelectorAll('.sudoku-cell');
         
-        // 從主題色系中挑選 5 種科技光芒配色
+        // 從主題色系中挑選 9 種適合深色背景的科技光芒配色
         const colors = [
             '#64ffda', /* 青玉光 */
             '#00b4d8', /* 科技藍 */
             '#bd34fe', /* 霓虹紫 */
-            '#ff4d4d', /* 帥方紅 */
-            '#00e676'  /* 科技綠 */
+            '#ff4d4d', /* 亮紅 */
+            '#00e676', /* 科技綠 */
+            '#f9cb28', /* 霓虹黃 */
+            '#ff9f1c', /* 活力橘 */
+            '#ff499e', /* 電馭粉 */
+            '#9bf6ff'  /* 冰藍色 */
         ];
 
         function refreshSudoku() {
@@ -899,12 +903,16 @@
                 let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
                 nums.sort(() => Math.random() - 0.5);
 
+                // 產生 9 種顏色的隨機排列，確保每次 9 宮格內顏色都不重複
+                let currentColors = [...colors];
+                currentColors.sort(() => Math.random() - 0.5);
+
                 // 3. 更新宮格內容與隨機派發顏色
                 cells.forEach((cell, index) => {
                     cell.innerText = nums[index];
-                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-                    cell.style.color = randomColor;
-                    cell.style.textShadow = `0 0 5px ${randomColor}`;
+                    const cColor = currentColors[index];
+                    cell.style.color = cColor;
+                    cell.style.textShadow = `0 0 5px ${cColor}`;
                 });
 
                 // 4. 移除 class 讓數字放大浮現
