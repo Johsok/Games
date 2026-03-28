@@ -199,7 +199,7 @@
             animation: fade-in-up 0.8s ease-out forwards, border-pulse 4s ease-in-out infinite;
         }
 
-        /* 順序動畫，多加第7、8、9個順位給新增的遊戲 */
+        /* 順序動畫，多加順位給新增的遊戲 */
         .game-card:nth-child(1) { animation-delay: 0.1s, 0s; }
         .game-card:nth-child(2) { animation-delay: 0.2s, 1s; }
         .game-card:nth-child(3) { animation-delay: 0.3s, 2s; }
@@ -209,6 +209,7 @@
         .game-card:nth-child(7) { animation-delay: 0.7s, 6s; }
         .game-card:nth-child(8) { animation-delay: 0.8s, 7s; } /* 為三角棋新增的動畫延遲 */
         .game-card:nth-child(9) { animation-delay: 0.9s, 8s; } /* 為大富翁新增的動畫延遲 */
+        .game-card:nth-child(10) { animation-delay: 1.0s, 9s; } /* [NEW] 為數獨新增的動畫延遲 */
 
         .game-card::before, .game-card::after {
             content: ""; position: absolute; width: 20px; height: 20px;
@@ -302,7 +303,7 @@
             box-shadow: 0 0 15px var(--jade-glow); border-color: #fff;
         }
 
-        /* === [NEW] 象棋麻將 (5張胡牌攤開 + JS控制過場) === */
+        /* === 象棋麻將 (5張胡牌攤開 + JS控制過場) === */
         .icon-mj-box {
             position: relative; width: 90px; height: 60px;
             display: flex; align-items: center; justify-content: center; gap: 2px;
@@ -505,6 +506,40 @@
         .game-card:hover .m-token.t1 { box-shadow: 0 0 15px #fff; background: #fff; }
         .game-card:hover .m-token.t2 { box-shadow: 0 0 15px #fff; background: #fff; }
 
+        /* === [NEW] 9. 數獨圖示專屬 CSS (9宮格佈局) === */
+        .icon-sudoku-box {
+            width: 66px; height: 66px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            padding: 2px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--glass-border);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        /* 單一宮格數字 */
+        .sudoku-cell {
+            background: rgba(255, 255, 255, 0.05);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.4s ease, opacity 0.4s ease, box-shadow 0.3s;
+        }
+
+        /* 數字重置時的縮放隱藏動畫 */
+        .sudoku-cell.is-updating {
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        /* HOVER GLOW FOR SUDOKU */
+        .game-card:hover .icon-sudoku-box { border-color: var(--jade-glow); box-shadow: 0 0 15px rgba(100, 255, 218, 0.3); }
+        .game-card:hover .sudoku-cell { background: rgba(100, 255, 218, 0.1); box-shadow: inset 0 0 5px rgba(255,255,255,0.2); }
+
         /* 文字樣式 */
         .game-title {
             font-size: 1.3rem; /* 微幅縮小 */
@@ -561,6 +596,10 @@
             /* 大富翁手機版微調 */
             .icon-monopoly-box { width: 50px; height: 50px; }
             .icon-monopoly-box::before { top: 8px; left: 8px; right: 8px; bottom: 8px; font-size: 12px;}
+
+            /* 數獨手機版微調 */
+            .icon-sudoku-box { width: 54px; height: 54px; padding: 1px; gap: 1px; }
+            .sudoku-cell { font-size: 12px; }
         }
     </style>
 </head>
@@ -683,6 +722,24 @@
             <span class="game-en-title">MONOPOLY</span>
         </a>
 
+        <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Soudu.html')">
+            <div class="icon-box">
+                <div class="icon-sudoku-box" id="sudoku-container">
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                    <div class="sudoku-cell"></div>
+                </div>
+            </div>
+            <span class="game-title">數獨</span>
+            <span class="game-en-title">SOUDU</span>
+        </a>
+
     </div>
 
     <div class="footer">
@@ -775,7 +832,7 @@
         flipSequence();
     })();
 
-    // === [NEW] 象棋麻將動畫邏輯 (每2秒切換一次胡牌樣子) ===
+    // === 象棋麻將動畫邏輯 (每2秒切換一次胡牌樣子) ===
     (function startMahjongAnimation() {
         const mjContainer = document.getElementById('mj-container');
         if (!mjContainer) return;
@@ -816,6 +873,48 @@
 
         // 每 2000 毫秒 (2秒) 執行一次胡牌變換
         setInterval(changeHand, 2000);
+    })();
+
+    // === [NEW] 數獨動畫邏輯 (定時刷新 1~9 與顏色) ===
+    (function startSudokuAnimation() {
+        const container = document.getElementById('sudoku-container');
+        if (!container) return;
+        const cells = container.querySelectorAll('.sudoku-cell');
+        
+        // 從主題色系中挑選 5 種科技光芒配色
+        const colors = [
+            '#64ffda', /* 青玉光 */
+            '#00b4d8', /* 科技藍 */
+            '#bd34fe', /* 霓虹紫 */
+            '#ff4d4d', /* 帥方紅 */
+            '#00e676'  /* 科技綠 */
+        ];
+
+        function refreshSudoku() {
+            // 1. 先加上 class 讓數字縮小隱藏
+            cells.forEach(cell => cell.classList.add('is-updating'));
+
+            setTimeout(() => {
+                // 2. 產生 1~9 的不重複陣列並打亂 (洗牌演算法)
+                let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                nums.sort(() => Math.random() - 0.5);
+
+                // 3. 更新宮格內容與隨機派發顏色
+                cells.forEach((cell, index) => {
+                    cell.innerText = nums[index];
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    cell.style.color = randomColor;
+                    cell.style.textShadow = `0 0 5px ${randomColor}`;
+                });
+
+                // 4. 移除 class 讓數字放大浮現
+                cells.forEach(cell => cell.classList.remove('is-updating'));
+            }, 400); // 對應 CSS 中的 0.4s 動畫時間
+        }
+
+        // 初始化與定時器 (每3.5秒刷新一次)
+        refreshSudoku();
+        setInterval(refreshSudoku, 3500);
     })();
 
     // 安全防護

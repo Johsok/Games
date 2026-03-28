@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3a3a3a">
+    <title>數獨大師 2026</title>
+    <link rel="manifest" id="manifest-placeholder">
+    <style>
+        /* === 核心變數與配色定義 === */
+        :root {
+            --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            --board-bg: rgba(255, 255, 255, 0.85);
+            --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.01) 0px, rgba(0,0,0,0.01) 2px, transparent 2px, transparent 4px);
+            --line-color: #333;
+            --border-style: 6px solid #5d4037;
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            
+            --cell-given: #222;
+            --cell-user: #0056b3; /* 填入的數字是藍色 */
+            --cell-error: #e74c3c;
+        }
+
+        /* === 視覺風格定義 (14種) === */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #fdf5e6; --line-color: #4e342e; --border-style: 8px ridge #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #fff; --board-texture: none; --line-color: #2c3e50; --border-style: 6px double #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #e0f2f1; --line-color: #004d40; --border-style: 8px inset #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #d7ccc8; --line-color: #3e2723; --border-style: 8px groove #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #222; --line-color: #ffd700; --border-style: 6px solid #ffd700; --cell-given: #ddd; --cell-user: #4fc3f7; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #e3f2fd; --line-color: #0d47a1; --border-style: 6px double #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #f3e5f5; --line-color: #4a148c; --border-style: 6px solid #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #fbeee6; --line-color: #873600; --border-style: 8px dashed #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff; --line-color: #ff69b4; --border-style: 6px dotted #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f8f9f9; --line-color: #34495e; --border-style: 6px double #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #fff; --line-color: #4dd0e1; --border-style: 8px solid #b39ddb; border-radius: 12px; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #000; --board-texture: none; --line-color: #0ff; --border-style: 6px solid #0ff; --cell-given: #fff; --cell-user: #0f0; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #2c3e50; --board-texture: none; --line-color: #111; --border-style: 6px solid #555; --cell-given: #ecf0f1; --cell-user: #3498db; }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
+            background: var(--bg-grad); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            color: white; 
+            transition: background 0.5s; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+
+        /* === 頂部 UI 樣式 === */
+        header { 
+            width: 100%; height: auto; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
+            z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); 
+            border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            transition: all 0.3s ease;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
+        
+        .status-container { display: flex; align-items: center; gap: 12px; }
+        .status { color: #f1c40f; font-weight: bold; font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; font-variant-numeric: tabular-nums; }
+        .stats { color: #ff9800; font-size: 0.85rem; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;}
+
+        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
+        .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* === 橫向模式 UI 適配 === */
+        body.is-landscape {
+            flex-direction: row; 
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            justify-content: center;
+        }
+        body.is-landscape header {
+            width: 140px; 
+            height: 100vh; 
+            padding: 0;
+            border-bottom: none;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            justify-content: center; 
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0,0,0,0.4);
+        }
+        body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
+        body.is-landscape h2 { white-space: normal; text-align: center; }
+        body.is-landscape .status-container { flex-direction: column; gap: 5px; }
+        body.is-landscape .status { font-size: 1.2rem; text-align: center; }
+        body.is-landscape .stats { text-align: center; font-size: 0.8rem;}
+        body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
+        body.is-landscape .btn { width: 80%; text-align: center; padding: 10px 0; }
+
+        /* === 設定面板樣式 === */
+        #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
+        .set-row { margin-bottom: 12px; }
+        .flex-split { display: flex; gap: 10px; justify-content: space-between; }
+        .flex-split > div { flex: 1; display: flex; flex-direction: column; }
+        .vol-row > div { padding: 0 10px; } 
+        label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
+        select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
+
+        /* === 遊戲容器與棋盤 === */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+        
+        .board-wrap { 
+            position: relative; background: var(--line-color); 
+            border: var(--border-style); border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
+            box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(9, 1fr);
+            gap: 1px; /* Grid 線條由這裡產生 */
+        }
+
+        .s-cell {
+            background: var(--board-bg);
+            background-image: var(--board-texture);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(var(--board-size) * 0.065);
+            font-weight: bold;
+            color: var(--cell-user);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .s-cell:active { filter: brightness(0.9); }
+
+        /* 3x3 粗邊框 */
+        .s-cell.b-right { border-right: 2px solid var(--line-color); }
+        .s-cell.b-bottom { border-bottom: 2px solid var(--line-color); }
+
+        /* 狀態樣式 */
+        .s-cell.given { color: var(--cell-given); cursor: default; }
+        .s-cell.given:active { filter: none; }
+        .s-cell.error .user-val { color: var(--cell-error); animation: shake 0.3s ease-in-out; }
+        
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+        /* === 記憶小圓點 (右上角) === */
+        .memos {
+            position: absolute;
+            top: 2px; right: 2px;
+            display: flex;
+            gap: 2px;
+        }
+        .memo {
+            width: calc(var(--board-size) * 0.02 + 4px);
+            height: calc(var(--board-size) * 0.02 + 4px);
+            border-radius: 50%;
+            border: 1px solid rgba(128, 128, 128, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(var(--board-size) * 0.022);
+            color: #666;
+            background: rgba(255,255,255,0.4);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        /* 有數值時顯示為藍綠色並加上薄黑邊 */
+        .memo.has-val {
+            border-color: #00ced1;
+            background: rgba(0, 206, 209, 0.15);
+            color: #00ced1;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.8), -1px -1px 1px rgba(0,0,0,0.8), 1px -1px 1px rgba(0,0,0,0.8), -1px 1px 1px rgba(0,0,0,0.8);
+        }
+        .memo:active { transform: scale(0.9); background: #ccc; }
+        /* 當有正式數字時隱藏記憶點 */
+        .s-cell.has-main .memos { display: none; }
+
+        /* === 浮空數字鍵盤 === */
+        #float-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2500; justify-content: center; align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .float-pad {
+            background: rgba(40, 40, 40, 0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            width: 260px;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .float-pad button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            height: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #0056b3;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .float-pad button:active { transform: translateY(4px); box-shadow: 0 0 0 #0056b3; }
+        .float-pad .btn-clear { background: #e74c3c; box-shadow: 0 4px 0 #c0392b; grid-column: span 2; }
+        .float-pad .btn-clear:active { box-shadow: 0 0 0 #c0392b; }
+        .float-pad .btn-close { background: #555; box-shadow: 0 4px 0 #333; }
+        .float-pad .btn-close:active { box-shadow: 0 0 0 #333; }
+
+        /* === 勝利特效動畫與樣式設定 === */
+        /* 5種鮮艷顏色每1秒切換 (總共5秒) */
+        @keyframes colorChange {
+            0%, 19.99% { color: #ff3b30; text-shadow: 0 0 20px #ff3b30; } /* 鮮紅 */
+            20%, 39.99% { color: #34c759; text-shadow: 0 0 20px #34c759; } /* 鮮綠 */
+            40%, 59.99% { color: #007aff; text-shadow: 0 0 20px #007aff; } /* 鮮藍 */
+            60%, 79.99% { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; } /* 鮮黃 */
+            80%, 100% { color: #af52de; text-shadow: 0 0 20px #af52de; } /* 鮮紫 */
+        }
+        
+        #win-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%,-50%); 
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; text-align: center;
+            pointer-events: none; opacity: 0; z-index: 1000; 
+            font-family: "Microsoft JhengHei", sans-serif; font-weight: 900; 
+            font-size: calc(var(--board-size, 300px) * 0.15);
+            letter-spacing: calc(var(--board-size, 300px) * 0.02); 
+            line-height: 1.2;
+            background: transparent; /* 取消霧化與背景色 */
+        }
+        #win-overlay.show { 
+            opacity: 1; 
+            pointer-events: auto; 
+            animation: win 2.5s ease-in-out infinite, colorChange 5s infinite; 
+        }
+        @keyframes win { 
+            0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } 
+            20%, 100% { transform: translate(-50%,-50%) scale(1) rotate(-2deg); opacity: 1; } 
+            60% { transform: translate(-50%,-52%) scale(1) rotate(2deg); } 
+        }
+
+        #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
+        .rules-content { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; padding: 25px; color: #ddd; }
+        .rules-content h3 { color: #f1c40f; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px;}
+        .close-rules { width: 100%; padding: 10px; background: #cc0000; color: #fff; border: none; border-radius: 8px; margin-top: 20px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body class="t-classic">
+
+<header id="main-header">
+    <div class="header-top">
+        <h2 id="app-title">數獨大師 2026</h2>
+        <div class="status-container">
+            <div class="status" id="timer-display">00:00</div>
+            <div class="stats" id="stats-display">錯誤: 0 | 正確率: 100%</div>
+        </div>
+    </div>
+    <div class="btn-group">
+        <button class="btn" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn btn-undo" onclick="undo()">↩️ 復原</button>
+        <button class="btn btn-red" onclick="restart()">🔄 重開</button>
+    </div>
+</header>
+
+<div id="settings">
+    <div class="set-row flex-split">
+        <div>
+            <label>遊戲難度</label>
+            <select id="diff-sel" onchange="restart()">
+                <option value="easy" selected>🟩 簡單</option>
+                <option value="medium">🟨 中度</option>
+                <option value="hard">🟥 困難</option>
+            </select>
+        </div>
+        <div>
+            <label>視覺風格</label>
+            <select id="theme-sel" onchange="changeTheme()">
+                <option value="t-classic">💎 經典</option>
+                <option value="t-ink">🏔️ 水墨</option>
+                <option value="t-jade">📿 翡翠</option>
+                <option value="t-wood">🪵 紅木</option>
+                <option value="t-gold">👑 黑金</option>
+                <option value="t-ocean">🌊 深海</option>
+                <option value="t-royal">🏛️ 紫禁</option>
+                <option value="t-beast">🦁 野獸</option>
+                <option value="t-playful">🎈 俏皮</option>
+                <option value="t-shan">🖌️ 山水</option>
+                <option value="t-cute">🍬 可愛</option>
+                <option value="t-cyber">🤖 賽博</option>
+                <option value="t-sketch">✏️ 素描</option>
+                <option value="t-dark">🌃 暗黑</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split">
+        <div>
+            <label>背景音樂</label>
+            <select id="music-sel" onchange="changeMusic()">
+                <option value="none">🔇 靜音</option>
+                <option value="01">🎵 樂曲 01</option>
+                <option value="02">🎵 樂曲 02</option>
+                <option value="03">🎵 樂曲 03</option>
+                <option value="04" selected>🎵 樂曲 04</option>
+                <option value="05">🎵 樂曲 05</option>
+                <option value="06">🎵 樂曲 06</option>
+                <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label>語言</label>
+            <select id="lang-sel" onchange="changeLang()">
+                <option value="tw" selected>繁中</option>
+                <option value="cn">简中</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="set-row flex-split vol-row">
+        <div>
+            <label>音樂音量<span id="bgm-val-hint" class="vol-hint">20</span></label>
+            <input type="range" id="bgm-vol" min="0" max="100" value="20" oninput="adjBgm()">
+        </div>
+        <div>
+            <label>音效音量<span id="sfx-val-hint" class="vol-hint">50</span></label>
+            <input type="range" id="sfx-vol" min="0" max="100" value="50" oninput="adjSfx()">
+        </div>
+    </div>
+    
+    <div class="set-row flex-split" style="margin-top:10px;">
+        <button class="btn" onclick="toggleRules()" style="flex:1; background:#2c3e50; padding: 10px;">📖 遊戲規則</button>
+        <button class="btn" onclick="goHome()" style="flex:1; background:#c0392b; padding: 10px;">🏠 回首頁</button>
+    </div>
+
+    <button class="btn" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+    <div style="text-align:center; font-size:10px; color:#aaa; margin-top:15px; letter-spacing: 0.5px;">© 2026 Johsok. All rights reserved.</div>
+</div>
+
+<div id="float-overlay" onclick="if(event.target===this) closePad()">
+    <div class="float-pad">
+        <button onclick="inputNum(1)">1</button>
+        <button onclick="inputNum(2)">2</button>
+        <button onclick="inputNum(3)">3</button>
+        <button onclick="inputNum(4)">4</button>
+        <button onclick="inputNum(5)">5</button>
+        <button onclick="inputNum(6)">6</button>
+        <button onclick="inputNum(7)">7</button>
+        <button onclick="inputNum(8)">8</button>
+        <button onclick="inputNum(9)">9</button>
+        <button class="btn-clear" onclick="inputNum(0)">清除</button>
+        <button class="btn-close" onclick="closePad()">取消</button>
+    </div>
+</div>
+
+<div id="rules-modal">
+    <div class="rules-content">
+        <h3 id="rules-title">數獨遊戲規則</h3>
+        <ul style="padding-left: 20px; line-height: 1.6;">
+            <li>盤面為 9×9 的網格，並分為九個 3×3 的宮格。</li>
+            <li>目標是將 1 到 9 的數字填入空格中。</li>
+            <li>每一行、每一列及每個 3×3 宮格內，數字 1~9 都只能出現一次，不可重複。</li>
+            <li>點擊空格填寫正式數字。點擊右上角小圓圈可標記「記憶數字」(不列入勝負判定，作為輔助用)。</li>
+            <li>全部填滿並無誤即過關！</li>
+        </ul>
+        <button class="close-rules" onclick="toggleRules()">關閉說明</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <div class="board-wrap" id="board">
+        </div>
+    <div id="win-overlay" onclick="restart()"></div>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+/* === PWA 支援 === */
+const manifestJSON = {
+    name: "數獨大師 2026", short_name: "數獨", display: "standalone",
+    background_color: "#3a3a3a", theme_color: "#3a3a3a",
+    icons: [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzExMSIvPjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml"}]
+};
+document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
+
+/* === 全局變數 === */
+let board = [], solution = [], given = [], memos = [];
+let historyStack = [];
+let timerInterval, timeElapsed = 0;
+let userInteracted = false;
+let activeTarget = null; // {r, c, type: 'main'|'m1'|'m2'}
+let gameOver = false;
+
+// 統計變數
+let totalMoves = 0; 
+let errorMoves = 0;
+let totalHoles = 0; // 新增：記錄總空格數
+
+const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* === 音樂系統 === */
+function getMp3Path(val) {
+    if (val === 'none') return "";
+    const baseUrl = "https://johsok.github.io/Games/MP3/";
+    return `${baseUrl}${val}.mp3`;
+}
+
+function unlockAudio() {
+    userInteracted = true;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audio.volume = document.getElementById('bgm-vol').value/100;
+    if (!audio.src || audio.src === "") {
+        const val = document.getElementById('music-sel').value;
+        if(val !== 'none') audio.src = getMp3Path(val);
+    }
+    if(document.getElementById('music-sel').value !== 'none') audio.play().catch(() => {});
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { audio.pause(); } 
+    else if (userInteracted && document.getElementById('music-sel').value !== 'none') { audio.play().catch(() => {}); }
+});
+document.addEventListener('click', unlockAudio, {once:true, capture:true}); 
+document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
+
+/* === 畫面與適配 === */
+window.onload = () => {
+    resizeBoard(); initGridDOM();
+    audio.src = getMp3Path(document.getElementById('music-sel').value);
+    restart(); 
+    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
+};
+
+function checkOrientation() { 
+    const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
+    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape'); 
+    return isLand; 
+}
+
+function resizeBoard() { 
+    const isLand = checkOrientation(), wrap = document.getElementById('board'), header = document.getElementById('main-header');
+    wrap.style.width = wrap.style.height = wrap.style.margin = ''; 
+    header.style.marginRight = '0';
+    const winW = window.innerWidth, winH = window.innerHeight; 
+    let finalSize;
+    if (isLand) {
+        const headerW = 140, gap = winW * 0.02;
+        header.style.marginRight = `${gap}px`;
+        finalSize = Math.min(winW - headerW - gap - 20, winH - 20);
+    } else {
+        wrap.style.marginTop = '10px'; wrap.style.marginBottom = '10px';
+        finalSize = Math.min(winW - 20, winH - header.offsetHeight - 20);
+    }
+    wrap.style.width = wrap.style.height = `${finalSize}px`;
+    document.getElementById('game-container').style.setProperty('--board-size', `${finalSize}px`);
+}
+
+/* === 數獨核心邏輯 === */
+const generateRandomSudoku = () => {
+    const puzzle = Array.from({ length: 9 }, () => Array(9).fill(0));
+    const isValid = (bd, row, col, num) => {
+        for (let i = 0; i < 9; i++) {
+            if (bd[row][i] === num || bd[i][col] === num) return false;
+        }
+        const sr = Math.floor(row / 3) * 3, sc = Math.floor(col / 3) * 3;
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                if (bd[sr + i][sc + j] === num) return false;
+            }
+        }
+        return true;
+    };
+    const solve = (bd) => {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (bd[r][c] === 0) {
+                    const numbers = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+                    for (const num of numbers) {
+                        if (isValid(bd, r, c, num)) {
+                            bd[r][c] = num;
+                            if (solve(bd)) return true;
+                            bd[r][c] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    solve(puzzle);
+    return puzzle;
+};
+
+// 更新即時面板數據
+function updateStatsDisplay() {
+    // 變更：改用「總空格數 (totalHoles)」來當作計算正確率的基準
+    let acc = totalHoles > 0 ? Math.max(0, Math.round(((totalHoles - errorMoves) / totalHoles) * 100)) : 100;
+    document.getElementById('stats-display').innerText = `錯誤: ${errorMoves} | 正確率: ${acc}%`;
+}
+
+function restart() {
+    gameOver = false;
+    document.getElementById('win-overlay').classList.remove('show');
+    historyStack = [];
+    totalMoves = 0;
+    errorMoves = 0;
+    
+    // 生成完整解答
+    const fullBoard = generateRandomSudoku();
+    solution = JSON.parse(JSON.stringify(fullBoard));
+    board = JSON.parse(JSON.stringify(fullBoard));
+    given = Array.from({length: 9}, () => Array(9).fill(false));
+    memos = Array.from({length: 9}, () => Array(9).fill([0, 0])); // [m1, m2]
+
+    // 依據難度挖空
+    const diffMap = { 'easy': 30, 'medium': 45, 'hard': 55 };
+    const diff = document.getElementById('diff-sel').value;
+    let holes = diffMap[diff] || 45;
+    totalHoles = holes; // 記錄總洞數，用來計算正確率
+    
+    // 將面板更新移到取得總洞數之後，確保正確率不會算錯
+    updateStatsDisplay();
+
+    while (holes > 0) {
+        let r = Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
+        if (board[r][c] !== 0) {
+            board[r][c] = 0;
+            holes--;
+        }
+    }
+
+    // 標記已知數字
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (board[r][c] !== 0) given[r][c] = true;
+        }
+    }
+
+    startTimer();
+    renderAll();
+}
+
+/* === 渲染與互動 === */
+function initGridDOM() {
+    const wrap = document.getElementById('board');
+    wrap.innerHTML = '';
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            let cell = document.createElement('div');
+            cell.id = `cell-${r}-${c}`;
+            
+            // 添加 3x3 粗邊框
+            let classes = ['s-cell'];
+            if (c === 2 || c === 5) classes.push('b-right');
+            if (r === 2 || r === 5) classes.push('b-bottom');
+            cell.className = classes.join(' ');
+            
+            wrap.appendChild(cell);
+        }
+    }
+}
+
+function renderAll() {
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            renderCell(r, c);
+        }
+    }
+}
+
+function renderCell(r, c) {
+    let cell = document.getElementById(`cell-${r}-${c}`);
+    let val = board[r][c];
+    let isGiven = given[r][c];
+    let m1 = memos[r][c][0], m2 = memos[r][c][1];
+
+    if (isGiven) {
+        cell.innerHTML = `<span>${val}</span>`;
+        cell.classList.add('given');
+        cell.onclick = null;
+    } else {
+        cell.classList.remove('given');
+        cell.classList.remove('error'); // 清除先前的紅字狀態
+        
+        let html = '';
+        if (val !== 0) {
+            html = `<span class="user-val">${val}</span>`;
+            cell.classList.add('has-main');
+            
+            // 即時檢查錯誤：如果有填入值但不等於解答，標記為紅色錯誤
+            if (val !== solution[r][c]) {
+                cell.classList.add('error');
+            }
+        } else {
+            cell.classList.remove('has-main');
+            html = `
+            <div class="memos">
+                <div class="memo ${m1?'has-val':''}" onclick="openPad(${r}, ${c}, 'm1', event)">${m1||''}</div>
+                <div class="memo ${m2?'has-val':''}" onclick="openPad(${r}, ${c}, 'm2', event)">${m2||''}</div>
+            </div>`;
+        }
+        cell.innerHTML = html;
+        cell.onclick = (e) => {
+            // 避免點擊小圓點時觸發主格點擊
+            if(!e.target.classList.contains('memo')) {
+                openPad(r, c, 'main', e);
+            }
+        };
+    }
+}
+
+function openPad(r, c, type, e) {
+    if (gameOver) return;
+    if (e) e.stopPropagation();
+    activeTarget = {r, c, type};
+    document.getElementById('float-overlay').style.display = 'flex';
+}
+
+function closePad() {
+    document.getElementById('float-overlay').style.display = 'none';
+    activeTarget = null;
+}
+
+function inputNum(val) {
+    if (!activeTarget || gameOver) return;
+    const {r, c, type} = activeTarget;
+    let oldVal, oldM1 = memos[r][c][0], oldM2 = memos[r][c][1];
+
+    if (type === 'main') {
+        oldVal = board[r][c];
+        // 將狀態記錄至歷史以供復原 (也包含填寫次數等統計數據)
+        historyStack.push({r, c, type: 'main', oldVal, val, oldM1, oldM2, oldTotal: totalMoves, oldError: errorMoves});
+        board[r][c] = val;
+        
+        // 只有在填寫真正的數字(非清除)時，才計入統計
+        if (val !== 0) {
+            memos[r][c] = [0, 0]; // 填寫主數字後清空記憶
+            totalMoves++;
+            if (val !== solution[r][c]) {
+                errorMoves++;
+            }
+            updateStatsDisplay();
+        }
+    } else if (type === 'm1') {
+        oldVal = memos[r][c][0];
+        historyStack.push({r, c, type: 'm1', oldVal, val});
+        memos[r][c][0] = val;
+    } else if (type === 'm2') {
+        oldVal = memos[r][c][1];
+        historyStack.push({r, c, type: 'm2', oldVal, val});
+        memos[r][c][1] = val;
+    }
+
+    playSfx(400);
+    closePad();
+    renderCell(r, c);
+    
+    // 每次填完主數字自動檢查是否遊戲結束
+    if (type === 'main' && val !== 0) {
+        checkWinCondition();
+    }
+}
+
+function undo() {
+    if (gameOver || historyStack.length === 0) return;
+    let action = historyStack.pop();
+    const {r, c, type, oldVal, val, oldM1, oldM2, oldTotal, oldError} = action;
+
+    if (type === 'main') {
+        board[r][c] = oldVal;
+        memos[r][c] = [oldM1, oldM2]; // 恢復原本記憶的數字
+        totalMoves = oldTotal;       // 復原統計狀態
+        errorMoves = oldError;
+        updateStatsDisplay();
+    } else if (type === 'm1') {
+        memos[r][c][0] = oldVal;
+    } else if (type === 'm2') {
+        memos[r][c][1] = oldVal;
+    }
+    renderCell(r, c);
+}
+
+function checkWinCondition() {
+    let isFull = true;
+    let allCorrect = true;
+
+    for(let r=0; r<9; r++){
+        for(let c=0; c<9; c++){
+            if(board[r][c] === 0) isFull = false;
+            if (!given[r][c] && board[r][c] !== 0 && board[r][c] !== solution[r][c]) {
+                allCorrect = false;
+            }
+        }
+    }
+    
+    if (!isFull) return; // 盤面還沒滿就繼續玩
+
+    if (allCorrect) {
+        gameOver = true;
+        clearInterval(timerInterval);
+        playSfx(800, 'win');
+        
+        const t = { tw: "數獨完成", cn: "数独完成", en: "Puzzle Solved" };
+        const lang = document.getElementById('lang-sel').value;
+        const msg = t[lang] || t.tw;
+        
+        // 變更：改用「總空格數 (totalHoles)」計算過關畫面上的正確率
+        const acc = totalHoles > 0 ? Math.max(0, Math.round(((totalHoles - errorMoves) / totalHoles) * 100)) : 100;
+        
+        const ol = document.getElementById('win-overlay');
+        // 多加入耗時與正確率的顯示，且用較細的白字襯托閃耀標題
+        ol.innerHTML = `${msg}<br>
+            <span style="font-size: 0.35em; color: rgba(255,255,255,0.9); line-height: 1.5; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">
+                耗時: ${timerDisplay.innerText} | 正確率: ${acc}%<br>點擊重開
+            </span>`;
+        ol.classList.add('show');
+    }
+}
+
+/* === 計時器 === */
+const timerDisplay = document.getElementById('timer-display');
+function startTimer() {
+    clearInterval(timerInterval);
+    timeElapsed = 0;
+    timerDisplay.innerText = '00:00';
+    timerInterval = setInterval(() => {
+        timeElapsed++;
+        let m = String(Math.floor(timeElapsed / 60)).padStart(2, '0');
+        let s = String(timeElapsed % 60).padStart(2, '0');
+        timerDisplay.innerText = `${m}:${s}`;
+    }, 1000);
+}
+
+/* === UI 與設定 === */
+function playSfx(freq, type) { 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
+    osc.connect(g); g.connect(audioCtx.destination); 
+    if(type === 'win') {
+        osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+        osc.start(); osc.stop(audioCtx.currentTime+1);
+    } else {
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime+0.15);
+    }
+}
+
+function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
+function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
+function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
+function adjSfx() { document.getElementById('sfx-val-hint').innerText = document.getElementById('sfx-vol').value; } 
+
+function changeMusic() {
+    if(!userInteracted) unlockAudio();
+    const val = document.getElementById('music-sel').value; 
+    if(val === 'none') { 
+        audio.pause(); audio.src = ""; 
+    } else { 
+        const newPath = getMp3Path(val);
+        if (audio.src !== newPath) {
+            audio.src = newPath; audio.load(); 
+            audio.play().catch(e => { console.log("自動播放被攔截", e); });
+        }
+    } 
+}
+
+function changeLang() {
+    const lang = document.getElementById('lang-sel').value;
+    const t = {
+        tw: { title: "數獨大師 2026" },
+        cn: { title: "数独大师 2026" },
+        en: { title: "Sudoku Master" }
+    };
+    document.getElementById('app-title').innerText = t[lang].title;
+}
+
+function goHome() {
+    try {
+        if (window.parent && typeof window.parent.closeGame === 'function') { window.parent.closeGame(); } 
+        else { console.log("No parent detected"); }
+    } catch (e) { console.error(e); }
+}
+
+/* === 防盜機制 === */
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.onkeydown = function(e) {
+    if (e.keyCode == 123) return false;
+    if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 67 || e.keyCode == 74)) return false; // I, C, J
+    if (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83)) return false; // U, S
+};
+console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+</script>
+</body>
+</html>
