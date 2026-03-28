@@ -13,7 +13,7 @@
             --line-color: rgba(93, 64, 55, 0.4); 
             --piece-border: #8b4513;
             
-            /* 玩家專屬顏色預設 (已替換為極度鮮明的高飽和色系，會由JS動態絕對防撞覆蓋) */
+            /* 玩家專屬顏色預設 */
             --p1-c: #ff4757; 
             --p2-c: #1e90ff; 
             --p3-c: #ffd32a; 
@@ -142,12 +142,11 @@
             align-content: start;
             gap: 4px 8px; 
             overflow-y: auto; overflow-x: hidden; 
-            font-size: clamp(10px, 2.5vmin, 14px); /* [修正2] 優化基礎字體大小 */
+            font-size: clamp(10px, 2.5vmin, 14px); 
             font-weight: bold;
             padding-right: 4px; 
         }
         
-        /* [修正2] 強制文字不超出，並利用 clamp 和 line-clamp 來壓縮並截斷文字，最多顯示兩行 */
         .log-item {
             white-space: normal; 
             word-break: break-word; 
@@ -175,7 +174,6 @@
             to { filter: brightness(1.3); text-shadow: 0 0 6px rgba(0,0,0,1); box-shadow: 0 0 12px #00e88f; }
         }
         
-        /* [修正2] 最新事件自動縮小與適應 */
         .log-item.new-event { 
             font-size: clamp(12px, 3.5vmin, 16px); 
             animation: text-pulse 1.5s infinite alternate; 
@@ -221,18 +219,46 @@
         .rules-content li { margin-bottom: 6px; font-size: 0.95rem; }
         .close-rules { display: block; width: 100%; padding: 10px; background: var(--p1-c); color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
-        /* [修正2] 手機版 RWD 調整，讓事件文字版面自動適應 vw 比例，確保不超出 */
         @media (max-width: 600px) {
-            #event-log {
-                display: flex;
-                flex-direction: column;
-            }
-            .log-item {
-                font-size: clamp(12px, 3.5vw, 15px);
-            }
-            .log-item.new-event {
-                font-size: clamp(14px, 4.2vw, 17px);
-            }
+            #event-log { display: flex; flex-direction: column; }
+            .log-item { font-size: clamp(12px, 3.5vw, 15px); }
+            .log-item.new-event { font-size: clamp(14px, 4.2vw, 17px); }
+        }
+
+        /* === 新增：精緻動畫卡片 (Event Card) 樣式 === */
+        #event-card-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 5000;
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        #event-card {
+            border-radius: 20px; padding: 30px 40px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.3);
+            max-width: 80%; width: 320px;
+            transform: scale(0); opacity: 0;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        #event-card.chance {
+            background: linear-gradient(135deg, #1e90ff, #00a8ff);
+            border: 6px solid #ffdd59; color: #fff;
+        }
+        #event-card.chest {
+            background: linear-gradient(135deg, #a55eea, #fd79a8);
+            border: 6px solid #fbc531; color: #fff;
+        }
+        .ec-type { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; opacity: 0.9; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        #ec-title { font-size: 2.2rem; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); line-height: 1.2; }
+        #ec-desc { font-size: 1.3rem; font-weight: 900; margin: 0; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; }
+
+        @keyframes cardPopIn {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            60% { transform: scale(1.1) rotate(3deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes cardPopOut {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.3) translateY(50px); opacity: 0; }
         }
     </style>
 </head>
@@ -436,6 +462,14 @@
     </div>
 </div>
 
+<div id="event-card-overlay">
+    <div id="event-card">
+        <div class="ec-type" id="ec-type-label">【機會】</div>
+        <h2 id="ec-title"></h2>
+        <p id="ec-desc"></p>
+    </div>
+</div>
+
 <audio id="bgm" loop></audio>
 
 <script>
@@ -454,89 +488,110 @@ const CITIES_DATA = {
 // 正常且多國的趣味名稱庫
 const NORMAL_NAMES = ["阿土伯", "孫小美", "柳如烟", "羅峰", "錢夫人", "約翰", "愛麗絲", "田中", "金貝貝", "沙隆巴斯", "伊凡", "索菲亞", "木村", "李雷", "韓梅梅"];
 const HUMAN_TYPES = ['boy', 'girl', 'uncle', 'lady', 'ninja'];
-// 極度鮮明的色彩庫
 const PALETTE_COLORS = ['#ff4757', '#1e90ff', '#ffd32a', '#2ed573', '#a55eea', '#ff7f50', '#00d8d6', '#ff6b81', '#0be881', '#fbc531'];
 
+// [全新事件配置與多國語言支援]
 const TRANSLATIONS = {
     tw: {
         title: "大富翁 2026", player: "玩家", computer: "電腦", win: " 獲勝！",
         roll: "🎲 擲骰子", buyPrompt: "是否購買？", upgPrompt: "是否升級房屋？",
         buyBtn: "💰 購買", upgBtn: "🏠 升級", passBtn: "跳過",
-        rentMsg: "支付租金給", chanceMsg: "【機會】", chestMsg: "【命運】", taxMsg: "繳納稅款：",
+        rentMsg: "支付租金給", chanceMsg: "機會", chestMsg: "命運", taxMsg: "繳納稅款：",
         bankrupt: " 破產出局！", passStart: "起點",
         safeNames: ["起點","監獄","公園","休息","稅務"],
         countryNames: { tw: "台灣", us: "美國", jp: "日本", cn: "大陸", au: "澳洲", uk: "英國", eu: "歐洲" },
-        optPve1: "💻 單人 (1v1電腦)", optPve2: "💻 單人 (1v2電腦)", optPve3: "💻 單人 (1v3電腦)", optPve4: "💻 單人 (1v4電腦)",
         lblStartMoney: "初始資金", lblCountry: "地理國家",
         chanceEvents: [
-            { text: "政府補助金 +$3000", action: "money", val: 3000 },
-            { text: "投資失利 -$2000", action: "money", val: -2000 },
-            { text: "強制入獄！暫停一回合", action: "jail", val: 0 },
-            { text: "房產熱絡：房產全部免費升級！", action: "upgrade_all", val: 0 },
-            { text: "惡意併購：隨機奪取他人土地！", action: "steal", val: 0 },
-            { text: "意外之財 +$5000", action: "money", val: 5000 }
+            { title: "政府補助金", action: "money", min: 8000, max: 50000 },
+            { title: "投資失利", action: "money", min: -50000, max: -8000 },
+            { title: "強制入獄！", action: "skip", min: 1, max: 2, text: "暫停 {val} 回合" },
+            { title: "房產熱絡", action: "upg_rand", min: 1, max: 5, text: "隨機 {val} 塊房產免費升 1 級！" },
+            { title: "租金減半", action: "rent_half", val: 3, text: "別人的租金減免 50%，3回合！" },
+            { title: "意外之財", action: "money", min: 5000, max: 100000 },
+            { title: "股票大漲", action: "money", min: 20000, max: 500000 },
+            { title: "裝潢翻修", action: "upg_rand", min: 1, max: 1, text: "隨機 1 塊土地升級 +1（免成本）" },
+            { title: "被課罰款", action: "money", min: -30000, max: -5000 },
+            { title: "免租護符", action: "rent_free", val: 2, text: "未來 2 回合免付任何租金" }
         ],
         chestEvents: [
-            { text: "中樂透頭獎 +$8000", action: "money", val: 8000 },
-            { text: "繳納房屋稅 -$3000", action: "money", val: -3000 },
-            { text: "直達起點，並領取 $2000", action: "move", target: 0, val: 2000 },
-            { text: "遭網路詐騙 -$5000", action: "money", val: -5000 },
-            { text: "土地徵收：失去一地獲賠 $10000", action: "lose_prop", val: 10000 },
-            { text: "交通意外：進醫院暫停一回合", action: "jail", val: 0 }
+            { title: "中樂透頭獎", action: "money", min: 8000, max: 2000000 },
+            { title: "繳納房屋稅", action: "money", min: -50000, max: -3000 },
+            { title: "直達起點", action: "move_start", val: 50000, text: "並領取 $50000" },
+            { title: "遭網路詐騙", action: "money", min: -200000, max: -5000 },
+            { title: "土地徵收", action: "lose_prop_fixed", val: 80000, text: "失去一地並獲賠 $80000" },
+            { title: "交通意外", action: "skip", min: 1, max: 1, text: "進醫院暫停 {val} 回合" },
+            { title: "繼承遺產", action: "money", min: 50000, max: 500000 },
+            { title: "房產崩盤", action: "down_rand", min: 1, max: 3, text: "隨機 {val} 塊土地降級 1 級" },
+            { title: "法律糾紛", action: "money", min: -100000, max: -20000 },
+            { title: "慈善捐款", action: "charity_pct", val: 0.1, text: "強制捐出總資產的 10%" }
         ]
     },
     cn: {
         title: "大富翁 2026", player: "玩家", computer: "电脑", win: " 获胜！",
         roll: "🎲 掷骰子", buyPrompt: "是否购买？", upgPrompt: "是否升级房屋？",
         buyBtn: "💰 购买", upgBtn: "🏠 升级", passBtn: "跳过",
-        rentMsg: "支付租金给", chanceMsg: "【机会】", chestMsg: "【命运】", taxMsg: "缴纳税款：",
+        rentMsg: "支付租金给", chanceMsg: "机会", chestMsg: "命运", taxMsg: "缴纳税款：",
         bankrupt: " 破产出局！", passStart: "起点",
         safeNames: ["起点","监狱","公园","休息","税务"],
         countryNames: { tw: "台湾", us: "美国", jp: "日本", cn: "大陆", au: "澳洲", uk: "英国", eu: "欧洲" },
-        optPve1: "💻 单人 (1v1电脑)", optPve2: "💻 单人 (1v2电脑)", optPve3: "💻 单人 (1v3电脑)", optPve4: "💻 单人 (1v4电脑)",
         lblStartMoney: "初始资金", lblCountry: "地理国家",
         chanceEvents: [
-            { text: "政府补助金 +$3000", action: "money", val: 3000 },
-            { text: "投资失利 -$2000", action: "money", val: -2000 },
-            { text: "强制入狱！暂停一回合", action: "jail", val: 0 },
-            { text: "房产热络：房产全部免费升级！", action: "upgrade_all", val: 0 },
-            { text: "恶意并购：随机夺取他人土地！", action: "steal", val: 0 },
-            { text: "意外之财 +$5000", action: "money", val: 5000 }
+            { title: "政府补助金", action: "money", min: 8000, max: 50000 },
+            { title: "投资失利", action: "money", min: -50000, max: -8000 },
+            { title: "强制入狱！", action: "skip", min: 1, max: 2, text: "暂停 {val} 回合" },
+            { title: "房产热络", action: "upg_rand", min: 1, max: 5, text: "随机 {val} 块房产免费升 1 级！" },
+            { title: "租金减半", action: "rent_half", val: 3, text: "别人的租金减免 50%，3回合！" },
+            { title: "意外之财", action: "money", min: 5000, max: 100000 },
+            { title: "股票大涨", action: "money", min: 20000, max: 500000 },
+            { title: "装潢翻修", action: "upg_rand", min: 1, max: 1, text: "随机 1 块土地升级 +1（免成本）" },
+            { title: "被课罚款", action: "money", min: -30000, max: -5000 },
+            { title: "免租护符", action: "rent_free", val: 2, text: "未来 2 回合免付任何租金" }
         ],
         chestEvents: [
-            { text: "中乐透头奖 +$8000", action: "money", val: 8000 },
-            { text: "缴纳房屋税 -$3000", action: "money", val: -3000 },
-            { text: "直达起点，并领取 $2000", action: "move", target: 0, val: 2000 },
-            { text: "遭网络诈骗 -$5000", action: "money", val: -5000 },
-            { text: "土地征收：失去一地获赔 $10000", action: "lose_prop", val: 10000 },
-            { text: "交通意外：进医院暂停一回合", action: "jail", val: 0 }
+            { title: "中乐透头奖", action: "money", min: 8000, max: 2000000 },
+            { title: "缴纳房屋税", action: "money", min: -50000, max: -3000 },
+            { title: "直达起点", action: "move_start", val: 50000, text: "并领取 $50000" },
+            { title: "遭网络诈骗", action: "money", min: -200000, max: -5000 },
+            { title: "土地征收", action: "lose_prop_fixed", val: 80000, text: "失去一地并获赔 $80000" },
+            { title: "交通意外", action: "skip", min: 1, max: 1, text: "进医院暂停 {val} 回合" },
+            { title: "继承遗产", action: "money", min: 50000, max: 500000 },
+            { title: "房产崩盘", action: "down_rand", min: 1, max: 3, text: "随机 {val} 块土地降级 1 级" },
+            { title: "法律纠纷", action: "money", min: -100000, max: -20000 },
+            { title: "慈善捐款", action: "charity_pct", val: 0.1, text: "强制捐出总资产的 10%" }
         ]
     },
     en: {
         title: "Monopoly 2026", player: "Player", computer: "CPU", win: " WINS!",
         roll: "🎲 Roll Dice", buyPrompt: "Buy property?", upgPrompt: "Upgrade property?",
         buyBtn: "💰 Buy", upgBtn: "🏠 Upgrade", passBtn: "Pass",
-        rentMsg: "Paid rent to", chanceMsg: "[Chance]", chestMsg: "[Chest]", taxMsg: "Paid Tax: ",
+        rentMsg: "Paid rent to", chanceMsg: "Chance", chestMsg: "Chest", taxMsg: "Paid Tax: ",
         bankrupt: " Bankrupt!", passStart: "GO",
         safeNames: ["GO","Jail","Park","Rest","Tax"],
         countryNames: { tw: "Taiwan", us: "USA", jp: "Japan", cn: "China", au: "Australia", uk: "UK", eu: "Europe" },
-        optPve1: "💻 1v1 CPU", optPve2: "💻 1v2 CPU", optPve3: "💻 1v3 CPU", optPve4: "💻 1v4 CPU",
         lblStartMoney: "Start Money", lblCountry: "Country",
         chanceEvents: [
-            { text: "Subsidy +$3000", action: "money", val: 3000 },
-            { text: "Bad investment -$2000", action: "money", val: -2000 },
-            { text: "Jail! Skip 1 turn.", action: "jail", val: 0 },
-            { text: "Boom: All your properties upgraded!", action: "upgrade_all", val: 0 },
-            { text: "Takeover: Steal 1 property!", action: "steal", val: 0 },
-            { text: "Windfall +$5000", action: "money", val: 5000 }
+            { title: "Subsidy", action: "money", min: 8000, max: 50000 },
+            { title: "Bad Investment", action: "money", min: -50000, max: -8000 },
+            { title: "Go to Jail!", action: "skip", min: 1, max: 2, text: "Skip {val} turn(s)" },
+            { title: "Real Estate Boom", action: "upg_rand", min: 1, max: 5, text: "Upgrade {val} random properties for free!" },
+            { title: "Rent Halved", action: "rent_half", val: 3, text: "Pay 50% rent for 3 turns!" },
+            { title: "Windfall", action: "money", min: 5000, max: 100000 },
+            { title: "Stock Surge", action: "money", min: 20000, max: 500000 },
+            { title: "Renovation", action: "upg_rand", min: 1, max: 1, text: "Upgrade 1 random property for free" },
+            { title: "Fined", action: "money", min: -30000, max: -5000 },
+            { title: "Rent Free Charm", action: "rent_free", val: 2, text: "Pay 0 rent for the next 2 turns!" }
         ],
         chestEvents: [
-            { text: "Won lottery +$8000", action: "money", val: 8000 },
-            { text: "Property Tax -$3000", action: "money", val: -3000 },
-            { text: "Advance to GO, collect $2000", action: "move", target: 0, val: 2000 },
-            { text: "Internet Scam -$5000", action: "money", val: -5000 },
-            { text: "Eminent Domain: Lose 1 property, gain $10000", action: "lose_prop", val: 10000 },
-            { text: "Accident! Skip 1 turn.", action: "jail", val: 0 }
+            { title: "Lottery Jackpot", action: "money", min: 8000, max: 2000000 },
+            { title: "Property Tax", action: "money", min: -50000, max: -3000 },
+            { title: "Advance to GO", action: "move_start", val: 50000, text: "Collect $50000" },
+            { title: "Internet Scam", action: "money", min: -200000, max: -5000 },
+            { title: "Eminent Domain", action: "lose_prop_fixed", val: 80000, text: "Lose 1 property, collect $80000" },
+            { title: "Accident", action: "skip", min: 1, max: 1, text: "Skip {val} turn(s)" },
+            { title: "Inheritance", action: "money", min: 50000, max: 500000 },
+            { title: "Housing Crash", action: "down_rand", min: 1, max: 3, text: "Downgrade {val} random properties" },
+            { title: "Legal Dispute", action: "money", min: -100000, max: -20000 },
+            { title: "Charity", action: "charity_pct", val: 0.1, text: "Donate 10% of total assets" }
         ]
     }
 };
@@ -561,10 +616,8 @@ function renderLogs() {
     const el = document.getElementById('event-log');
     el.innerHTML = eventLogs.map((l, idx) => {
         if (idx === 0) {
-            // 第1個顯示特效 New 標籤
             return `<div class="log-item new-event" style="color:${l.color};"><span class="log-new-badge">New</span> ${l.text}</div>`;
         } else {
-            // 其他退居二線的為普通箭頭
             return `<div class="log-item" style="color:${l.color};">➤ ${l.text}</div>`;
         }
     }).join('');
@@ -573,7 +626,6 @@ function renderLogs() {
 // 洗牌地圖
 function initMap() {
     MAP_DATA = [];
-    
     let typePool = ['safe','safe','safe','chance','chance','chest','chest','tax'];
     for(let i=0; i<19; i++) typePool.push('prop');
     typePool.sort(() => Math.random() - 0.5); 
@@ -623,7 +675,6 @@ window.onload = () => {
     setTimeout(resizeBoard, 100); 
     restart(); 
     
-    // [修正1] 只有在視窗寬度劇烈改變（如轉向）時才重新計算大小，避免兩指縮放時觸發導致干擾
     let lastWinW = window.innerWidth;
     window.addEventListener('resize', () => { 
         if(Math.abs(window.innerWidth - lastWinW) > 50) {
@@ -656,7 +707,6 @@ function restart() {
         state.numPlayers = parseInt(modeVal.replace('pvp', ''));
     }
     
-    // 嚴謹的防撞顏色與角色抽取系統
     let availAvatars = [...HUMAN_TYPES];
     let availColors = [...PALETTE_COLORS];
     let availNames = [...NORMAL_NAMES].sort(() => Math.random() - 0.5); 
@@ -687,9 +737,11 @@ function restart() {
             col = availColors.pop();
         }
         
+        // 新增 rentHalfTurns 與 rentFreeTurns 等回合Buff變數
         state.players.push({
             id: i, name: pName, avatar: avatar, color: col,
-            active: true, pos: 0, money: startMoney, skipTurns: 0
+            active: true, pos: 0, money: startMoney, skipTurns: 0,
+            rentHalfTurns: 0, rentFreeTurns: 0, receivedBuffThisTurn: false
         });
         document.documentElement.style.setProperty(`--p${i+1}-c`, col);
     }
@@ -846,7 +898,14 @@ function updateUI() {
         let pName = getPlayerName(i);
         let icon = getStatusIcon(p.avatar, p.color);
         
-        sBox.innerHTML = `<div class="player-info">${icon}${pName}</div><span id="mon-${i+1}"></span>`;
+        // 追加狀態顯示
+        let buffs = "";
+        if(p.active) {
+            if(p.rentFreeTurns > 0) buffs += " 🛡️";
+            if(p.rentHalfTurns > 0) buffs += " 💸";
+        }
+
+        sBox.innerHTML = `<div class="player-info">${icon}${pName}${buffs}</div><span id="mon-${i+1}"></span>`;
         document.getElementById(`mon-${i+1}`).innerText = p.active ? `$${p.money}` : "OUT";
         
         sBox.classList.remove('active-turn', 'bankrupt');
@@ -856,6 +915,29 @@ function updateUI() {
 }
 
 function setCenterMsg(msg) { document.getElementById('action-msg').innerText = msg; }
+
+// 動畫彈出事件卡片
+function showEventCard(type, typeLabel, titleText, descText, callback) {
+    const overlay = document.getElementById('event-card-overlay');
+    const card = document.getElementById('event-card');
+    
+    card.className = type; 
+    document.getElementById('ec-type-label').innerText = `【${typeLabel}】`;
+    document.getElementById('ec-title').innerText = titleText;
+    document.getElementById('ec-desc').innerText = descText;
+    
+    overlay.style.display = 'flex';
+    card.style.animation = 'cardPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+    playSfx(600, "score"); // 彈出音效
+    
+    setTimeout(() => {
+        card.style.animation = 'cardPopOut 0.4s ease-in forwards';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            if(callback) callback();
+        }, 400); 
+    }, 2000); 
+}
 
 function rollDice() {
     if(!state.players[state.turn].active) { endTurn(); return; }
@@ -873,11 +955,9 @@ function rollDice() {
 function movePlayer(steps) {
     let p = state.players[state.turn];
     let newPos = p.pos + steps;
-    let passedStart = false;
     
     if(newPos >= 28) {
         newPos = newPos % 28;
-        passedStart = true;
         p.money += 2000;
         playSfx(800, "score");
         addLog(`[${getPlayerName(state.turn)}] 經過起點 +$2000`, '#2ed573');
@@ -895,7 +975,7 @@ let pendingAction = null;
 function handleTileAction() {
     let p = state.players[state.turn];
     let tile = MAP_DATA[p.pos];
-    const t = TRANSLATIONS[currentLang];
+    const tLang = TRANSLATIONS[currentLang];
     let isAI = state.isPve && state.turn !== 0;
 
     document.getElementById('action-btns').style.display = 'none';
@@ -908,10 +988,10 @@ function handleTileAction() {
                 if (isAI) {
                     setTimeout(confirmAction, 800); 
                 } else {
-                    setCenterMsg(`${cityName} 售價$${tile.price}\n${t.buyPrompt}`);
+                    setCenterMsg(`${cityName} 售價$${tile.price}\n${tLang.buyPrompt}`);
                     document.getElementById('action-btns').style.display = 'flex';
-                    document.getElementById('btn-act-yes').innerText = t.buyBtn;
-                    document.getElementById('btn-act-no').innerText = t.passBtn;
+                    document.getElementById('btn-act-yes').innerText = tLang.buyBtn;
+                    document.getElementById('btn-act-no').innerText = tLang.passBtn;
                 }
             } else {
                 if(!isAI) setCenterMsg(`${cityName}\n現金不足無法購買`);
@@ -924,77 +1004,140 @@ function handleTileAction() {
                 if (isAI) {
                     setTimeout(confirmAction, 800);
                 } else {
-                    setCenterMsg(`${cityName} 升級需$${upgCost}\n${t.upgPrompt}`);
+                    setCenterMsg(`${cityName} 升級需$${upgCost}\n${tLang.upgPrompt}`);
                     document.getElementById('action-btns').style.display = 'flex';
-                    document.getElementById('btn-act-yes').innerText = t.upgBtn;
-                    document.getElementById('btn-act-no').innerText = t.passBtn;
+                    document.getElementById('btn-act-yes').innerText = tLang.upgBtn;
+                    document.getElementById('btn-act-no').innerText = tLang.passBtn;
                 }
             } else {
                 if(!isAI) setCenterMsg(`${cityName} (滿級或缺錢)`);
                 setTimeout(endTurn, 1000);
             }
         } else {
+            // 付租金邏輯 (套用減免Buff)
             let rent = tile.baseRent * Math.pow(2, tile.level);
-            p.money -= rent;
-            state.players[tile.owner].money += rent;
-            let ownerName = getPlayerName(tile.owner);
             
-            addLog(`[${getPlayerName(state.turn)}] 付租金 $${rent} 給 ${ownerName}`, '#ff7f50');
-            playSfx(200, "snap");
+            if (p.rentFreeTurns > 0) {
+                rent = 0;
+                addLog(`[${getPlayerName(state.turn)}] 發動【免租護符】，免付租金！`, '#2ed573');
+            } else if (p.rentHalfTurns > 0) {
+                rent = Math.floor(rent / 2);
+                addLog(`[${getPlayerName(state.turn)}] 發動【租金減半】，僅付 $${rent}`, '#ffd32a');
+            }
+
+            if (rent > 0) {
+                p.money -= rent;
+                state.players[tile.owner].money += rent;
+                let ownerName = getPlayerName(tile.owner);
+                addLog(`[${getPlayerName(state.turn)}] 付租金 $${rent} 給 ${ownerName}`, '#ff7f50');
+                playSfx(200, "snap");
+            } else {
+                playSfx(400, "score");
+            }
+
             updateUI();
             checkBankrupt();
             setTimeout(endTurn, 1500); 
         }
     } else if (tile.type === 'chance' || tile.type === 'chest') {
         let isChance = (tile.type === 'chance');
-        let evList = isChance ? t.chanceEvents : t.chestEvents;
-        let ev = evList[Math.floor(Math.random() * 6)];
-        let title = isChance ? t.chanceMsg : t.chestMsg;
-        let color = isChance ? '#1e90ff' : '#a55eea'; 
+        let evList = isChance ? tLang.chanceEvents : tLang.chestEvents;
+        let ev = evList[Math.floor(Math.random() * evList.length)];
         
-        addLog(`[${getPlayerName(state.turn)}] ${title} ${ev.text}`, color);
-
-        if (ev.action === "money") {
-            p.money += ev.val;
-            if(ev.val > 0) playSfx(800, "score"); else playSfx(200, "snap");
-        } else if (ev.action === "move") {
-            p.money += ev.val; 
-            p.pos = ev.target; 
-            if(ev.val > 0) playSfx(800, "score"); else playSfx(200, "snap");
-            renderBoard(); 
-        } else if (ev.action === "jail") {
-            p.skipTurns = 1;
-            playSfx(200, "snap");
-        } else if (ev.action === "steal") {
-            let othersProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner !== null && tile.owner !== state.turn);
-            if(othersProps.length > 0) {
-                let targetProp = othersProps[Math.floor(Math.random()*othersProps.length)];
-                targetProp.owner = state.turn;
-                addLog(`(成功奪取了 ${targetProp.cityName}!)`, '#2ed573');
-                playSfx(800, "score");
-                renderBoard();
-            } else { addLog(`(無地可奪)`, '#aaa'); }
-        } else if (ev.action === "upgrade_all") {
-            let myProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner === state.turn);
-            myProps.forEach(prop => { prop.level = Math.min(prop.level + 1, 3); });
-            addLog(`(共免費升級了 ${myProps.length} 棟房產!)`, '#2ed573');
-            playSfx(800, "score");
-            renderBoard();
-        } else if (ev.action === "lose_prop") {
-            let myProps = MAP_DATA.filter(tile => tile.type === 'prop' && tile.owner === state.turn);
-            p.money += ev.val;
-            if(myProps.length > 0) {
-                let targetProp = myProps[Math.floor(Math.random()*myProps.length)];
-                targetProp.owner = null; targetProp.level = 0;
-                addLog(`(被徵收了 ${targetProp.cityName})`, '#ff4757');
-            } else { addLog(`(無地可徵收)`, '#aaa'); }
-            playSfx(800, "score");
-            renderBoard();
+        // 解析隨機數值
+        let val = 0;
+        if (ev.min !== undefined && ev.max !== undefined) {
+            val = Math.floor(Math.random() * (ev.max - ev.min + 1)) + ev.min;
+        } else if (ev.val !== undefined) {
+            val = ev.val;
         }
 
-        updateUI();
-        checkBankrupt();
-        setTimeout(endTurn, 2500); 
+        let descText = "";
+        let logText = "";
+
+        if (ev.action === "money") {
+            descText = `${val > 0 ? '+' : ''}$${val}`;
+            logText = `${ev.title} ${descText}`;
+        } else if (ev.action === "charity_pct") {
+            // 計算總資產
+            let totalAssets = p.money;
+            MAP_DATA.forEach(t => {
+                if (t.owner === state.turn) {
+                    totalAssets += t.price + (t.level * Math.floor(t.price / 2));
+                }
+            });
+            val = -Math.floor(totalAssets * ev.val);
+            descText = ev.text + `\n($${val})`;
+            logText = `${ev.title} ${val}`;
+        } else {
+            descText = ev.text ? ev.text.replace('{val}', Math.abs(val)) : "";
+            logText = `${ev.title}：${descText.replace('\n', ' ')}`;
+        }
+
+        let typeLabel = isChance ? tLang.chanceMsg : tLang.chestMsg;
+        let color = isChance ? '#1e90ff' : '#a55eea';
+
+        // 呼叫動畫卡片
+        showEventCard(isChance ? 'chance' : 'chest', typeLabel, ev.title, descText, () => {
+            addLog(`[${getPlayerName(state.turn)}] ${logText}`, color);
+
+            // 執行事件效果
+            if (ev.action === "money" || ev.action === "charity_pct") {
+                p.money += val;
+                if(val > 0) playSfx(800, "score"); else playSfx(200, "snap");
+            } else if (ev.action === "move_start") {
+                p.money += val;
+                p.pos = 0;
+                playSfx(800, "score");
+                renderBoard();
+            } else if (ev.action === "skip") {
+                p.skipTurns += Math.abs(val);
+                playSfx(200, "snap");
+            } else if (ev.action === "upg_rand") {
+                let myProps = MAP_DATA.filter(t => t.type === 'prop' && t.owner === state.turn && t.level < 3);
+                myProps.sort(() => Math.random() - 0.5); // 打亂順序
+                let count = 0;
+                for(let i=0; i<Math.min(val, myProps.length); i++) {
+                    myProps[i].level++;
+                    count++;
+                }
+                if(count > 0) playSfx(800, "score");
+                renderBoard();
+            } else if (ev.action === "down_rand") {
+                let myProps = MAP_DATA.filter(t => t.type === 'prop' && t.owner === state.turn && t.level > 0);
+                myProps.sort(() => Math.random() - 0.5);
+                let count = 0;
+                for(let i=0; i<Math.min(val, myProps.length); i++) {
+                    myProps[i].level--;
+                    count++;
+                }
+                if(count > 0) playSfx(200, "snap");
+                renderBoard();
+            } else if (ev.action === "lose_prop_fixed") {
+                let myProps = MAP_DATA.filter(t => t.type === 'prop' && t.owner === state.turn);
+                p.money += val;
+                if(myProps.length > 0) {
+                    let targetProp = myProps[Math.floor(Math.random()*myProps.length)];
+                    targetProp.owner = null; 
+                    targetProp.level = 0;
+                }
+                playSfx(800, "score");
+                renderBoard();
+            } else if (ev.action === "rent_half") {
+                p.rentHalfTurns += Math.abs(val);
+                p.receivedBuffThisTurn = true; // 當回合獲得Buff先不扣減
+                playSfx(800, "score");
+            } else if (ev.action === "rent_free") {
+                p.rentFreeTurns += Math.abs(val);
+                p.receivedBuffThisTurn = true;
+                playSfx(800, "score");
+            }
+
+            updateUI();
+            checkBankrupt();
+            setTimeout(endTurn, 1000); 
+        });
+
     } else if (tile.type === 'tax') {
         p.money -= 1000;
         addLog(`[${getPlayerName(state.turn)}] 繳納稅款 $1000`, '#ff4757');
@@ -1003,7 +1146,7 @@ function handleTileAction() {
         checkBankrupt();
         setTimeout(endTurn, 1500);
     } else {
-        let safeName = tile.type === 'start' ? t.safeNames[0] : t.safeNames[tile.safeId];
+        let safeName = tile.type === 'start' ? tLang.safeNames[0] : tLang.safeNames[tile.safeId];
         if(!isAI) setCenterMsg(`抵達 ${safeName}`);
         setTimeout(endTurn, 1000);
     }
@@ -1051,7 +1194,15 @@ function checkBankrupt() {
 
 function endTurn() {
     pendingAction = null;
+    let cp = state.players[state.turn];
     
+    // 結算回合Buff減扣
+    if (!cp.receivedBuffThisTurn) {
+        if (cp.rentHalfTurns > 0) cp.rentHalfTurns--;
+        if (cp.rentFreeTurns > 0) cp.rentFreeTurns--;
+    }
+    cp.receivedBuffThisTurn = false;
+
     let activePlayers = state.players.filter(p => p.active);
     if(activePlayers.length <= 1) {
         let winnerName = "";
