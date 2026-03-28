@@ -124,7 +124,9 @@
         .svg-tile-owner { stroke: none; opacity: 0.6; }
         .svg-text { font-family: sans-serif; font-size: 2px; font-weight: bold; fill: #222; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
         .svg-text-small { font-size: 1.55px; font-weight:bold; fill: #444; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
-        .svg-house { fill: #c0392b; stroke: #fff; stroke-width: 0.1; }
+        
+        /* [修正4] 新增的明亮房子樣式 */
+        .svg-house { fill: #ff1111; stroke: #fff; stroke-width: 0.2; }
 
         /* === 中央事件推播與操作 UI 區塊 === */
         #center-ui {
@@ -136,7 +138,7 @@
         }
         
         #event-log {
-            width: 100%; height: 60%; display: grid; 
+            width: 100%; display: grid; 
             grid-template-columns: 1fr 1fr; 
             grid-auto-rows: min-content; 
             align-content: start;
@@ -145,6 +147,7 @@
             font-size: clamp(10px, 2.5vmin, 14px); 
             font-weight: bold;
             padding-right: 4px; 
+            flex-grow: 1; height: 0;
         }
         
         .log-item {
@@ -185,8 +188,9 @@
 
         /* 底部操作區 */
         #action-area {
-            height: 40%; width: 100%; display: flex; flex-direction: column; 
+            width: 100%; display: flex; flex-direction: column; 
             align-items: center; justify-content: flex-end; padding-bottom: 2px;
+            height: 35%; min-height: 80px; flex-shrink: 0;
         }
         #action-msg { 
             font-size: clamp(14px, 4vmin, 20px); 
@@ -225,14 +229,14 @@
             .log-item.new-event { font-size: clamp(14px, 4.2vw, 17px); }
         }
 
-        /* === 新增：動態專屬精緻卡片 (Event Card) 樣式 === */
+        /* === 動態專屬精緻卡片 (Event Card) 樣式 === */
         #event-card-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: transparent; /* 改為透明背景，不霧化畫面 */
+            background: transparent; 
             z-index: 5000;
             display: none; align-items: center; justify-content: center;
-            backdrop-filter: none; /* 移除模糊 */
-            pointer-events: none; /* 讓畫面不被覆蓋層阻擋點擊 */
+            backdrop-filter: none;
+            pointer-events: none; 
         }
         #event-card {
             border-radius: 20px; padding: 30px 40px; text-align: center;
@@ -416,7 +420,7 @@
             <li>走到無人空地時，可選擇是否花費現金<b>購買土地</b>。(房價與租金各自獨立隨機)</li>
             <li>走到自己的土地時，可花費一半地價<b>升級房屋</b>（最多可蓋3棟，租金倍增）。</li>
             <li>走到他人的土地時，必須<b>強制支付租金</b>。</li>
-            <li>經過起點時，可獲得獎勵金 <b>$2000</b>。</li>
+            <li>經過起點時，可獲得獎勵金 <b>$20,000</b>。</li>
             <li>走到「機會」或「命運」格，會真實觸發具備<b>逆轉機制</b>的隨機事件（如強制入獄、奪取土地、免費升級等）！</li>
         </ul>
         <h4 id="rules-h-win">勝負條件</h4>
@@ -437,9 +441,14 @@
             </svg>
             
             <div id="center-ui">
-                <label style="position: absolute; bottom: 12px; left: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #fbc531; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9); z-index: 100;">
-                    <input type="checkbox" id="auto-play" onchange="checkAutoPlayState()" style="width: 1.2rem; height: 1.2rem; accent-color: #e74c3c;"> 自動掛機
-                </label>
+                <div style="width: 100%; display: flex; justify-content: flex-start; align-items: center; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 5px; gap: 15px;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #fbc531; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
+                        <input type="checkbox" id="auto-play" onchange="checkAutoPlayState()" style="width: 1.2rem; height: 1.2rem; accent-color: #e74c3c;"> 自動掛機
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #00e88f; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
+                        <input type="checkbox" id="disable-anim" style="width: 1.2rem; height: 1.2rem; accent-color: #00e88f;"> 關閉動畫
+                    </label>
+                </div>
 
                 <div id="event-log"></div>
                 
@@ -483,12 +492,11 @@ const CITIES_DATA = {
     eu: ["巴黎","柏林","羅馬","馬德里","維也納","阿姆斯特丹","布魯塞爾","斯德哥爾摩","雅典","里斯本","華沙","布拉格","布達佩斯","哥本哈根","都柏林","赫爾辛基","奧斯陸","慕尼黑","米蘭"]
 };
 
-// 正常且多國的趣味名稱庫
 const NORMAL_NAMES = ["阿土伯", "孫小美", "柳如烟", "羅峰", "錢夫人", "約翰", "愛麗絲", "田中", "金貝貝", "沙隆巴斯", "伊凡", "索菲亞", "木村", "李雷", "韓梅梅"];
 const HUMAN_TYPES = ['boy', 'girl', 'uncle', 'lady', 'ninja'];
 const PALETTE_COLORS = ['#ff4757', '#1e90ff', '#ffd32a', '#2ed573', '#a55eea', '#ff7f50', '#00d8d6', '#ff6b81', '#0be881', '#fbc531'];
 
-// [全新事件配置與多國語言支援]
+// [更新] 最新修訂事件配置與數值
 const TRANSLATIONS = {
     tw: {
         title: "大富翁 2026", player: "玩家", computer: "電腦", win: " 獲勝！",
@@ -621,12 +629,9 @@ function renderLogs() {
     }).join('');
 }
 
-// 洗牌地圖
+// [修正1] 洗牌地圖，確保4邊各自只有1個機會或命運，絕不相鄰
 function initMap() {
     MAP_DATA = [];
-    let typePool = ['safe','safe','safe','chance','chance','chest','chest','tax'];
-    for(let i=0; i<19; i++) typePool.push('prop');
-    typePool.sort(() => Math.random() - 0.5); 
     
     let selCountry = document.getElementById('country-sel').value;
     if(selCountry === 'random') {
@@ -636,8 +641,37 @@ function initMap() {
     let cityPool = [...CITIES_DATA[selCountry]];
     cityPool.sort(() => Math.random() - 0.5);
 
+    // 分配四邊的內部格子索引 (避開角落 0, 7, 14, 21)
+    let side0 = [1,2,3,4,5,6];
+    let side1 = [8,9,10,11,12,13];
+    let side2 = [15,16,17,18,19,20];
+    let side3 = [22,23,24,25,26,27];
+
+    function getRandom(arr) {
+        let idx = Math.floor(Math.random() * arr.length);
+        return arr.splice(idx, 1)[0];
+    }
+
+    // 從四個邊各自抽取 1 個位置放特殊卡片，確保不相鄰
+    let specialIndices = [getRandom(side0), getRandom(side1), getRandom(side2), getRandom(side3)];
+    let specials = ['chance', 'chance', 'chest', 'chest'];
+    specials.sort(() => Math.random() - 0.5);
+
+    let otherSpecials = ['safe', 'safe', 'safe', 'tax'];
+    // 剩下的格子全部倒進一個陣列抽籤
+    let remaining = [7, 14, 21].concat(side0, side1, side2, side3);
+    remaining.sort(() => Math.random() - 0.5);
+
+    let mapTypes = new Array(28).fill('prop');
+    mapTypes[0] = 'start';
+
+    // 寫入 4 張卡片與 4 個其他特殊地塊
+    for(let i=0; i<4; i++) { mapTypes[specialIndices[i]] = specials[i]; }
+    for(let i=0; i<4; i++) { mapTypes[remaining[i]] = otherSpecials[i]; }
+
+    // 建立棋盤物件
     for(let i=0; i<28; i++) {
-        let type = (i === 0) ? 'start' : typePool[i-1];
+        let type = mapTypes[i];
         let px, py;
         if(i < 8) { px = i; py = 7; }
         else if(i < 15) { px = 7; py = 7 - (i - 7); }
@@ -696,7 +730,6 @@ function restart() {
     eventLogs = [];
     renderLogs();
     
-    // [更新] 重開時清空人物圖層，讓 SVG 能重新乾淨的繪製
     const playersLayer = document.getElementById('players-layer');
     if (playersLayer) playersLayer.innerHTML = '';
     
@@ -743,7 +776,7 @@ function restart() {
         state.players.push({
             id: i, name: pName, avatar: avatar, color: col,
             active: true, pos: 0, money: startMoney, skipTurns: 0,
-            rentHalfTurns: 0, rentFreeTurns: 0, receivedBuffThisTurn: false
+            rentHalfTurns: 0, rentFreeTurns: 0, receivedBuffThisTurn: false, moveSpeed: null
         });
         document.documentElement.style.setProperty(`--p${i+1}-c`, col);
     }
@@ -763,13 +796,11 @@ function restart() {
     startTurn();
 }
 
-// 實時檢查：當玩家點擊掛機勾選時，如果是正在等待動作的狀態，直接執行
 function checkAutoPlayState() {
     let autoPlay = document.getElementById('auto-play').checked;
     if (autoPlay && state.players[state.turn] && state.players[state.turn].active) {
         let btnRoll = document.getElementById('btn-roll');
         let actBtns = document.getElementById('action-btns');
-        // 自動執行手動按鈕
         if (btnRoll.style.display !== 'none') {
             btnRoll.click();
         } else if (actBtns.style.display !== 'none') {
@@ -788,7 +819,7 @@ function startTurn() {
 
     if (p.skipTurns > 0) {
         p.skipTurns--;
-        addLog(`[${getPlayerName(state.turn)}] 暫停行動 (剩${p.skipTurns}回合)`, '#ff4757');
+        addLog(`[${getPlayerName(state.turn)}] 暫停行動 (剩${p.skipTurns}回合)`, p.color);
         document.getElementById('btn-roll').style.display = 'none';
         document.getElementById('action-btns').style.display = 'none';
         setTimeout(endTurn, 1500);
@@ -799,12 +830,10 @@ function startTurn() {
     document.getElementById('action-btns').style.display = 'none';
     document.getElementById('dice-display').style.display = 'none';
 
-    // AI 回合判斷 (不受 Auto-play 影響，AI恆為自動)
     if (state.isPve && state.turn !== 0) {
         document.getElementById('btn-roll').style.display = 'none';
         setTimeout(aiPlay, 800);
     } else {
-        // 玩家回合
         if (autoPlay) {
             document.getElementById('btn-roll').style.display = 'none';
             setTimeout(rollDice, 800);
@@ -856,7 +885,6 @@ function getStatusIcon(type, color) {
     return `<svg viewBox="-2 -2 4 4" style="width:1.2rem;height:1.2rem;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));">${getHumanInnerSVG(type, color)}</svg>`;
 }
 
-// [更新] 分離式繪製：背景靜態物件與人物動態平滑移動
 function renderBoard() {
     const boardLayer = document.getElementById('board-layer');
     const playersLayer = document.getElementById('players-layer');
@@ -879,8 +907,12 @@ function renderBoard() {
         if (tile.owner !== null) {
             let pColor = state.players[tile.owner].color;
             output.push(`<rect x="${tile.x+0.5}" y="${tile.y+0.5}" width="${TILE_SIZE-1}" height="${TILE_SIZE-1}" fill="${pColor}" class="svg-tile-owner" />`);
+            
+            // [修正4] 更鮮明的紅色房子圖形
             for(let h=0; h<tile.level; h++) {
-                output.push(`<rect x="${tile.x + 1.5 + h*3}" y="${tile.y + 1.5}" width="2.5" height="2.5" class="svg-house" />`);
+                let hx = tile.x + 1.5 + h*3;
+                let hy = tile.y + 1.5;
+                output.push(`<path d="M ${hx},${hy+2.5} L ${hx+2.5},${hy+2.5} L ${hx+2.5},${hy+1} L ${hx+1.25},${hy} L ${hx},${hy+1} Z" class="svg-house" />`);
             }
         }
         
@@ -890,7 +922,8 @@ function renderBoard() {
             let cName = t.countryNames[tile.countryKey];
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY - 1.2}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${cName}</text>`);
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 1.6}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${name}</text>`);
-            output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.8}" class="svg-text-small" style="font-weight:bold; fill:#000;">+ $2K</text>`);
+            // [修正4] 起點標示為 20K
+            output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.8}" class="svg-text-small" style="font-weight:bold; fill:#000;">+ $20K</text>`);
         } else {
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY}" class="svg-text">${name}</text>`);
             if(tile.type === 'prop') {
@@ -905,10 +938,8 @@ function renderBoard() {
         }
     });
     
-    // 只重繪背景 (地塊、房子、文字)
     boardLayer.innerHTML = output.join('');
 
-    // 單獨對玩家 SVG 進行平滑更新 (利用 CSS Transform)
     state.players.forEach(p => {
         let pEl = document.getElementById(`player-svg-${p.id}`);
         
@@ -922,12 +953,14 @@ function renderBoard() {
         let cx = tile.x + TILE_SIZE/2 + offset[p.id].x;
         let cy = tile.y + TILE_SIZE/2 + offset[p.id].y;
         
+        let transitionTime = p.moveSpeed ? p.moveSpeed : 800; 
+        let easing = p.moveSpeed ? 'linear' : 'cubic-bezier(0.25, 0.1, 0.25, 1)';
+        
         if (!pEl) {
-            // 第一次渲染該玩家：賦予 transition 讓他往後移動時能實現 0.8s 的平滑滑行
-            playersLayer.insertAdjacentHTML('beforeend', `<g id="player-svg-${p.id}" style="transition: transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);" transform="translate(${cx}, ${cy}) scale(0.85)">${getHumanInnerSVG(p.avatar, p.color)}</g>`);
+            playersLayer.insertAdjacentHTML('beforeend', `<g id="player-svg-${p.id}" style="transition: transform ${transitionTime}ms ${easing};" transform="translate(${cx}, ${cy}) scale(0.85)">${getHumanInnerSVG(p.avatar, p.color)}</g>`);
         } else {
-            // 已存在，僅更改 transform，瀏覽器會自動補間動畫
             pEl.style.display = 'block';
+            pEl.style.transition = `transform ${transitionTime}ms ${easing}`;
             pEl.setAttribute('transform', `translate(${cx}, ${cy}) scale(0.85)`);
         }
     });
@@ -957,38 +990,40 @@ function updateUI() {
 
 function setCenterMsg(msg) { document.getElementById('action-msg').innerText = msg; }
 
-// 動畫彈出事件卡片 (傳入玩家色彩、以 WAAPI 執行遠距離飛出特效)
-function showEventCard(type, typeLabel, titleText, descText, pColor, callback) {
+// [修正2,3] 根據「關閉動畫」勾選框決定是否播放動畫，並將顯示時間延至 2.5s
+function showEventCard(type, typeLabel, titleText, descText, pColor, pName, callback) {
+    // 檢查是否勾選關閉動畫
+    if (document.getElementById('disable-anim').checked) {
+        if(callback) callback();
+        return; // 直接略過所有特效
+    }
+
     const overlay = document.getElementById('event-card-overlay');
     const card = document.getElementById('event-card');
     
-    // 依據玩家顏色做精緻背景與邊框處理
     card.style.background = `radial-gradient(circle at top left, ${pColor}, #222), repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px)`;
     card.style.backgroundBlendMode = 'overlay';
     card.style.boxShadow = `0 20px 50px rgba(0,0,0,0.9), inset 0 0 25px rgba(255,255,255,0.5), 0 0 30px ${pColor}`;
     card.style.border = `8px ridge #ffd700`; 
     
-    document.getElementById('ec-type-label').innerText = `【${typeLabel}】`;
+    document.getElementById('ec-type-label').innerText = `【${typeLabel}】 - ${pName}`;
     document.getElementById('ec-title').innerText = titleText;
     document.getElementById('ec-desc').innerText = descText;
     
-    // 顯示卡片 (背景不再霧化，畫面維持正常)
     overlay.style.display = 'flex';
     card.style.transform = 'scale(0)';
     card.style.opacity = '0';
-    card.style.animation = 'cardPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+    card.style.animation = 'cardPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
     playSfx(600, "score"); 
     
-    // 等待兩秒後，執行向外遠距離飛散的消失特效
+    // 停留 2.5 秒後飛散
     setTimeout(() => {
-        card.style.animation = ''; // 清除 CSS Animation 避免衝突
+        card.style.animation = ''; 
         
-        // 隨機計算飛出的遠距離 XY 軸 (800~1500) 與多圈旋轉角度
         const rX = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 700 + 800); 
         const rY = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 700 + 800);
         const rRot = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 720 + 360); 
 
-        // 透過 Web Animations API 執行特效
         const anim = card.animate([
             { transform: 'scale(1) translate(0px, 0px) rotate(0deg)', opacity: 1 },
             { transform: `scale(0.3) translate(${rX}px, ${rY}px) rotate(${rRot}deg)`, opacity: 0 }
@@ -998,7 +1033,7 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, callback) {
             overlay.style.display = 'none';
             if(callback) callback();
         };
-    }, 2000); 
+    }, 2500); 
 }
 
 function rollDice() {
@@ -1016,21 +1051,36 @@ function rollDice() {
 
 function movePlayer(steps) {
     let p = state.players[state.turn];
-    let newPos = p.pos + steps;
-    
-    if(newPos >= 28) {
-        newPos = newPos % 28;
-        p.money += 2000;
-        playSfx(800, "score");
-        addLog(`[${getPlayerName(state.turn)}] 經過起點 +$2000`, '#2ed573');
+    let stepCount = 0;
+    let timePerStep = Math.floor(800 / steps); 
+    p.moveSpeed = timePerStep;
+
+    function nextStep() {
+        stepCount++;
+        p.pos = (p.pos + 1) % 28;
+        
+        if(p.pos === 0) {
+            p.money += 20000;
+            playSfx(800, "score");
+            // [修正5] 套用玩家顏色
+            addLog(`[${getPlayerName(state.turn)}] 經過起點 +$20000`, p.color);
+        }
+        
+        renderBoard(); 
+        
+        if(stepCount < steps) {
+            setTimeout(nextStep, timePerStep);
+        } else {
+            updateUI();
+            setTimeout(() => { 
+                p.moveSpeed = null; 
+                renderBoard(); 
+                handleTileAction(); 
+            }, timePerStep + 50);
+        }
     }
     
-    p.pos = newPos;
-    renderBoard(); // 將在此函式中觸發平滑 CSS transform 0.8s
-    updateUI();
-    
-    // [更新] 配合 0.8s 的動畫移動，將結算觸發延遲到 850ms 確保到位後才進行判定
-    setTimeout(() => { handleTileAction(); }, 850);
+    nextStep();
 }
 
 let pendingAction = null; 
@@ -1058,8 +1108,7 @@ function handleTileAction() {
                     document.getElementById('btn-act-no').innerText = tLang.passBtn;
                 }
             } else {
-                if(!isAI && !autoPlay) setCenterMsg(`${cityName}\n現金不足無法購買`);
-                else setCenterMsg(`${cityName}\n現金不足無法購買`);
+                setCenterMsg(`${cityName}\n現金不足無法購買`);
                 setTimeout(endTurn, 1000);
             }
         } else if (tile.owner === state.turn) {
@@ -1075,8 +1124,7 @@ function handleTileAction() {
                     document.getElementById('btn-act-no').innerText = tLang.passBtn;
                 }
             } else {
-                if(!isAI && !autoPlay) setCenterMsg(`${cityName} (滿級或缺錢)`);
-                else setCenterMsg(`${cityName} (滿級或缺錢)`);
+                setCenterMsg(`${cityName} (滿級或缺錢)`);
                 setTimeout(endTurn, 1000);
             }
         } else {
@@ -1084,17 +1132,17 @@ function handleTileAction() {
             
             if (p.rentFreeTurns > 0) {
                 rent = 0;
-                addLog(`[${getPlayerName(state.turn)}] 發動【免租護符】，免付租金！`, '#2ed573');
+                addLog(`[${getPlayerName(state.turn)}] 發動【免租護符】，免付租金！`, p.color);
             } else if (p.rentHalfTurns > 0) {
                 rent = Math.floor(rent / 2);
-                addLog(`[${getPlayerName(state.turn)}] 發動【租金減半】，僅付 $${rent}`, '#ffd32a');
+                addLog(`[${getPlayerName(state.turn)}] 發動【租金減半】，僅付 $${rent}`, p.color);
             }
 
             if (rent > 0) {
                 p.money -= rent;
                 state.players[tile.owner].money += rent;
                 let ownerName = getPlayerName(tile.owner);
-                addLog(`[${getPlayerName(state.turn)}] 付租金 $${rent} 給 ${ownerName}`, '#ff7f50');
+                addLog(`[${getPlayerName(state.turn)}] 付租金 $${rent} 給 ${ownerName}`, p.color);
                 playSfx(200, "snap");
             } else {
                 playSfx(400, "score");
@@ -1140,11 +1188,9 @@ function handleTileAction() {
         }
 
         let typeLabel = isChance ? tLang.chanceMsg : tLang.chestMsg;
-        let colorLog = isChance ? '#1e90ff' : '#a55eea';
 
-        // 呼叫動畫卡片，傳入專屬顏色與特效
-        showEventCard(isChance ? 'chance' : 'chest', typeLabel, ev.title, descText, p.color, () => {
-            addLog(`[${getPlayerName(state.turn)}] ${logText}`, colorLog);
+        showEventCard(isChance ? 'chance' : 'chest', typeLabel, ev.title, descText, p.color, getPlayerName(state.turn), () => {
+            addLog(`[${getPlayerName(state.turn)}] ${logText}`, p.color);
 
             if (ev.action === "money" || ev.action === "charity_pct") {
                 p.money += val;
@@ -1153,7 +1199,7 @@ function handleTileAction() {
                 p.money += val;
                 p.pos = 0;
                 playSfx(800, "score");
-                renderBoard();
+                renderBoard(); 
             } else if (ev.action === "skip") {
                 p.skipTurns += Math.abs(val);
                 playSfx(200, "snap");
@@ -1203,16 +1249,24 @@ function handleTileAction() {
         });
 
     } else if (tile.type === 'tax') {
-        p.money -= 1000;
-        addLog(`[${getPlayerName(state.turn)}] 繳納稅款 $1000`, '#ff4757');
+        // [修正5] 總房租 2 倍的稅務計算
+        let totalRent = 0;
+        MAP_DATA.forEach(t => {
+            if (t.type === 'prop' && t.owner === state.turn) {
+                totalRent += t.baseRent * Math.pow(2, t.level);
+            }
+        });
+        let taxAmount = totalRent * 2;
+
+        p.money -= taxAmount;
+        addLog(`[${getPlayerName(state.turn)}] 繳納稅務，共計$${taxAmount} (總房租2倍)`, p.color);
         playSfx(200, "snap");
         updateUI();
         checkBankrupt();
         setTimeout(endTurn, 1500);
     } else {
         let safeName = tile.type === 'start' ? tLang.safeNames[0] : tLang.safeNames[tile.safeId];
-        if(!isAI && !autoPlay) setCenterMsg(`抵達 ${safeName}`);
-        else setCenterMsg(`抵達 ${safeName}`);
+        setCenterMsg(`抵達 ${safeName}`);
         setTimeout(endTurn, 1000);
     }
 }
@@ -1224,12 +1278,12 @@ function confirmAction() {
     if (pendingAction === 'buy') {
         p.money -= tile.price;
         tile.owner = state.turn;
-        addLog(`[${getPlayerName(state.turn)}] 買下 ${tile.cityName}`, '#ffd32a');
+        addLog(`[${getPlayerName(state.turn)}] 買下 ${tile.cityName}`, p.color);
         playSfx(600, "score");
     } else if (pendingAction === 'upgrade') {
         p.money -= Math.floor(tile.price / 2);
         tile.level += 1;
-        addLog(`[${getPlayerName(state.turn)}] 升級 ${tile.cityName}`, '#ffd32a');
+        addLog(`[${getPlayerName(state.turn)}] 升級 ${tile.cityName}`, p.color);
         playSfx(600, "score");
     }
     
@@ -1250,7 +1304,7 @@ function checkBankrupt() {
     state.players.forEach((p, idx) => {
         if(p.active && p.money < 0) {
             p.active = false;
-            addLog(`[${getPlayerName(idx)}] 破產出局！`, '#ff4757');
+            addLog(`[${getPlayerName(idx)}] 破產出局！`, state.players[idx].color);
             MAP_DATA.forEach(t => { if(t.owner === idx) { t.owner = null; t.level = 0; } });
             playSfx(150, "snap");
         }
