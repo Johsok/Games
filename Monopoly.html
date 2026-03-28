@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>大富翁(Monopoly) 2026</title>
     <style>
         :root {
@@ -42,7 +42,6 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: rgba(34,34,34,0.1); --piece-border: #222; --border-style: 6px solid #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: rgba(119,119,119,0.3); --piece-border: #888; --border-style: 8px solid #555; }
 
-        /* [修正2] 移除 overscroll-behavior: none，並加上 touch-action: auto，確保 iOS Safari 原生縮放不受干擾 */
         html, body { height: auto; min-height: 100vh; width: 100%; overflow: auto; padding: 0; margin: 0; touch-action: auto !important; }
         
         body { 
@@ -136,46 +135,49 @@
             padding: 8px; box-sizing: border-box; backdrop-filter: blur(4px); z-index: 50;
         }
         
-        /* [修正1] 事件日誌區：調整為支援垂直滾動的網格，避免強制擠壓 */
         #event-log {
             width: 100%; height: 60%; display: grid; 
             grid-template-columns: 1fr 1fr; 
-            grid-auto-rows: min-content; /* 讓行高根據文字多寡自動長高 */
+            grid-auto-rows: min-content; 
             align-content: start;
             gap: 4px 8px; 
-            overflow-y: auto; overflow-x: hidden; /* 允許垂直滾動檢視舊訊息 */
-            font-size: clamp(12px, 3.5vmin, 16px); 
+            overflow-y: auto; overflow-x: hidden; 
+            font-size: clamp(10px, 2.5vmin, 14px); /* [修正2] 優化基礎字體大小 */
             font-weight: bold;
-            padding-right: 4px; /* 留出滾動條空間 */
+            padding-right: 4px; 
         }
+        
+        /* [修正2] 強制文字不超出，並利用 clamp 和 line-clamp 來壓縮並截斷文字，最多顯示兩行 */
         .log-item {
-            /* [修正1] 移除 nowrap 和 ellipsis，允許自動換行完整顯示 */
             white-space: normal; 
             word-break: break-word; 
-            overflow: visible; 
+            overflow: hidden; 
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* 限制最多兩行 */
+            -webkit-box-orient: vertical;
             line-height: 1.3;
             text-shadow: 1px 1px 2px #000, 0 0 3px rgba(0,0,0,0.8);
-            display: flex; align-items: flex-start; /* 換行時置頂對齊 */
+            align-items: flex-start;
             border-bottom: 1px solid rgba(255,255,255,0.05);
             padding-bottom: 4px;
         }
 
-        /* [New] 藍綠漸層標籤與高亮文字特效 */
         .log-new-badge {
             display: inline-block; 
             background: linear-gradient(45deg, #00e88f, #00a8f3);
             color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 6px;
             box-shadow: 0 0 6px #00d2ff; animation: flash-badge 1s infinite alternate; font-style: italic;
             text-shadow: 0px 1px 2px rgba(0,0,0,0.8);
-            flex-shrink: 0; /* 標籤不被壓縮 */
+            flex-shrink: 0; 
         }
         @keyframes flash-badge {
             from { filter: brightness(1); text-shadow: 0 0 2px rgba(0,0,0,0.8); box-shadow: 0 0 4px #00a8f3; }
             to { filter: brightness(1.3); text-shadow: 0 0 6px rgba(0,0,0,1); box-shadow: 0 0 12px #00e88f; }
         }
-        /* 最新事件整行呼吸燈高亮 */
+        
+        /* [修正2] 最新事件自動縮小與適應 */
         .log-item.new-event { 
-            font-size: clamp(14px, 4.5vmin, 18px); 
+            font-size: clamp(12px, 3.5vmin, 16px); 
             animation: text-pulse 1.5s infinite alternate; 
         }
         @keyframes text-pulse { 
@@ -196,10 +198,10 @@
         
         @keyframes bounce { 0% { transform: scale(0.5) translateY(20px); } 50% { transform: scale(1.2) translateY(-10px); } 100% { transform: scale(1) translateY(0); } }
 
-        /* 終局勝利宣告 (放大至棋盤85%大小) */
+        /* 終局勝利宣告 */
         #win-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
-            width: 85%; /* 覆蓋棋盤85% */
+            width: 85%; 
             box-sizing: border-box; text-align: center;
             pointer-events: none; opacity: 0; z-index: 1000; white-space: normal; 
             font: 900 3em "Microsoft JhengHei", sans-serif; letter-spacing: 4px; 
@@ -219,12 +221,17 @@
         .rules-content li { margin-bottom: 6px; font-size: 0.95rem; }
         .close-rules { display: block; width: 100%; padding: 10px; background: var(--p1-c); color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
-        /* [修正1] 手機版 RWD 調整，讓事件文字版面更適合閱讀 */
+        /* [修正2] 手機版 RWD 調整，讓事件文字版面自動適應 vw 比例，確保不超出 */
         @media (max-width: 600px) {
             #event-log {
-                /* 手機直式時改為單欄顯示，避免左右擠壓造成文字太長 */
                 display: flex;
                 flex-direction: column;
+            }
+            .log-item {
+                font-size: clamp(12px, 3.5vw, 15px);
+            }
+            .log-item.new-event {
+                font-size: clamp(14px, 4.2vw, 17px);
             }
         }
     </style>
@@ -543,7 +550,7 @@ function getPlayerName(id) {
     return state.players[id] ? state.players[id].name : `P${id+1}`;
 }
 
-// 事件推播系統，加入 [New] 藍綠漸層特效邏輯
+// 事件推播系統
 function addLog(text, color) {
     eventLogs.unshift({text, color});
     if(eventLogs.length > 12) eventLogs.pop(); 
@@ -597,7 +604,6 @@ function initMap() {
             tile.safeId = Math.floor(Math.random() * 3) + 1; 
         } else if (type === 'start') {
             tile.countryKey = selCountry;
-            // 賦予起點隨機極度鮮豔的色彩
             tile.startColor = PALETTE_COLORS[Math.floor(Math.random() * PALETTE_COLORS.length)];
         }
         MAP_DATA.push(tile);
@@ -616,7 +622,17 @@ window.onload = () => {
     resizeBoard();
     setTimeout(resizeBoard, 100); 
     restart(); 
-    window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); resizeBoard(); });
+    
+    // [修正1] 只有在視窗寬度劇烈改變（如轉向）時才重新計算大小，避免兩指縮放時觸發導致干擾
+    let lastWinW = window.innerWidth;
+    window.addEventListener('resize', () => { 
+        if(Math.abs(window.innerWidth - lastWinW) > 50) {
+            setTimeout(resizeBoard, 100); 
+            resizeBoard(); 
+            lastWinW = window.innerWidth;
+        }
+    });
+    
     document.body.addEventListener('click', unlockAudio, {once:true}); 
 };
 
@@ -651,7 +667,6 @@ function restart() {
     if (pAvatar === 'random') pAvatar = availAvatars[Math.floor(Math.random() * availAvatars.length)];
     if (pColor === 'random') pColor = availColors[Math.floor(Math.random() * availColors.length)];
     
-    // 將玩家選中的先從可用池中拔除，保證絕不重複
     availAvatars = availAvatars.filter(a => a !== pAvatar).sort(() => Math.random() - 0.5);
     availColors = availColors.filter(c => c !== pColor).sort(() => Math.random() - 0.5);
     
@@ -694,7 +709,6 @@ function restart() {
     startTurn();
 }
 
-// 回合開始控制點
 function startTurn() {
     let p = state.players[state.turn];
     if (!p.active) { endTurn(); return; }
@@ -722,11 +736,9 @@ function startTurn() {
     }
 }
 
-// === 全新手工繪製：五款超可愛人物 SVG (僅產生內部標籤，以便重複利用) ===
 function getHumanInnerSVG(type, color) {
     let svg = `<circle cx="0" cy="0" r="1.4" fill="#ffe0bd" stroke="#fff" stroke-width="0.1" filter="drop-shadow(0px 2px 2px rgba(0,0,0,0.5))"/>`; 
     
-    // 共用大眼與腮紅
     svg += `<circle cx="-0.5" cy="0.1" r="0.18" fill="#222"/>
             <circle cx="-0.55" cy="0.05" r="0.06" fill="#fff"/>
             <circle cx="0.5" cy="0.1" r="0.18" fill="#222"/>
@@ -735,30 +747,25 @@ function getHumanInnerSVG(type, color) {
             <ellipse cx="0.8" cy="0.4" rx="0.2" ry="0.1" fill="#ff9999" opacity="0.7"/>`;
 
     if (type === 'boy') {
-        // 棒球帽男孩
         svg += `<path d="M-1.5,-0.2 Q0,-1.5 1.5,-0.2 L1.5,-0.5 Q0,-2 -1.5,-0.5 Z" fill="${color}"/>`;
         svg += `<path d="M-1.5,-0.2 Q0,-0.4 1.5,-0.2" fill="none" stroke="${color}" stroke-width="0.3"/>`;
         svg += `<path d="M-0.3,0.6 Q0,0.8 0.3,0.6" fill="none" stroke="#222" stroke-width="0.15" stroke-linecap="round"/>`;
     } else if (type === 'girl') {
-        // 雙馬尾女孩
         svg += `<path d="M-1.4,-0.2 Q0,-1.8 1.4,-0.2 Q0,-0.8 -1.4,-0.2 Z" fill="${color}"/>`;
         svg += `<circle cx="-1.4" cy="-0.2" r="0.4" fill="${color}"/>`;
         svg += `<circle cx="1.4" cy="-0.2" r="0.4" fill="${color}"/>`;
         svg += `<path d="M-0.2,0.6 Q0,0.7 0.2,0.6" fill="none" stroke="#222" stroke-width="0.15" stroke-linecap="round"/>`;
     } else if (type === 'uncle') {
-        // 大叔 (眼鏡+八字鬍)
         svg += `<rect x="-0.8" y="-0.1" width="0.5" height="0.4" fill="none" stroke="#222" stroke-width="0.1"/>`;
         svg += `<rect x="0.3" y="-0.1" width="0.5" height="0.4" fill="none" stroke="#222" stroke-width="0.1"/>`;
         svg += `<line x1="-0.3" y1="0.1" x2="0.3" y2="0.1" stroke="#222" stroke-width="0.1"/>`;
         svg += `<path d="M-0.4,0.6 Q0,0.4 0.4,0.6 Q0,0.8 -0.4,0.6 Z" fill="#222"/>`;
         svg += `<path d="M-1.2,-0.8 Q0,-1.5 1.2,-0.8 L1.2,-1 Q0,-1.8 -1.2,-1 Z" fill="${color}"/>`; 
     } else if (type === 'lady') {
-        // 優雅淑女
         svg += `<path d="M-1.4,0 Q-1.8,-1.5 0,-1.5 Q1.8,-1.5 1.4,0 Q1,-1.2 0,-1.2 Q-1,-1.2 -1.4,0 Z" fill="${color}"/>`;
         svg += `<circle cx="0" cy="-1.5" r="0.4" fill="${color}"/>`;
         svg += `<path d="M-0.2,0.6 Q0,0.7 0.2,0.6" fill="none" stroke="#ff4757" stroke-width="0.2" stroke-linecap="round"/>`;
     } else if (type === 'ninja') {
-        // 忍者
         svg += `<path d="M-1.4,-0.2 Q0,-1.5 1.4,-0.2 L1.4,-0.8 Q0,-2 -1.4,-0.8 Z" fill="#222"/>`;
         svg += `<rect x="-1.5" y="-0.5" width="3" height="0.4" fill="${color}"/>`;
         svg += `<path d="M1.3,-0.3 L1.8,0.2 L1.5,0.5 Z" fill="${color}"/>`;
@@ -767,12 +774,10 @@ function getHumanInnerSVG(type, color) {
     return svg;
 }
 
-// 供棋盤呼叫的大頭貼生成器
 function getHumanSVG(type, cx, cy, color) {
     return `<g transform="translate(${cx}, ${cy}) scale(0.85)">${getHumanInnerSVG(type, color)}</g>`;
 }
 
-// 供狀態列 UI 呼叫的微型圖示生成器
 function getStatusIcon(type, color) {
     return `<svg viewBox="-2 -2 4 4" style="width:1.2rem;height:1.2rem;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.5));">${getHumanInnerSVG(type, color)}</svg>`;
 }
@@ -805,7 +810,6 @@ function renderBoard() {
         
         if (tile.type === 'start') {
             let cName = t.countryNames[tile.countryKey];
-            // 將 fill 改為 #000 (黑色)，保留 font-weight:bold (粗體)，並移除原本的 drop-shadow 陰影
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY - 1.2}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${cName}</text>`);
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 1.6}" class="svg-text" style="font-weight:bold; fill:#000; font-size:2.3px;">${name}</text>`);
             output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.8}" class="svg-text-small" style="font-weight:bold; fill:#000;">+ $2K</text>`);
@@ -835,7 +839,6 @@ function renderBoard() {
     svg.innerHTML = output.join('');
 }
 
-// UI 包含人物小圖
 function updateUI() {
     for(let i=0; i<state.numPlayers; i++) {
         let sBox = document.getElementById(`score-${i+1}`);
@@ -947,7 +950,7 @@ function handleTileAction() {
         let evList = isChance ? t.chanceEvents : t.chestEvents;
         let ev = evList[Math.floor(Math.random() * 6)];
         let title = isChance ? t.chanceMsg : t.chestMsg;
-        let color = isChance ? '#1e90ff' : '#a55eea'; // 亮藍 / 亮紫
+        let color = isChance ? '#1e90ff' : '#a55eea'; 
         
         addLog(`[${getPlayerName(state.turn)}] ${title} ${ev.text}`, color);
 
