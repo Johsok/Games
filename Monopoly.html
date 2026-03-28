@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>大富翁(Monopoly) 2026</title>
     <style>
         :root {
@@ -125,7 +125,6 @@
         .svg-text { font-family: sans-serif; font-size: 2px; font-weight: bold; fill: #222; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
         .svg-text-small { font-size: 1.55px; font-weight:bold; fill: #444; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
         
-        /* [更新] 鮮明大紅色的房子 */
         .svg-house { fill: #ff1111; stroke: #fff; stroke-width: 0.3; filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.8)); }
 
         /* === 中央事件推播與操作 UI 區塊 === */
@@ -155,7 +154,7 @@
             word-break: break-word; 
             overflow: hidden; 
             display: -webkit-box;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 2; /* 限制最多兩行 */
             -webkit-box-orient: vertical;
             line-height: 1.3;
             text-shadow: 1px 1px 2px #000, 0 0 3px rgba(0,0,0,0.8);
@@ -193,7 +192,7 @@
             height: 35%; min-height: 80px; flex-shrink: 0;
         }
         #action-msg { 
-            font-size: clamp(14px, 4vmin, 20px); 
+            font-size: clamp(12px, 3.5vmin, 18px); 
             font-weight: bold; margin-bottom: 4px; text-shadow: 0 2px 4px #000; text-align: center; line-height: 1.3; color: #fff;
         }
         #dice-display { font-size: 3rem; margin-bottom: 4px; display: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: bounce 0.3s ease-out; }
@@ -223,10 +222,12 @@
         .rules-content li { margin-bottom: 6px; font-size: 0.95rem; }
         .close-rules { display: block; width: 100%; padding: 10px; background: var(--p1-c); color: #fff; text-align: center; border: none; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
+        /* [修正2] 手機版事件文字比例縮小，確保顯示完好不擁擠 */
         @media (max-width: 600px) {
-            #event-log { display: flex; flex-direction: column; }
-            .log-item { font-size: clamp(12px, 3.5vw, 15px); }
-            .log-item.new-event { font-size: clamp(14px, 4.2vw, 17px); }
+            #event-log { display: flex; flex-direction: column; gap: 2px; }
+            .log-item { font-size: clamp(10px, 2.5vw, 13px); padding-bottom: 2px; }
+            .log-item.new-event { font-size: clamp(11px, 3vw, 14px); }
+            .log-new-badge { font-size: 0.65rem; padding: 1px 3px; }
         }
 
         /* === 動態專屬精緻卡片 (Event Card) 樣式 === */
@@ -481,7 +482,6 @@
 <script>
 /* ================= 大富翁核心邏輯 ================= */
 
-// [更新] 加大城市數量以補足公園拔除後的 20 格地產空缺
 const CITIES_DATA = {
     tw: ["台北","新北","桃園","台中","台南","高雄","基隆","新竹","嘉義","苗栗","彰化","南投","雲林","屏東","宜蘭","花蓮","台東","澎湖","金門","馬祖"],
     us: ["紐約","洛杉磯","芝加哥","休士頓","鳳凰城","費城","聖地牙哥","達拉斯","奧斯汀","西雅圖","丹佛","波士頓","底特律","邁阿密","亞特蘭大","賭城","奧蘭多","華盛頓","夏威夷","阿拉斯加"],
@@ -496,7 +496,6 @@ const NORMAL_NAMES = ["阿土伯", "孫小美", "柳如烟", "羅峰", "錢夫�
 const HUMAN_TYPES = ['boy', 'girl', 'uncle', 'lady', 'ninja'];
 const PALETTE_COLORS = ['#ff4757', '#1e90ff', '#ffd32a', '#2ed573', '#a55eea', '#ff7f50', '#00d8d6', '#ff6b81', '#0be881', '#fbc531'];
 
-// [修訂] 事件數值與文字修正
 const TRANSLATIONS = {
     tw: {
         title: "大富翁 2026", player: "玩家", computer: "電腦", win: " 獲勝！",
@@ -611,7 +610,6 @@ function getPlayerName(id) {
     return state.players[id] ? state.players[id].name : `P${id+1}`;
 }
 
-// 支援 iOS 初始化音訊的延遲載入防呆機制
 let audioCtx = null;
 function getAudioCtx() {
     if (!audioCtx) {
@@ -623,7 +621,6 @@ function getAudioCtx() {
     return audioCtx;
 }
 
-// 事件推播系統 (帶入玩家專屬顏色)
 function addLog(text, color) {
     eventLogs.unshift({text, color});
     if(eventLogs.length > 12) eventLogs.pop(); 
@@ -641,7 +638,6 @@ function renderLogs() {
     }).join('');
 }
 
-// [修改1] 重新設計地圖演算法：保證四個邊各自最多1個機會或命運，絕不相鄰
 function initMap() {
     MAP_DATA = [];
     
@@ -653,7 +649,6 @@ function initMap() {
     let cityPool = [...CITIES_DATA[selCountry]];
     cityPool.sort(() => Math.random() - 0.5);
 
-    // 四個街道內部格子 (排除角落 0, 7, 14, 21)
     let side0 = [1,2,3,4,5,6];
     let side1 = [8,9,10,11,12,13];
     let side2 = [15,16,17,18,19,20];
@@ -661,15 +656,13 @@ function initMap() {
 
     function getRandomFrom(arr) {
         let idx = Math.floor(Math.random() * arr.length);
-        return arr.splice(idx, 1)[0]; // splice保證不會被重複選到
+        return arr.splice(idx, 1)[0];
     }
 
-    // 從每一條街隨機抽 1 個位置放置卡牌，徹底防撞與防相鄰
     let specialIndices = [getRandomFrom(side0), getRandomFrom(side1), getRandomFrom(side2), getRandomFrom(side3)];
     let specials = ['chance', 'chance', 'chest', 'chest'];
-    specials.sort(() => Math.random() - 0.5); // 打亂卡片順序
+    specials.sort(() => Math.random() - 0.5); 
 
-    // 剩餘所有的格子全部倒入 remaining 中 (不會與上面抽出的索引重疊)
     let otherSpecials = ['jail', 'travel', 'tax']; 
     let remaining = [7, 14, 21].concat(side0, side1, side2, side3);
     remaining.sort(() => Math.random() - 0.5);
@@ -677,12 +670,9 @@ function initMap() {
     let mapTypes = new Array(28).fill('prop');
     mapTypes[0] = 'start';
 
-    // 寫入 4 張事件卡
     for(let i=0; i<4; i++) { mapTypes[specialIndices[i]] = specials[i]; }
-    // 寫入 3 個特殊地塊 (監獄, 旅遊, 稅務)
     for(let i=0; i<3; i++) { mapTypes[remaining[i]] = otherSpecials[i]; }
 
-    // 建立棋盤物件
     for(let i=0; i<28; i++) {
         let type = mapTypes[i];
         let px, py;
@@ -711,7 +701,6 @@ const DICE_EMOJIS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 const audio = document.getElementById('bgm');
 let userInteracted = false;
 
-// 確保腳本載入後絕對執行
 document.addEventListener("DOMContentLoaded", () => {
     audio.volume = document.getElementById('bgm-vol').value/100;
     audio.src = getMp3Path(document.getElementById('music-sel').value); 
@@ -855,7 +844,6 @@ function startTurn() {
     }
 }
 
-// [修改3] 防呆 CSS Filter，確保各瀏覽器皆相容
 function getHumanInnerSVG(type, color) {
     let svg = `<g style="filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.8)); -webkit-filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.8));">`;
     svg += `<circle cx="0" cy="0" r="1.4" fill="#ffe0bd" stroke="#fff" stroke-width="0.1" />`; 
@@ -924,16 +912,18 @@ function renderBoard() {
             let pColor = state.players[tile.owner].color;
             output.push(`<rect x="${tile.x+0.5}" y="${tile.y+0.5}" width="${TILE_SIZE-1}" height="${TILE_SIZE-1}" fill="${pColor}" class="svg-tile-owner" />`);
             
-            // 單一精緻紅房 + xN
+            // [修正1] 調整房屋圖示位置至最上方，並改純黑字，確保與下方文字不重疊
             if (tile.level > 0) {
-                let hx = tile.x + 2;
-                let hy = tile.y + 1;
-                output.push(`<path d="M ${hx},${hy+3.5} L ${hx+3.5},${hy+3.5} L ${hx+3.5},${hy+1.5} L ${hx+1.75},${hy} L ${hx},${hy+1.5} Z" class="svg-house" />`);
-                output.push(`<text x="${hx+4.5}" y="${hy+2.5}" class="svg-text-small" style="fill:#fff; font-weight:900; font-size:2.2px; filter:drop-shadow(1px 1px 0px #000); text-anchor:start; dominant-baseline:middle;">x${tile.level}</text>`);
+                let hx = tile.x + 3.5;
+                let hy = tile.y + 0.5; // 靠上對齊
+                output.push(`<path d="M ${hx},${hy+3} L ${hx+3},${hy+3} L ${hx+3},${hy+1.2} L ${hx+1.5},${hy} L ${hx},${hy+1.2} Z" class="svg-house" />`);
+                // 純黑字，不使用 shadow 避免重影現象
+                output.push(`<text x="${hx+3.5}" y="${hy+2}" class="svg-text-small" style="fill:#000; font-weight:900; font-size:2.2px; text-anchor:start; dominant-baseline:middle;">x${tile.level}</text>`);
             }
         }
         
-        let textY = tile.y + TILE_SIZE/2 - 1.5;
+        // [修正1] 名稱及數值往下壓，確保在格子中間且不碰到房子
+        let textY = tile.y + TILE_SIZE/2 - 0.5; 
         
         if (tile.type === 'start') {
             let cName = t.countryNames[tile.countryKey];
@@ -945,10 +935,10 @@ function renderBoard() {
             if(tile.type === 'prop') {
                 let currentRent = tile.baseRent * Math.pow(2, tile.level); 
                 if (tile.owner === null) {
-                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 3.2}" class="svg-text-small">價 $${tile.price}</text>`);
-                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 5.5}" class="svg-text-small" fill="#c0392b">租 $${currentRent}</text>`);
+                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 2.8}" class="svg-text-small">價 $${tile.price}</text>`);
+                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 5.0}" class="svg-text-small" fill="#c0392b">租 $${currentRent}</text>`);
                 } else {
-                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.5}" class="svg-text-small" fill="#800">租 $${currentRent}</text>`);
+                    output.push(`<text x="${tile.x + TILE_SIZE/2}" y="${textY + 4.0}" class="svg-text-small" fill="#800">租 $${currentRent}</text>`);
                 }
             } 
         }
@@ -972,7 +962,6 @@ function renderBoard() {
         let transitionTime = p.moveSpeed ? p.moveSpeed : 800; 
         let easing = p.moveSpeed ? 'linear' : 'cubic-bezier(0.25, 0.1, 0.25, 1)';
         
-        // 放大至 150% (0.85 * 1.5 = 1.275)
         if (!pEl) {
             playersLayer.insertAdjacentHTML('beforeend', `<g id="player-svg-${p.id}" style="transition: transform ${transitionTime}ms ${easing};" transform="translate(${cx}, ${cy}) scale(1.275)">${getHumanInnerSVG(p.avatar, p.color)}</g>`);
         } else {
@@ -1007,7 +996,6 @@ function updateUI() {
 
 function setCenterMsg(msg) { document.getElementById('action-msg').innerText = msg; }
 
-// [修改2,3] 根據「關閉動畫」勾選決定，若播放則停留 2.5s 後以動畫 API 飛散
 function showEventCard(type, typeLabel, titleText, descText, pColor, pName, callback) {
     if (document.getElementById('disable-anim').checked) {
         if(callback) callback();
@@ -1029,11 +1017,9 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
     overlay.style.display = 'flex';
     card.style.transform = 'scale(0)';
     card.style.opacity = '0';
-    // 更快彈出
     card.style.animation = 'cardPopIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
     playSfx(600, "score"); 
     
-    // 停留 2.5 秒
     setTimeout(() => {
         card.style.animation = ''; 
         
@@ -1041,7 +1027,6 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
         const rY = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 700 + 800);
         const rRot = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 720 + 360); 
 
-        // 安全調用 animate API (若舊版瀏覽器不支援則 fallback)
         if (card.animate) {
             const anim = card.animate([
                 { transform: 'scale(1) translate(0px, 0px) rotate(0deg)', opacity: 1 },
@@ -1139,7 +1124,6 @@ function handleTileAction() {
             }
         } else if (tile.owner === state.turn) {
             let upgCost = Math.floor(tile.price / 2);
-            // 無限升級判斷
             if (p.money >= upgCost) {
                 pendingAction = 'upgrade';
                 if (isAI || autoPlay) {
@@ -1276,7 +1260,6 @@ function handleTileAction() {
         });
 
     } else if (tile.type === 'travel') {
-        // [新增5] 旅遊系統
         let cost = Math.floor(Math.random() * (250000 - 30000 + 1)) + 30000;
         let dests = ["日本","美國","歐洲","英國","澳洲","韓國","泰國","埃及","法國","瑞士"];
         let dest = dests[Math.floor(Math.random() * dests.length)];
@@ -1294,7 +1277,6 @@ function handleTileAction() {
         });
 
     } else if (tile.type === 'tax') {
-        // 總房租 2 倍的稅務計算
         let totalRent = 0;
         MAP_DATA.forEach(t => {
             if (t.type === 'prop' && t.owner === state.turn) {
