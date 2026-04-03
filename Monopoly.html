@@ -88,7 +88,7 @@
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; font-weight: bold; }
         .btn-green { background: rgba(46, 204, 113, 0.85); border: none; font-weight: bold; }
 
-        /* 新增：手動縮放按鈕樣式 */
+        /* 手動縮放按鈕樣式 */
         .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 4px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
         .mobile-only { display: none !important; } 
         @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
@@ -112,8 +112,14 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
 
         /* === 遊戲容器 === */
-        /* 修正：加上 overflow: auto 允許縮放後捲動，並強迫使用 touch-action: none 預防雙擊放大 */
-        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; width: 100%; height: 100%; padding: 4px; box-sizing: border-box; touch-action: none !important; }
+        /* 修正 1：改用 safe center 防裁切，並使用 manipulation 允許原生 2D 上下左右捲動 */
+        #game-container { 
+            flex-shrink: 1; flex-grow: 1; display: flex; 
+            justify-content: safe center; align-items: safe center; 
+            overflow: auto; -webkit-overflow-scrolling: touch; 
+            position: relative; width: 100%; height: 100%; padding: 4px; box-sizing: border-box; 
+            touch-action: manipulation !important; 
+        }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
         .board-wrap { 
@@ -123,9 +129,8 @@
             box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 3px 10px rgba(255,255,255,0.3), inset 0 -4px 10px rgba(0,0,0,0.3);
             padding: 1%; box-sizing: border-box; flex-shrink: 0; 
             display: flex; align-items: center; justify-content: center;
-            /* 修正：移除 transform 與寬高的 transition 避免平移卡頓 */
             transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; 
-            margin: auto; /* 修正：利用 margin 置中並允許溢出捲動 */
+            margin: auto;
         }
 
         .board-inner { position: relative; width: 100%; height: 100%; }
@@ -146,6 +151,13 @@
             display: flex; flex-direction: column; justify-content: space-between; align-items: center;
             padding: 8px; box-sizing: border-box; backdrop-filter: blur(4px); z-index: 50;
         }
+
+        /* 修正 2：自訂 checkbox UI 套用 vmin 單位 */
+        .ui-checkbox-label {
+            cursor: pointer; display: flex; align-items: center; gap: 1vmin; 
+            font-weight: bold; font-size: 2.2vmin; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+        }
+        .ui-checkbox-label input { width: 2.5vmin; height: 2.5vmin; }
         
         #event-log {
             width: 100%; display: grid; 
@@ -154,11 +166,11 @@
             align-content: start;
             gap: 4px 8px; 
             overflow-y: auto; overflow-x: hidden; 
-            font-size: clamp(10px, 2.5vmin, 14px); 
+            /* 修正 2：改用 vmin，保持 RWD 同時不溢出 */
+            font-size: 2.8vmin; 
             font-weight: bold;
             padding-right: 4px; 
             flex-grow: 1; height: 0;
-            /* 讓捲動事件可以自然發生 */
             touch-action: auto; 
         }
         
@@ -179,7 +191,9 @@
         .log-new-badge {
             display: inline-block; 
             background: linear-gradient(45deg, #00e88f, #00a8f3);
-            color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 6px;
+            color: #ffffff; 
+            /* 修正 2：改用 vmin */
+            padding: 0.2vmin 1vmin; border-radius: 1vmin; font-size: 2vmin; margin-right: 1.5vmin;
             box-shadow: 0 0 6px #00d2ff; animation: flash-badge 1s infinite alternate; font-style: italic;
             text-shadow: 0px 1px 2px rgba(0,0,0,0.8);
             flex-shrink: 0; 
@@ -190,7 +204,8 @@
         }
         
         .log-item.new-event { 
-            font-size: clamp(12px, 3.5vmin, 16px); 
+            /* 修正 2：改用 vmin */
+            font-size: 3.5vmin; 
             animation: text-pulse 1.5s infinite alternate; 
         }
         @keyframes text-pulse { 
@@ -206,14 +221,18 @@
             touch-action: auto; 
         }
         #action-msg { 
-            font-size: clamp(14px, 4vmin, 20px); 
-            font-weight: bold; margin-bottom: 4px; text-shadow: 0 2px 4px #000; text-align: center; line-height: 1.3; color: #fff;
+            /* 修正 2：改用 vmin */
+            font-size: 4vmin; 
+            font-weight: bold; margin-bottom: 1vmin; text-shadow: 0 2px 4px #000; text-align: center; line-height: 1.3; color: #fff;
         }
-        #dice-display { font-size: 3rem; margin-bottom: 4px; display: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: bounce 0.3s ease-out; }
+        #dice-display { 
+            /* 修正 2：改用 vmin */
+            font-size: 10vmin; margin-bottom: 1vmin; display: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); animation: bounce 0.3s ease-out; 
+        }
         
         @keyframes bounce { 0% { transform: scale(0.5) translateY(20px); } 50% { transform: scale(1.2) translateY(-10px); } 100% { transform: scale(1) translateY(0); } }
 
-        /* 終局勝利宣告 (等比例縮放配置) */
+        /* 終局勝利宣告 */
         #win-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
             width: 85%; 
@@ -238,9 +257,6 @@
 
         @media (max-width: 600px) {
             #event-log { display: flex; flex-direction: column; gap: 2px; }
-            .log-item { font-size: clamp(10px, 2.5vw, 13px); padding-bottom: 2px; }
-            .log-item.new-event { font-size: clamp(11px, 3vw, 14px); }
-            .log-new-badge { font-size: 0.65rem; padding: 1px 3px; }
         }
 
         /* === 動態專屬精緻卡片 (Event Card) 樣式 === */
@@ -458,14 +474,14 @@
             
             <div id="center-ui">
                 <div style="width: 100%; display: flex; justify-content: flex-start; align-items: center; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 5px; gap: 15px; flex-wrap: wrap;">
-                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #fbc531; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
-                        <input type="checkbox" id="auto-play" onchange="checkAutoPlayState()" style="width: 1.2rem; height: 1.2rem; accent-color: #e74c3c;"> 自動掛機
+                    <label class="ui-checkbox-label" style="color: #fbc531;">
+                        <input type="checkbox" id="auto-play" onchange="checkAutoPlayState()" style="accent-color: #e74c3c;"> 自動掛機
                     </label>
-                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #00e88f; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
-                        <input type="checkbox" id="disable-anim" style="width: 1.2rem; height: 1.2rem; accent-color: #00e88f;"> 關閉動畫
+                    <label class="ui-checkbox-label" style="color: #00e88f;">
+                        <input type="checkbox" id="disable-anim" style="accent-color: #00e88f;"> 關閉動畫
                     </label>
-                    <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: bold; color: #ff9f43; font-size: 0.95rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">
-                        <input type="checkbox" id="speed-10x" style="width: 1.2rem; height: 1.2rem; accent-color: #ff9f43;"> 10倍速度
+                    <label class="ui-checkbox-label" style="color: #ff9f43;">
+                        <input type="checkbox" id="speed-10x" style="accent-color: #ff9f43;"> 10倍速度
                     </label>
                 </div>
 
@@ -474,11 +490,11 @@
                 <div id="action-area">
                     <div id="action-msg">準備開始遊戲</div>
                     <div id="dice-display">🎲</div>
-                    <button id="btn-roll" class="btn btn-red" onclick="rollDice()" style="font-size:1.1rem; padding: 10px 24px; width: 80%;">🎲 擲骰子</button>
+                    <button id="btn-roll" class="btn btn-red" onclick="rollDice()" style="font-size:3.5vmin; padding: 1.5vmin 4vmin; width: 80%;">🎲 擲骰子</button>
 
                     <div id="action-btns" style="display:none; gap:10px; width:100%; justify-content:center;">
-                        <button class="btn btn-green" id="btn-act-yes" onclick="confirmAction()" style="flex:1; padding: 10px;">確定購買</button>
-                        <button class="btn" id="btn-act-no" onclick="passAction()" style="flex:1; padding: 10px; background:rgba(200,50,50,0.8)">跳過</button>
+                        <button class="btn btn-green" id="btn-act-yes" onclick="confirmAction()" style="flex:1; padding: 1.5vmin; font-size: 3vmin;">確定購買</button>
+                        <button class="btn" id="btn-act-no" onclick="passAction()" style="flex:1; padding: 1.5vmin; font-size: 3vmin; background:rgba(200,50,50,0.8)">跳過</button>
                     </div>
                 </div>
             </div>
@@ -723,15 +739,11 @@ const DICE_EMOJIS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 const audio = document.getElementById('bgm');
 let userInteracted = false;
 
-// === 完美版雙指縮放 (無段比例計算) + 單指平移 ===
+// === 修正 1：移除原本具方向限制的單指平移 JS 變數，交給瀏覽器原生 2D 捲動處理 ===
 let currentZoom = 1.0;
 let baseBoardW = 0, baseBoardH = 0;
 let initialPinchDistance = null;
 let startZoom = 1.0;
-let isPanning = false;
-let lastPanX = 0, lastPanY = 0;
-let panX = 0, panY = 0; 
-let hasMoved = false; 
 
 // 手動縮放觸發函數
 function zoomBoard(direction) {
@@ -747,14 +759,8 @@ function applyZoom() {
     if(baseBoardW > 0 && baseBoardH > 0) {
         wrap.style.width = `${baseBoardW * currentZoom}px`;
         wrap.style.height = `${baseBoardH * currentZoom}px`;
-        
-        if (currentZoom === 1.0) {
-            panX = 0;
-            panY = 0;
-            wrap.style.transform = `translate3d(0px, 0px, 0)`;
-        } else {
-            wrap.style.transform = `translate3d(${panX}px, ${panY}px, 0)`;
-        }
+        // 修正 1：移除 JS style.transform 的 translate3d 修改，徹底釋放原生滾動條
+        wrap.style.transform = `none`; 
     }
 }
 
@@ -776,7 +782,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     document.body.addEventListener('click', unlockAudio, {once:true}); 
 
-    // === 註冊觸控事件以支援縮放與平移 ===
+    // === 註冊觸控事件以支援原生縮放與平移 ===
     const gameContainerEl = document.getElementById('game-container');
 
     gameContainerEl.addEventListener('touchstart', (e) => {
@@ -786,19 +792,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (e.touches.length === 2) {
-            isPanning = false;
             e.preventDefault(); 
             initialPinchDistance = Math.hypot(
                 e.touches[0].clientX - e.touches[1].clientX,
                 e.touches[0].clientY - e.touches[1].clientY
             );
             startZoom = currentZoom; 
-        } else if (e.touches.length === 1) {
-            isPanning = true;
-            hasMoved = false; 
-            lastPanX = e.touches[0].clientX;
-            lastPanY = e.touches[0].clientY;
-        }
+        } 
+        // 修正 1：移除了單指紀錄（lastPanX等），完全讓原生 touch 捲動接手，使畫面能上下左右暢遊
     }, { passive: false });
 
     gameContainerEl.addEventListener('touchmove', (e) => {
@@ -807,7 +808,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (e.touches.length === 2 && initialPinchDistance) {
-            hasMoved = true;
             e.preventDefault(); 
             
             let currentDistance = Math.hypot(
@@ -822,33 +822,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (currentZoom > 3.0) currentZoom = 3.0;
             
             applyZoom(); 
-            
-        } else if (e.touches.length === 1 && isPanning) {
-            let currentX = e.touches[0].clientX;
-            let currentY = e.touches[0].clientY;
-            let moveX = currentX - lastPanX;
-            let moveY = currentY - lastPanY;
-            
-            if (Math.abs(moveX) > 3 || Math.abs(moveY) > 3) {
-                hasMoved = true;
-                e.preventDefault(); 
-                
-                panX += moveX;
-                panY += moveY;
-                document.getElementById('board-wrap').style.transform = `translate3d(${panX}px, ${panY}px, 0)`;
-                
-                lastPanX = currentX;
-                lastPanY = currentY;
-            }
         }
+        // 修正 1：移除了單指 e.preventDefault()，不會再截斷 iOS 的原生 overflow 捲動能力
     }, { passive: false });
 
     gameContainerEl.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
             initialPinchDistance = null;
-        }
-        if (e.touches.length === 0) {
-            isPanning = false;
         }
     });
 
@@ -856,12 +836,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
 
-// [新增] 獲取目前遊戲倍速
+// 獲取目前遊戲倍速
 function getSpeedMult() {
     let cb = document.getElementById('speed-10x');
     return (cb && cb.checked) ? 10 : 1;
 }
-// [新增] 回傳加速過後的真實毫秒數
+// 回傳加速過後的真實毫秒數
 function getDelay(ms) {
     return Math.floor(ms / getSpeedMult());
 }
@@ -1163,7 +1143,6 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
     card.style.animation = `cardPopIn ${0.15 / mult}s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards`;
     playSfx(600, "score"); 
     
-    // [重點修正2] 放入完全獨立的 setTimeout 確保不論如何都停留足額時間
     setTimeout(() => {
         card.style.animation = ''; 
         
@@ -1182,7 +1161,6 @@ function showEventCard(type, typeLabel, titleText, descText, pColor, pName, call
                 if(callback) callback();
             };
         } else {
-            // [修正相容性] 為 iOS Safari 等未完全支援 Web Animations API 的舊裝置添加平滑後備動畫
             card.style.transition = `all ${getDelay(1000)}ms ease-in`;
             card.style.transform = `scale(0.3) translate(${rX}px, ${rY}px) rotate(${rRot}deg)`;
             card.style.opacity = '0';
