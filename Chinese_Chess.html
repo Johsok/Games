@@ -1058,83 +1058,51 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
 
-    // === 修正5：雙指縮放 + 單指(長按)拖曳平移畫面 (最終修正版) ===
+    // === 修正4：完美版雙指縮放 (無段比例計算) ===
     let initialPinchDistance = null;
     let startZoom = 1.0;
-
-    // 新增：記錄畫面平移 (Pan) 的座標狀態
-    let isPanning = false;
-    let lastPanX = 0, lastPanY = 0;
-
     const gameContainerEl = document.getElementById('game-container');
 
-    // 1. 偵測手指放上螢幕
+    // 1. 偵測兩根手指放上螢幕
     gameContainerEl.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            isPanning = false; // 兩指時進入縮放，關閉平移
-            e.preventDefault(); 
+            e.preventDefault(); // 阻擋瀏覽器預設行為
+            // 計算兩指初始直線距離
             initialPinchDistance = Math.hypot(
                 e.touches[0].pageX - e.touches[1].pageX,
                 e.touches[0].pageY - e.touches[1].pageY
             );
-            startZoom = currentZoom; 
-        } else if (e.touches.length === 1) {
-            // 如果「沒有」選中棋子正在拖曳，則啟動平移模式
-            if (!dragEl) {
-                isPanning = true;
-                lastPanX = e.touches[0].pageX;
-                lastPanY = e.touches[0].pageY;
-            }
+            startZoom = currentZoom; // 記下剛捏合時的縮放倍率
         }
     }, { passive: false });
 
-    // 2. 偵測手指滑動 (縮放 / 平移中)
+    // 2. 偵測兩根手指滑動 (縮放中)
     gameContainerEl.addEventListener('touchmove', (e) => {
         if (e.touches.length === 2 && initialPinchDistance) {
-            // --- 雙指縮放邏輯 ---
-            e.preventDefault(); 
+            e.preventDefault(); // 阻擋畫面原生滾動
+            
+            // 計算當下的兩指距離
             let currentDistance = Math.hypot(
                 e.touches[0].pageX - e.touches[1].pageX,
                 e.touches[0].pageY - e.touches[1].pageY
             );
+            
+            // 核心邏輯：現在距離 / 初始距離 = 縮放比例
             let scale = currentDistance / initialPinchDistance;
             currentZoom = startZoom * scale;
             
+            // 限制最大與最小倍率
             if (currentZoom < 0.5) currentZoom = 0.5;
             if (currentZoom > 3.0) currentZoom = 3.0;
-            applyZoom(); 
             
-        } else if (e.touches.length === 1 && isPanning) {
-            // --- 單指平移(Pan)邏輯 ---
-            e.preventDefault(); // 阻擋原生滑動，完全由 JS 接管
-            
-            let currentX = e.touches[0].pageX;
-            let currentY = e.touches[0].pageY;
-            let moveX = currentX - lastPanX;
-            let moveY = currentY - lastPanY;
-            
-            // 【關鍵修正】同時對 gameContainer 和 window 進行捲動操作
-            // 確保無論滾動條是產生在內部容器還是整個網頁上，畫面都能順滑移動
-            if (gameContainerEl.scrollHeight > gameContainerEl.clientHeight || gameContainerEl.scrollWidth > gameContainerEl.clientWidth) {
-                gameContainerEl.scrollLeft -= moveX;
-                gameContainerEl.scrollTop -= moveY;
-            } else {
-                window.scrollBy(-moveX, -moveY);
-            }
-            
-            // 即時更新最後座標，讓畫面緊緊黏著手指移動
-            lastPanX = currentX;
-            lastPanY = currentY;
+            applyZoom(); // 即時套用畫面
         }
     }, { passive: false });
 
-    // 3. 手指離開螢幕，重置狀態
+    // 3. 手指離開螢幕，重置距離
     gameContainerEl.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
             initialPinchDistance = null;
-        }
-        if (e.touches.length === 0) {
-            isPanning = false; 
         }
     });
     
