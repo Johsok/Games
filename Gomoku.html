@@ -145,6 +145,19 @@
         svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.8; }
         line { stroke: var(--line-color); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
 
+        #click-zones, #pieces {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 確保已下的棋子不會擋住玩家點擊周圍的觸控區 */
+        #pieces { 
+            pointer-events: none; 
+        }
+
         .piece { 
             position: absolute; width: calc(100% / 14); height: calc(100% / 14); margin: 0; 
             /* 修正1：放大棋子佔比 scale(0.98) */
@@ -875,6 +888,14 @@ function goHome() {
 
         // 3. 手指離開螢幕，重置距離與狀態
         gameContainerEl.addEventListener('touchend', (e) => {
+            // 👇 新增這段：如果手指沒有拖曳過 (hasMoved 為 false)，手動觸發該格的點擊事件
+            if (!hasMoved && e.changedTouches.length === 1) {
+                if (e.target && e.target.classList.contains('click-zone')) {
+                    e.target.click(); 
+                }
+            }
+            // 👆 新增結束
+
             if (e.touches.length < 2) {
                 initialPinchDistance = null;
             }
