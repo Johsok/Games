@@ -1090,6 +1090,8 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             // 確認沒有選中棋子正在拖曳 (dragEl 為空)
             if (!dragEl) {
                 isPanning = true;
+                // 修正6：iOS 專屬解法！必須在觸碰瞬間立刻阻止預設行為，否則 iOS 會強制接管滑動
+                e.preventDefault();
                 // 必須使用 clientX/Y，這是相對於手機螢幕玻璃的實體座標
                 lastPanX = e.touches[0].clientX;
                 lastPanY = e.touches[0].clientY;
@@ -1126,8 +1128,7 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             /* 修正5：放棄原生捲軸，改用 transform 來平移畫面。徹底解決 Flexbox 置中導致左上角邊緣無法捲動的問題 */
             panX += moveX;
             panY += moveY;
-            document.getElementById('board-wrap').style.transform = `translate(${panX}px, ${panY}px)`;
-            
+            document.getElementById('board-wrap').style.transform = `translate3d(${panX}px, ${panY}px, 0)`;            
             // 即時更新最後座標，讓畫面緊緊黏著手指移動
             lastPanX = currentX;
             lastPanY = currentY;
