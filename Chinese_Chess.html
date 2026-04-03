@@ -1058,36 +1058,32 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
 
-    // === 修正5：雙指縮放 + 單指(按住)拖曳平移畫面 ===
+    // === 修正5：雙指縮放 + 單指(長按)拖曳平移畫面 (最終修正版) ===
     let initialPinchDistance = null;
     let startZoom = 1.0;
 
-    // 新增：用來記錄畫面平移 (Pan) 狀態的變數
+    // 新增：記錄畫面平移 (Pan) 的座標狀態
     let isPanning = false;
-    let startPanX = 0, startPanY = 0;
-    let startScrollLeft = 0, startScrollTop = 0;
+    let lastPanX = 0, lastPanY = 0;
 
     const gameContainerEl = document.getElementById('game-container');
 
     // 1. 偵測手指放上螢幕
     gameContainerEl.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            isPanning = false; // 兩指時取消平移，進入縮放
-            e.preventDefault(); // 阻擋瀏覽器預設行為
+            isPanning = false; // 兩指時進入縮放，關閉平移
+            e.preventDefault(); 
             initialPinchDistance = Math.hypot(
                 e.touches[0].pageX - e.touches[1].pageX,
                 e.touches[0].pageY - e.touches[1].pageY
             );
             startZoom = currentZoom; 
         } else if (e.touches.length === 1) {
-            // 如果只有一根手指，且「沒有在拖曳棋子 (dragEl為空)」
-            // 代表玩家點擊的是空白處，此時啟動畫面平移模式
+            // 如果「沒有」選中棋子正在拖曳，則啟動平移模式
             if (!dragEl) {
                 isPanning = true;
-                startPanX = e.touches[0].pageX;
-                startPanY = e.touches[0].pageY;
-                startScrollLeft = gameContainerEl.scrollLeft;
-                startScrollTop = gameContainerEl.scrollTop;
+                lastPanX = e.touches[0].pageX;
+                lastPanY = e.touches[0].pageY;
             }
         }
     }, { passive: false });
@@ -1096,7 +1092,7 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
     gameContainerEl.addEventListener('touchmove', (e) => {
         if (e.touches.length === 2 && initialPinchDistance) {
             // --- 雙指縮放邏輯 ---
-            e.preventDefault(); // 阻擋畫面原生滾動
+            e.preventDefault(); 
             let currentDistance = Math.hypot(
                 e.touches[0].pageX - e.touches[1].pageX,
                 e.touches[0].pageY - e.touches[1].pageY
@@ -1109,30 +1105,38 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             applyZoom(); 
             
         } else if (e.touches.length === 1 && isPanning) {
-            // --- 單指(按住)平移邏輯 ---
-            let moveX = e.touches[0].pageX - startPanX;
-            let moveY = e.touches[0].pageY - startPanY;
+            // --- 單指平移(Pan)邏輯 ---
+            e.preventDefault(); // 阻擋原生滑動，完全由 JS 接管
             
-            // 設定微小的移動門檻(>2px)，避免純點擊被誤判
-            if (Math.abs(moveX) > 2 || Math.abs(moveY) > 2) {
-                e.preventDefault(); // 阻擋原生拖曳
-                // 反向捲動讓畫面跟隨手指
-                gameContainerEl.scrollLeft = startScrollLeft - moveX;
-                gameContainerEl.scrollTop = startScrollTop - moveY;
+            let currentX = e.touches[0].pageX;
+            let currentY = e.touches[0].pageY;
+            let moveX = currentX - lastPanX;
+            let moveY = currentY - lastPanY;
+            
+            // 【關鍵修正】同時對 gameContainer 和 window 進行捲動操作
+            // 確保無論滾動條是產生在內部容器還是整個網頁上，畫面都能順滑移動
+            if (gameContainerEl.scrollHeight > gameContainerEl.clientHeight || gameContainerEl.scrollWidth > gameContainerEl.clientWidth) {
+                gameContainerEl.scrollLeft -= moveX;
+                gameContainerEl.scrollTop -= moveY;
+            } else {
+                window.scrollBy(-moveX, -moveY);
             }
+            
+            // 即時更新最後座標，讓畫面緊緊黏著手指移動
+            lastPanX = currentX;
+            lastPanY = currentY;
         }
     }, { passive: false });
 
-    // 3. 手指離開螢幕，重置距離與狀態
+    // 3. 手指離開螢幕，重置狀態
     gameContainerEl.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
             initialPinchDistance = null;
         }
         if (e.touches.length === 0) {
-            isPanning = false; // 所有手指離開，結束平移
+            isPanning = false; 
         }
     });
-
     
 </script>
 </body>
