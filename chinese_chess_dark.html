@@ -188,9 +188,15 @@
         .rules-box li { margin-bottom: 4px; }
         .rules-box strong { color: #ff9; }
 
+        /* * 修正: 加入系統級安全區 padding (動態島/瀏海/導航條) 
+         * 確保 game-container 內部的空間不會受到系統 UI 遮擋
+         */
         #game-container { 
             flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; 
-            overflow: hidden; position: relative; padding: 0; box-sizing: border-box; 
+            overflow: hidden; position: relative; box-sizing: border-box; 
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+            padding-left: env(safe-area-inset-left, 10px);
+            padding-right: env(safe-area-inset-right, 10px);
         }
         .board-wrap { 
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
@@ -211,15 +217,15 @@
             z-index: auto; 
         }
         
-        /* * 修正: 縮小棋子的比例並加入 max-width/max-height 限制
-         * 避免在棋盤網格無法被均分為正方形時， aspect-ratio 導致棋子溢出被截斷。
+        /* * 修正: 再次縮小棋子的比例並加入 max-width/max-height 限制為 88%
+         * 確保在各種特殊長寬比的設備(如過度狹長的手機)上，棋子絕對不會碰到格子邊緣。
          */
         .piece { 
             position: relative; 
-            width: 92%; 
-            height: 92%;
-            max-width: 92%;
-            max-height: 92%;
+            width: 88%; 
+            height: 88%;
+            max-width: 88%;
+            max-height: 88%;
             aspect-ratio: 1 / 1; 
             border-radius: 50% !important; 
             
@@ -1057,16 +1063,25 @@ function unlockAudio() {
 let lastWinW = 0;
 function resizeBoard() { 
     const isMobileLandscape = window.matchMedia("(orientation: landscape)").matches && window.innerWidth < 1024;
-    const winW = isMobileLandscape ? window.outerHeight : window.innerWidth;
-    const winH = isMobileLandscape ? window.innerWidth : window.innerHeight;
+
+    // * 修正: 使用 window.visualViewport 來獲取扣除手機瀏覽器 UI (網址列等) 之後的「真實可用」視窗尺寸
+    let actualW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    let actualH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    // 若為手機橫向模式，由於 body 會被 rotate(-90deg)，這裡的長寬需要對調計算
+    const winW = isMobileLandscape ? actualH : actualW;
+    const winH = isMobileLandscape ? actualW : actualH;
     lastWinW = window.innerWidth;
 
     const h = document.getElementById('main-header').offsetHeight;
     
-    // 修正: 預留安全邊距 (Margin)，避免在寬版面時棋盤貼緊硬體邊界，導致 CSS 邊框被 RWD 裁切
-    const safePadding = 16; 
-    const w = winW - safePadding; 
-    const ah = winH - h - safePadding; 
+    // * 修正: 預留更大的安全邊距 (Safe Margin)，確保在具有「動態島、圓角、螢幕打孔」的手機上，棋盤邊界絕對不會被切掉
+    // 這裡給予寬度 40px, 高度 50px (包含底部 Home 條預留) 的安全扣除量
+    const safePaddingW = window.innerWidth > 600 ? 30 : 40; 
+    const safePaddingH = window.innerHeight > 800 ? 40 : 50; 
+    
+    const w = winW - safePaddingW; 
+    const ah = winH - h - safePaddingH; 
     
     const r = 4/8; 
     let fw = w, fh = fw/r; 
@@ -1102,8 +1117,10 @@ function render() {
             dragEl.className = classes.join(' ');
             dragEl.innerText = bd[sel].name;
             dragEl.style.fontSize = (parseFloat(w.style.fontSize) * 0.65) + "px"; 
-            dragEl.style.width = (parseFloat(w.style.fontSize) * 0.95) + "px"; 
-            dragEl.style.height = (parseFloat(w.style.fontSize) * 0.95) + "px";
+            
+            /* 更新對應縮小比例 (0.88) */
+            dragEl.style.width = (parseFloat(w.style.fontSize) * 0.88) + "px"; 
+            dragEl.style.height = (parseFloat(w.style.fontSize) * 0.88) + "px";
             document.body.appendChild(dragEl);
             updateDragPos();
         }
@@ -1243,11 +1260,14 @@ function animateAiMove(f, t) {
     animEl.className = classes.join(' ');
     animEl.innerText = p.name;
     animEl.style.fontSize = (parseFloat(fontSize) * 0.65) + "px";
-    animEl.style.width = (parseFloat(fontSize) * 0.95) + "px"; 
-    animEl.style.height = (parseFloat(fontSize) * 0.95) + "px";
     
-    animEl.style.top = (startRect.top + startRect.height/2 - (parseFloat(fontSize)*0.95)/2) + "px";
-    animEl.style.left = (startRect.left + startRect.width/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+    /* 更新對應縮小比例 (0.88) */
+    animEl.style.width = (parseFloat(fontSize) * 0.88) + "px"; 
+    animEl.style.height = (parseFloat(fontSize) * 0.88) + "px";
+    
+    /* 更新位置計算的偏差值 (0.88) */
+    animEl.style.top = (startRect.top + startRect.height/2 - (parseFloat(fontSize)*0.88)/2) + "px";
+    animEl.style.left = (startRect.left + startRect.width/2 - (parseFloat(fontSize)*0.88)/2) + "px";
     
     document.body.appendChild(animEl);
 
@@ -1255,8 +1275,8 @@ function animateAiMove(f, t) {
     if(originalPiece) originalPiece.style.opacity = 0;
 
     requestAnimationFrame(() => {
-        animEl.style.top = (endRect.top + endRect.height/2 - (parseFloat(fontSize)*0.95)/2) + "px";
-        animEl.style.left = (endRect.left + endRect.width/2 - (parseFloat(fontSize)*0.95)/2) + "px";
+        animEl.style.top = (endRect.top + endRect.height/2 - (parseFloat(fontSize)*0.88)/2) + "px";
+        animEl.style.left = (endRect.left + endRect.width/2 - (parseFloat(fontSize)*0.88)/2) + "px";
     });
 
     setTimeout(() => {
