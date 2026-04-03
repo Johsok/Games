@@ -39,7 +39,6 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
 
-        /* 修正2：將 overflow: hidden 改為 overflow: auto，允許放大後可以滑動檢視 */
         html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
@@ -52,14 +51,13 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            /* 修正2：將 touch-action: none 改為 auto，讓瀏覽器允許縮放及滑動等原生觸控行為 */
             touch-action: auto; 
             box-sizing: border-box; 
         }
 
         /* === 頂部 UI 樣式 === */
         header { 
-            position: sticky; top: 0; left: 0; /* ⬇️ 加上這行讓 UI 黏在最頂部 */
+            position: sticky; top: 0; left: 0;
             width: 100%; height: auto; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
             z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
@@ -72,11 +70,20 @@
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
         .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; }
 
-        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+        
+        /* 修正3：手動縮放按鈕樣式 */
+        .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; }
+        .mobile-only { display: none; } /* 預設隱藏，桌機看不到 */
+        
+        @media (max-width: 768px) {
+            /* 當螢幕寬度小於 768px (手機版) 時，顯示縮放按鈕 */
+            .mobile-only { display: inline-block; }
+        }
 
         /* === 橫向模式 UI 適配 === */
         body.is-landscape {
@@ -113,15 +120,19 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
 
         /* === 遊戲容器與棋盤 === */
-        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        /* 修正3：加上 overflow: auto 允許縮放後捲動 */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; width: 100%; box-sizing: border-box; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
         .board-wrap { 
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
             border: var(--border-style); border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            padding: 0.7%; /* ⬇️ 改成 1% 或 10px，讓網格向外擴張 */
-            box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
+            /* 修正1：縮小 padding 讓棋盤格最大化 */
+            padding: 1%; 
+            box-sizing: border-box; flex-shrink: 0; transition: width 0.2s, height 0.2s;
+            /* 修正3：確保放大超出螢幕時，利用 margin auto 使其能被正常捲動而不裁切左上角 */
+            margin: auto; 
         }
         
         .board-inner { position: relative; width: 100%; height: 100%; }
@@ -130,7 +141,8 @@
 
         .piece { 
             position: absolute; width: calc(100% / 14); height: calc(100% / 14); margin: 0; 
-            transform: translate(-50%, -50%) scale(0.95); border-radius: 50%; 
+            /* 修正1：放大棋子佔比 scale(0.98) */
+            transform: translate(-50%, -50%) scale(0.98); border-radius: 50%; 
             box-shadow: var(--piece-shadow); cursor: pointer; z-index: 10; 
             transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
         }
@@ -181,6 +193,9 @@
         <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
         <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(1)">➕</button>
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(-1)">➖</button>
     </div>
 </header>
 
@@ -486,6 +501,10 @@ let turn = 1, over = false, historyStack = [], lastMoveIdx = -1, worker, isPVP =
 let aiTimer = null, aiStartTime = 0, isAiThinking = false, currentAiTimeLimit = 0;
 let currentLang = 'tw', viewSide = 1, userInteracted = false; 
 
+/* 修正3：新增手動縮放狀態變數 */
+let currentZoom = 1.0; 
+let baseBoardSize = 0; 
+
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const LEVELS = { 
@@ -503,11 +522,7 @@ const TRANSLATIONS = {
 /* --- github音樂路徑處理 --- */
 function getMp3Path(val) {
     if (val === 'none') return "";
-    
-    // 將這裡的網址換成你 GitHub Pages 的網址
     const baseUrl = "https://johsok.github.io/Games/MP3/";
-    
-    // 假設你的檔案名稱就是 01.mp3, 02.mp3...
     return `${baseUrl}${val}.mp3`;
 }
 
@@ -549,26 +564,42 @@ function checkOrientation() {
     return isLand; 
 }
 
+/* 修正3：新增縮放觸發函數 */
+function zoomBoard(direction) {
+    currentZoom += direction * 0.2; // 每次放大或縮小 20%
+    if (currentZoom < 0.5) currentZoom = 0.5; // 限制最小縮小至 50%
+    if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
+    applyZoom();
+}
+
+/* 修正3：根據目前的 currentZoom 倍率更新棋盤大小 */
+function applyZoom() {
+    const wrap = document.getElementById('board-wrap');
+    if(baseBoardSize > 0) {
+        let finalSize = baseBoardSize * currentZoom;
+        wrap.style.width = `${finalSize}px`;
+        wrap.style.height = `${finalSize}px`;
+        wrap.style.setProperty('--board-size', `${finalSize}px`);
+    }
+}
+
 function resizeBoard() { 
     const isLand = checkOrientation(), wrap = document.getElementById('board-wrap'), header = document.getElementById('main-header');
-    wrap.style.width = wrap.style.height = wrap.style.margin = ''; 
+    wrap.style.margin = ''; // 清除舊有的 margin，CSS 已經加上 margin: auto 處理 overflow
     header.style.marginRight = '0';
     const winW = window.innerWidth, winH = window.innerHeight; 
     let finalSize;
     if (isLand) {
-        // 修正1：桌機或橫向螢幕模式時，縮減間距與邊緣留白，讓棋盤與棋子盡可能放大
-        const headerW = 140, gap = winW * 0.005; // 將原始 0.02 間距比例大幅縮小
+        const headerW = 140, gap = winW * 0.005; 
         header.style.marginRight = `${gap}px`;
-        // 將原本 -20 改為 -6，爭取最大顯示空間
         finalSize = Math.min(winW - headerW - gap - 6, winH - 6);
     } else {
-        // 修正1：手機或直向螢幕模式時，也同步縮小上下邊緣留白
-        wrap.style.marginTop = '2px'; wrap.style.marginBottom = '2px';
-        // 將原本 -20 改為 -10，爭取最大顯示空間
         finalSize = Math.min(winW - 10, winH - header.offsetHeight - 10);
     }
-    wrap.style.width = wrap.style.height = `${finalSize}px`;
-    wrap.style.setProperty('--board-size', `${finalSize}px`);
+    
+    /* 修正3：將基準大小儲存下來，再套用使用者的縮放倍率 */
+    baseBoardSize = finalSize;
+    applyZoom();
 }
 
 function drawGrid() {
@@ -705,13 +736,12 @@ function changeMusic() {
     
     if(val === 'none') { 
         audio.pause(); 
-        audio.src = ""; // 清空資源
+        audio.src = ""; 
     } else { 
         const newPath = getMp3Path(val);
-        // 只有當路徑真的改變時才重新加載，避免重複觸發
         if (audio.src !== newPath) {
             audio.src = newPath;
-            audio.load(); // 重要：強制瀏覽器重新掃描新路徑
+            audio.load(); 
             audio.play().catch(e => {
                 console.log("自動播放被攔截，等待使用者點擊", e);
             });
@@ -727,16 +757,12 @@ function changeLang() {
     if(!isAiThinking) updateStatus();
 }
 
-// 新增功能：回首頁
 function goHome() {
     try {
-        // 嘗試呼叫父視窗的關閉函數 (針對 iframe 架構)
         if (window.parent && typeof window.parent.closeGame === 'function') {
             window.parent.closeGame();
         } else {
-            // 如果不是在 iframe 中開啟，則嘗試回上一頁或重新載入
              console.log("No parent detected or standalone mode");
-             // 視需求可取消下面註解
              // window.history.back(); 
         }
     } catch (e) {
@@ -744,41 +770,19 @@ function goHome() {
     }
 }
 
-// 1. 禁用右鍵選單
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
     });
 
-    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
     document.onkeydown = function(e) {
-        // 禁止 F12 (123)
-        if (e.keyCode == 123) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+I (檢查元件)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+C (選取元件)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+Shift+J (開發者主控台)
-        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+U (查看網頁原始碼)
-        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
-            return false;
-        }
-        // 禁止 Ctrl+S (存檔)
-        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
-            return false;
-        }
+        if (e.keyCode == 123) return false;
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false;
     };
 
-    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
-    // 雖然無法阻止高手，但對普通人很有效
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
 </script>
