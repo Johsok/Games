@@ -57,7 +57,8 @@
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --piece-bg: radial-gradient(circle at 30% 30%, #555, #222); --piece-border: #888; --red-c: #ff5252; --black-c: #000; --text-engrave: 0 0 5px rgba(255,255,255,0.3); --border-style: 8px solid #555; }
 
 
-        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        /* 修正3：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
+        html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -69,12 +70,15 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            touch-action: none; 
+            /* 修正3：開啟 touch-action，讓捲動行為生效 */
+            touch-action: auto; 
             box-sizing: border-box; 
         }
 
         /* === Header === */
         header { 
+            /* 修正3：讓頂部 UI 在畫面滾動時黏在上方 */
+            position: sticky; top: 0; left: 0;
             width: 100%; 
             height: auto; 
             display: flex; 
@@ -96,11 +100,22 @@
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
         .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; transition: all 0.3s; }
 
-        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* 修正3：手動縮放按鈕樣式 */
+        .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
+        
+        /* 預設隱藏，加上 !important 確保權重 (桌機預設隱藏) */
+        .mobile-only { display: none !important; } 
+
+        /* 當螢幕寬度小於 1000px，或是偵測到「觸控螢幕裝置」時，強制顯示縮放按鈕 */
+        @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
+            .mobile-only { display: inline-block !important; }
+        }
 
         /* === 橫向模式 (Mobile Landscape Only) === */
         body.is-landscape {
@@ -148,9 +163,10 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
 
         /* === 遊戲容器 === */
+        /* 修正3：加上 overflow: auto 允許縮放後捲動，並加上 touch-action: none 徹底防止瀏覽器原生手勢干擾此區塊 */
         #game-container { 
             flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; 
-            overflow: hidden; position: relative; box-sizing: border-box; 
+            overflow: auto; position: relative; box-sizing: border-box; touch-action: none;
         }
         body.is-landscape #game-container { width: auto; height: 100vh; padding: 0; flex-grow: 0; justify-content: center; }
         
@@ -158,7 +174,9 @@
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
             border: var(--border-style); border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            padding: 6.5%; box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+            padding: 6.5%; box-sizing: border-box; transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; flex-shrink: 0; 
+            /* 修正3：確保放大超出螢幕時，利用 margin auto 使其能被正常捲動而不裁切左上角 */
+            margin: auto; 
         }
         
         .board-inner { position: relative; width: 100%; height: 100%; }
@@ -242,6 +260,9 @@
         <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
         <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(1)">➕</button>
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(-1)">➖</button>
     </div>
 </header>
 
@@ -564,6 +585,11 @@ let currentLang = 'tw';
 let viewSide = 1; 
 let dragEl = null;
 
+/* 修正3：新增手動縮放狀態變數 */
+let currentZoom = 1.0; 
+let baseBoardW = 0; 
+let baseBoardH = 0; 
+
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const LEVELS = { 'easy': { depth: 4, time: 500 }, 'medium': { depth: 8, time: 1000 }, 'hard': { depth: 12, time: 2000 }, 'expert': { depth: 16, time: 3000 }, 'master': { depth: 20, time: 5000 }, 'god': { depth: 40, time: 7000 } };
@@ -653,10 +679,37 @@ function updateVolLabels() {
     document.getElementById('lbl-vol-sfx').innerText = `${t.lblSfxVol} (${sfxVal}%)`;
 }
 
+/* 修正3：新增手動縮放觸發函數 */
+function zoomBoard(direction) {
+    currentZoom += direction * 0.2; // 每次放大或縮小 20%
+    if (currentZoom < 0.5) currentZoom = 0.5; // 限制最小縮小至 50%
+    if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
+    applyZoom();
+}
+
+/* 修正3：根據目前的 currentZoom 倍率套用棋盤大小 */
+function applyZoom() {
+    const boardWrap = document.getElementById('board-wrap');
+    if (baseBoardW > 0 && baseBoardH > 0) {
+        let finalW = baseBoardW * currentZoom;
+        let finalH = baseBoardH * currentZoom;
+        boardWrap.style.width = `${finalW}px`;
+        boardWrap.style.height = `${finalH}px`;
+        boardWrap.style.minWidth = `${finalW}px`; 
+        boardWrap.style.minHeight = `${finalH}px`;
+        boardWrap.style.fontSize = (finalW / 9) + "px";
+    }
+}
+
 function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
+
 function resizeBoard() { 
     const isLandscape = checkOrientation(); const header = document.getElementById('main-header'); const boardWrap = document.getElementById('board-wrap');
-    boardWrap.style.width = ''; boardWrap.style.height = ''; boardWrap.style.margin = '0'; header.style.marginRight = '0';
+    
+    /* 修正3：移除對 margin 的強制歸零，讓 CSS 的 margin: auto 能在放大時協助置中捲動 */
+    boardWrap.style.width = ''; boardWrap.style.height = ''; header.style.marginRight = '0';
+    boardWrap.style.marginTop = ''; boardWrap.style.marginBottom = '';
+    
     const winW = window.innerWidth; const winH = window.innerHeight; let finalW, finalH;
     if (isLandscape) {
         const headerW = 130; const verticalMargin = 4; let maxH = winH - verticalMargin; let maxW = maxH * 0.9; let gap = maxW * 0.02; const requiredW = headerW + gap + maxW + 20;
@@ -664,10 +717,14 @@ function resizeBoard() {
         finalW = maxW; finalH = maxH; header.style.marginRight = `${gap}px`;
     } else {
         const paddingV = winH * 0.01; const paddingH = 10; const headerH = header.offsetHeight; let availW = winW - (paddingH * 2); let availH = winH - headerH - (paddingV * 2); 
-        boardWrap.style.marginTop = `${paddingV}px`; boardWrap.style.marginBottom = `${paddingV}px`; const ratio = 0.9; finalH = availH; finalW = finalH * ratio;
+        const ratio = 0.9; finalH = availH; finalW = finalH * ratio;
         if (finalW > availW) { finalW = availW; finalH = finalW / ratio; }
     }
-    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; boardWrap.style.fontSize = (finalW / 9) + "px"; 
+    
+    /* 修正3：將基準大小儲存下來，並呼叫 applyZoom 套用 */
+    baseBoardW = finalW;
+    baseBoardH = finalH;
+    applyZoom();
 }
 
 function unlockAudio() { 
@@ -973,43 +1030,81 @@ function goHome() {
 
 function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; const sim = (target) => { let tmp = bd[target]; bd[target] = bd[i]; bd[i] = 0; let k1 = bd.indexOf(7), k2 = bd.indexOf(-7), safe = true; if(k1!==-1 && k2!==-1 && k1%9 === k2%9) { safe = false; for(let k=Math.min(k1,k2)+9; k<Math.max(k1,k2); k+=9) if(bd[k]!==0) safe = true; } bd[i] = bd[target]; bd[target] = tmp; return safe; }; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } }); } else if(type===4) { [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } }); } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; ds.forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } }); } return t.filter(idx => sim(idx)); }
 
-// 1. 禁用右鍵選單
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
     });
 
-    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
     document.onkeydown = function(e) {
-        // 禁止 F12 (123)
         if (e.keyCode == 123) {
             return false;
         }
-        // 禁止 Ctrl+Shift+I (檢查元件)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+Shift+C (選取元件)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+Shift+J (開發者主控台)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+U (查看網頁原始碼)
         if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+S (存檔)
         if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
             return false;
         }
     };
 
-    // 3. 額外防護：如果玩家打開主控台，給予提示或清理
-    // 雖然無法阻止高手，但對普通人很有效
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+
+// === 修正4：完美版雙指縮放 (無段比例計算) ===
+let initialPinchDistance = null;
+let startZoom = 1.0;
+const gameContainerEl = document.getElementById('game-container');
+
+// 1. 偵測兩根手指放上螢幕
+gameContainerEl.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault(); // 阻擋瀏覽器預設行為
+        // 計算兩指初始直線距離
+        initialPinchDistance = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+        startZoom = currentZoom; // 記下剛捏合時的縮放倍率
+    }
+}, { passive: false });
+
+// 2. 偵測兩根手指滑動 (縮放中)
+gameContainerEl.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialPinchDistance) {
+        e.preventDefault(); // 阻擋畫面原生滾動
+        
+        // 計算當下的兩指距離
+        let currentDistance = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+        
+        // 核心邏輯：現在距離 / 初始距離 = 縮放比例
+        let scale = currentDistance / initialPinchDistance;
+        currentZoom = startZoom * scale;
+        
+        // 限制最大與最小倍率
+        if (currentZoom < 0.5) currentZoom = 0.5;
+        if (currentZoom > 3.0) currentZoom = 3.0;
+        
+        applyZoom(); // 即時套用畫面
+    }
+}, { passive: false });
+
+// 3. 手指離開螢幕，重置距離
+gameContainerEl.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+        initialPinchDistance = null;
+    }
+});
 </script>
 </body>
 </html>
