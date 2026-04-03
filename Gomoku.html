@@ -786,6 +786,55 @@ function goHome() {
 
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+
+    // === 修正4：自訂雙指縮放 (Pinch-to-zoom) 監聽器 ===
+    let initialPinchDistance = null;
+    const gameContainerEl = document.getElementById('game-container');
+
+    // 1. 偵測兩根手指放上螢幕
+    gameContainerEl.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            // 阻止瀏覽器預設的放大行為與滑動
+            e.preventDefault(); 
+            // 勾股定理：計算兩根手指的初始直線距離
+            initialPinchDistance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+        }
+    }, { passive: false });
+
+    // 2. 偵測兩根手指在螢幕上滑動
+    gameContainerEl.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDistance !== null) {
+            e.preventDefault(); 
+            
+            let currentDistance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            
+            let diff = currentDistance - initialPinchDistance;
+            
+            // 設定一個靈敏度門檻 (大於 10px 才觸發)，避免輕微手抖造成畫面亂閃
+            if (Math.abs(diff) > 10) {
+                // diff > 0 代表手指張開 (放大)，diff < 0 代表手指捏合 (縮小)
+                // 這裡傳入 0.2 或 -0.2 給原本的 zoomBoard 函數，讓縮放滑順進行
+                let zoomStep = diff > 0 ? 0.2 : -0.2; 
+                zoomBoard(zoomStep); 
+                
+                // 更新初始距離，讓滑動可以連續觸發
+                initialPinchDistance = currentDistance; 
+            }
+        }
+    }, { passive: false });
+
+    // 3. 手指離開螢幕，重置距離
+    gameContainerEl.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            initialPinchDistance = null;
+        }
+    });
 </script>
 </body>
 </html>
