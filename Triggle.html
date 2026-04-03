@@ -41,7 +41,8 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: rgba(34,34,34,0.1); --piece-border: #222; --border-style: 6px solid #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: rgba(119,119,119,0.3); --piece-border: #888; --border-style: 8px solid #555; }
 
-        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; padding: 0; margin: 0; }
+        /* 修正：允許網頁內容捲動與溢出 */
+        html, body { height: 100%; width: 100%; overflow: auto; overscroll-behavior: none; padding: 0; margin: 0; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -56,6 +57,7 @@
             z-index: 100; padding: calc(var(--safe-top) + 6px) 0 6px 0; background: rgba(0,0,0,0.3); 
             backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.1); 
             box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s ease; flex-shrink: 0;
+            position: sticky; top: 0; left: 0; /* 修正：固定頂部選單 */
         }
 
         .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
@@ -88,6 +90,13 @@
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
 
+        /* 新增：手動縮放按鈕樣式 */
+        .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 4px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
+        .mobile-only { display: none !important; } 
+        @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
+            .mobile-only { display: inline-block !important; }
+        }
+
         /* === 橫向模式 (Mobile Landscape Only) === */
         body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
         body.is-landscape header { width: 140px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; }
@@ -105,8 +114,8 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
 
         /* === 遊戲容器 === */
-        /* 縮減安全留白至 2px，強迫棋盤貼滿螢幕邊緣 */
-        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; height: 100%; padding: 2px; box-sizing: border-box; touch-action: none; }
+        /* 修正：加上 overflow: auto 允許縮放後捲動 */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; width: 100%; height: 100%; padding: 2px; box-sizing: border-box; touch-action: none; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; padding: 2px; }
         
         /* 🔥 新版雅緻棋盤外框 🔥 */
@@ -118,8 +127,12 @@
             box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 3px 10px rgba(255,255,255,0.3), inset 0 -4px 10px rgba(0,0,0,0.3);
             /* 極限壓縮內部留白至 2.5%，確保內部的棋盤區幾乎完全撐滿外框 */
             padding: 2.5%; 
-            box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+            box-sizing: border-box; 
+            /* 修正：移除 width/height 變化時的動畫與 Transform 動畫以避免平移卡頓 */
+            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; 
+            flex-shrink: 0; 
             display: flex; align-items: center; justify-content: center;
+            margin: auto; /* 修正：利用 margin 讓放大後的棋盤能夠置中並允許捲動 */
         }
         /* 內部極簡刻線裝飾 */
         .board-wrap::before {
@@ -204,6 +217,9 @@
         <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
         <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(1)">➕</button>
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(-1)">➖</button>
     </div>
 </header>
 
@@ -655,6 +671,10 @@ let currentLang = 'tw', playerSide = 1;
 let selectedPeg = null;
 let validTargets = [];
 
+// 縮放與平移狀態變數
+let currentZoom = 1.0;
+let baseBoardW = 0, baseBoardH = 0;
+
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
 
@@ -680,6 +700,31 @@ window.onload = () => {
     audio.addEventListener('ended', () => { if(userInteracted && document.getElementById('music-sel').value !== 'none') audio.play().catch(()=>{}); });
 };
 
+// 手動縮放觸發函數
+function zoomBoard(direction) {
+    currentZoom += direction * 0.2; 
+    if (currentZoom < 1.0) currentZoom = 1.0; 
+    if (currentZoom > 3.0) currentZoom = 3.0; 
+    applyZoom();
+}
+
+// 動態更新棋盤尺寸並處理平移
+function applyZoom() {
+    const wrap = document.getElementById('board-wrap');
+    if(baseBoardW > 0 && baseBoardH > 0) {
+        wrap.style.width = `${baseBoardW * currentZoom}px`;
+        wrap.style.height = `${baseBoardH * currentZoom}px`;
+        
+        if (currentZoom === 1.0) {
+            panX = 0;
+            panY = 0;
+            wrap.style.transform = `translate3d(0px, 0px, 0)`;
+        } else {
+            wrap.style.transform = `translate3d(${panX}px, ${panY}px, 0)`;
+        }
+    }
+}
+
 // 初始分配隨機的專屬色彩
 function initRandomColors() {
     let shuffled = [...PALETTE].sort(() => 0.5 - Math.random());
@@ -700,7 +745,7 @@ function changeColor() {
     renderBoard();
 }
 
-// 智能更新設定內的對象選單文字 (例如單人時為「電腦」，多人時為「玩家2」)
+// 智能更新設定內的對象選單文字
 function updateTargetNames() {
     const t = TRANSLATIONS[currentLang];
     const modeVal = document.getElementById('mode-sel').value;
@@ -1142,7 +1187,7 @@ function updateVolLabels() {
 
 function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
 
-// 最大化版面與極限縮減安全邊距 (擠壓到剩 4px 確保近乎滿版)
+// 最大化版面與動態記錄基礎寬高，後續用於動態縮放
 function resizeBoard() { 
     const isLandscape = checkOrientation(); 
     const header = document.getElementById('main-header'); 
@@ -1174,7 +1219,10 @@ function resizeBoard() {
         
         if (finalH > availH) { finalH = availH; finalW = finalH * ratio; }
     }
-    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; 
+    
+    baseBoardW = finalW;
+    baseBoardH = finalH;
+    applyZoom(); 
 }
 
 function unlockAudio() { userInteracted = true; if(audioCtx.state === 'suspended') audioCtx.resume(); audio.volume = document.getElementById('bgm-vol').value/100; if (!audio.src || audio.src === "" || audio.src.endsWith("/")) { const val = document.getElementById('music-sel').value; if(val !== 'none') audio.src = getMp3Path(val); } if(document.getElementById('music-sel').value !== 'none') audio.play().catch(e=>{}); }
@@ -1193,6 +1241,82 @@ function goHome() { try { if (window.parent && typeof window.parent.closeGame ==
 document.addEventListener('contextmenu', event => event.preventDefault());
 document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 67 || e.keyCode == 74)) || (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) return false; };
 console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;"); console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+
+// === 完美版雙指縮放 (無段比例計算) + 單指平移 + 點擊修正 ===
+let initialPinchDistance = null;
+let startZoom = 1.0;
+let isPanning = false;
+let lastPanX = 0, lastPanY = 0;
+let panX = 0, panY = 0; 
+let hasMoved = false; 
+
+const gameContainerEl = document.getElementById('game-container');
+
+gameContainerEl.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        isPanning = false;
+        e.preventDefault(); 
+        initialPinchDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        startZoom = currentZoom; 
+    } else if (e.touches.length === 1) {
+        isPanning = true;
+        hasMoved = false; 
+        lastPanX = e.touches[0].clientX;
+        lastPanY = e.touches[0].clientY;
+    }
+}, { passive: false });
+
+gameContainerEl.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialPinchDistance) {
+        hasMoved = true;
+        e.preventDefault(); 
+        
+        let currentDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        
+        let scale = currentDistance / initialPinchDistance;
+        currentZoom = startZoom * scale;
+        
+        if (currentZoom < 1.0) currentZoom = 1.0;
+        if (currentZoom > 3.0) currentZoom = 3.0;
+        
+        applyZoom(); 
+        
+    } else if (e.touches.length === 1 && isPanning) {
+        let currentX = e.touches[0].clientX;
+        let currentY = e.touches[0].clientY;
+        let moveX = currentX - lastPanX;
+        let moveY = currentY - lastPanY;
+        
+        if (Math.abs(moveX) > 3 || Math.abs(moveY) > 3) {
+            hasMoved = true;
+            e.preventDefault(); 
+            
+            panX += moveX;
+            panY += moveY;
+            document.getElementById('board-wrap').style.transform = `translate3d(${panX}px, ${panY}px, 0)`;
+            
+            lastPanX = currentX;
+            lastPanY = currentY;
+        }
+    }
+}, { passive: false });
+
+gameContainerEl.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+        initialPinchDistance = null;
+    }
+    if (e.touches.length === 0) {
+        isPanning = false;
+    }
+    // 因為三角棋的點擊事件直接綁定在 SVG 本身，若沒有拖曳(hasMoved 為 false)，
+    // 瀏覽器將原生觸發點擊，不需要手動模擬 click()。
+});
 </script>
 </body>
 </html>
