@@ -40,7 +40,7 @@
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
 
         /* 修正2：將 overflow: hidden 改為 overflow: auto，允許放大後可以滑動檢視 */
-        html, body { height: 100%; width: 100%; overflow: auto; overscroll-behavior: none; }
+        html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -59,6 +59,7 @@
 
         /* === 頂部 UI 樣式 === */
         header { 
+            position: sticky; top: 0; left: 0; /* ⬇️ 加上這行讓 UI 黏在最頂部 */
             width: 100%; height: auto; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
             z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
