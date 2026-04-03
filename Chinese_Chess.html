@@ -699,6 +699,13 @@ function applyZoom() {
         boardWrap.style.minWidth = `${finalW}px`; 
         boardWrap.style.minHeight = `${finalH}px`;
         boardWrap.style.fontSize = (finalW / 9) + "px";
+
+        // 修正5：當縮放回預設大小 (1.0) 時，將平移位置自動歸零，讓畫面回歸正中央
+        if (currentZoom === 1.0) {
+            panX = 0;
+            panY = 0;
+            boardWrap.style.transform = `translate(0px, 0px)`;
+        }
     }
 }
 
@@ -1065,6 +1072,7 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
 
     let isPanning = false;
     let lastPanX = 0, lastPanY = 0;
+    let panX = 0, panY = 0; // 修正5：新增平移座標變數
 
     const gameContainerEl = document.getElementById('game-container');
 
@@ -1115,9 +1123,10 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             let moveX = currentX - lastPanX;
             let moveY = currentY - lastPanY;
             
-            /* 修正4：僅針對棋盤容器區域做捲動，移除外層視窗捲動，徹底將 UI 固定住 */
-            gameContainerEl.scrollLeft -= moveX;
-            gameContainerEl.scrollTop -= moveY;
+            /* 修正5：放棄原生捲軸，改用 transform 來平移畫面。徹底解決 Flexbox 置中導致左上角邊緣無法捲動的問題 */
+            panX += moveX;
+            panY += moveY;
+            document.getElementById('board-wrap').style.transform = `translate(${panX}px, ${panY}px)`;
             
             // 即時更新最後座標，讓畫面緊緊黏著手指移動
             lastPanX = currentX;
