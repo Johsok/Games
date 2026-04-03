@@ -25,6 +25,9 @@
             --last-move-glow: rgba(0, 229, 255, 1);
             --target-glow: rgba(255, 23, 68, 1);
             --origin-blue: rgba(0, 140, 255, 0.8);
+            
+            /* * 修正: 定義預設的棋子絕對像素變數，這個變數會由 JS 動態精準計算並覆寫 */
+            --piece-size: 40px; 
         }
         
         /* === 主題風格定義 === */
@@ -188,9 +191,7 @@
         .rules-box li { margin-bottom: 4px; }
         .rules-box strong { color: #ff9; }
 
-        /* * 修正: 加入系統級安全區 padding (動態島/瀏海/導航條) 
-         * 確保 game-container 內部的空間不會受到系統 UI 遮擋
-         */
+        /* * 保留安全區設定，當成雙重防護 */
         #game-container { 
             flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; 
             overflow: hidden; position: relative; box-sizing: border-box; 
@@ -217,16 +218,16 @@
             z-index: auto; 
         }
         
-        /* * 修正: 再次縮小棋子的比例並加入 max-width/max-height 限制為 88%
-         * 確保在各種特殊長寬比的設備(如過度狹長的手機)上，棋子絕對不會碰到格子邊緣。
+        /* * 修正: 棋子大小改為套用由 Javascript 精準計算出來的絕對像素變數 var(--piece-size)
+         * 取代原本可能因為比例失衡而被切掉的百分比(%)。
          */
         .piece { 
             position: relative; 
-            width: 88%; 
-            height: 88%;
-            max-width: 88%;
-            max-height: 88%;
-            aspect-ratio: 1 / 1; 
+            width: var(--piece-size); 
+            height: var(--piece-size);
+            max-width: none;
+            max-height: none;
+            aspect-ratio: auto; /* 交由動態的絕對寬高維持圓形 */
             border-radius: 50% !important; 
             
             background: var(--piece-bg); border: 3px solid var(--piece-border); box-shadow: var(--piece-shadow); 
@@ -1064,33 +1065,46 @@ let lastWinW = 0;
 function resizeBoard() { 
     const isMobileLandscape = window.matchMedia("(orientation: landscape)").matches && window.innerWidth < 1024;
 
-    // * 修正: 使用 window.visualViewport 來獲取扣除手機瀏覽器 UI (網址列等) 之後的「真實可用」視窗尺寸
+    // * 修正 1: 取得真實可用視窗尺寸 (去除網址列等干擾)
     let actualW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     let actualH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
-    // 若為手機橫向模式，由於 body 會被 rotate(-90deg)，這裡的長寬需要對調計算
+    // 手機橫向轉向時寬高相反
     const winW = isMobileLandscape ? actualH : actualW;
     const winH = isMobileLandscape ? actualW : actualH;
     lastWinW = window.innerWidth;
 
     const h = document.getElementById('main-header').offsetHeight;
     
-    // * 修正: 預留更大的安全邊距 (Safe Margin)，確保在具有「動態島、圓角、螢幕打孔」的手機上，棋盤邊界絕對不會被切掉
-    // 這裡給予寬度 40px, 高度 50px (包含底部 Home 條預留) 的安全扣除量
-    const safePaddingW = window.innerWidth > 600 ? 30 : 40; 
-    const safePaddingH = window.innerHeight > 800 ? 40 : 50; 
+    // * 修正 2: 依據螢幕類型設定不同的安全邊距 (桌機不需要大邊距，能恢復滿版大畫面)
+    const isDesktop = winW >= 1024;
+    const safePaddingW = isDesktop ? 16 : 40; // 電腦版左右留白少，手機版給足40px防邊界切斷
+    const safePaddingH = isDesktop ? 16 : 50; // 電腦版上下留白少，手機版給足50px避開動態島與底橫條
     
-    const w = winW - safePaddingW; 
-    const ah = winH - h - safePaddingH; 
+    const availW = winW - safePaddingW; 
+    const availH = winH - h - safePaddingH; 
     
-    const r = 4/8; 
-    let fw = w, fh = fw/r; 
-    if(fh > ah) { fh = ah; fw = fh * r; } 
+    // * 修正 3: 完美以 1:2 (4列 x 8行) 的比例算出棋盤精準的像素，決不超出版面
+    let fw = availW; 
+    let fh = fw * 2; // 先以極限寬度換算高度
+    
+    if (fh > availH) { 
+        // 如果高度超出了可用高度，則改以高度為極限反推寬度
+        fh = availH; 
+        fw = fh / 2; 
+    } 
     
     const bw = document.getElementById('board-wrap'); 
     bw.style.width = fw + "px"; 
     bw.style.height = fh + "px"; 
     bw.style.fontSize = (fw / 4) + "px"; 
+    
+    // * 修正 4: 動態計算每一顆棋子的「絕對像素大小 (px)」寫入 CSS 變數。
+    // 每格大小約為 fw / 4，棋子佔每格的 88%，這樣就能確保不管格子多怪異都不會切到棋子
+    const cellSize = fw / 4;
+    const exactPieceSize = cellSize * 0.88;
+    document.documentElement.style.setProperty('--piece-size', exactPieceSize + 'px');
+
     initialResizeDone = true;
 }
 
@@ -1118,9 +1132,9 @@ function render() {
             dragEl.innerText = bd[sel].name;
             dragEl.style.fontSize = (parseFloat(w.style.fontSize) * 0.65) + "px"; 
             
-            /* 更新對應縮小比例 (0.88) */
-            dragEl.style.width = (parseFloat(w.style.fontSize) * 0.88) + "px"; 
-            dragEl.style.height = (parseFloat(w.style.fontSize) * 0.88) + "px";
+            /* 修正: 讀取 JS 精確計算出來的絕對像素大小 */
+            dragEl.style.width = "var(--piece-size)"; 
+            dragEl.style.height = "var(--piece-size)";
             document.body.appendChild(dragEl);
             updateDragPos();
         }
@@ -1261,13 +1275,14 @@ function animateAiMove(f, t) {
     animEl.innerText = p.name;
     animEl.style.fontSize = (parseFloat(fontSize) * 0.65) + "px";
     
-    /* 更新對應縮小比例 (0.88) */
-    animEl.style.width = (parseFloat(fontSize) * 0.88) + "px"; 
-    animEl.style.height = (parseFloat(fontSize) * 0.88) + "px";
+    /* 修正: 使用 JS 精確計算的絕對尺寸 */
+    animEl.style.width = "var(--piece-size)"; 
+    animEl.style.height = "var(--piece-size)";
     
-    /* 更新位置計算的偏差值 (0.88) */
-    animEl.style.top = (startRect.top + startRect.height/2 - (parseFloat(fontSize)*0.88)/2) + "px";
-    animEl.style.left = (startRect.left + startRect.width/2 - (parseFloat(fontSize)*0.88)/2) + "px";
+    /* 動態讀取當前 CSS 計算好的 pieceSize 來調整動畫起迄偏移值 */
+    const pSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--piece-size'));
+    animEl.style.top = (startRect.top + startRect.height/2 - pSize/2) + "px";
+    animEl.style.left = (startRect.left + startRect.width/2 - pSize/2) + "px";
     
     document.body.appendChild(animEl);
 
@@ -1275,8 +1290,8 @@ function animateAiMove(f, t) {
     if(originalPiece) originalPiece.style.opacity = 0;
 
     requestAnimationFrame(() => {
-        animEl.style.top = (endRect.top + endRect.height/2 - (parseFloat(fontSize)*0.88)/2) + "px";
-        animEl.style.left = (endRect.left + endRect.width/2 - (parseFloat(fontSize)*0.88)/2) + "px";
+        animEl.style.top = (endRect.top + endRect.height/2 - pSize/2) + "px";
+        animEl.style.left = (endRect.left + endRect.width/2 - pSize/2) + "px";
     });
 
     setTimeout(() => {
