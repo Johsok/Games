@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#3a3a3a">
-    <title>俄羅斯方塊 2026</title>
+    <title id="html-title">俄羅斯方塊 2026</title>
     <link rel="manifest" id="manifest-placeholder">
     <style>
         /* === 核心變數與配色定義 === */
@@ -33,7 +33,7 @@
             --c-7: #ff0000; /* Z */
         }
 
-        /* === 視覺風格定義 (14種) === */
+        /* === 視覺主題風格定義 (14種) === */
         body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #111; --line-color: #4e342e; --border-style: 2px solid #6d4c41; }
         body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #fff; --board-texture: none; --line-color: #2c3e50; --border-style: 2px solid #424242; --c-ghost: rgba(0,0,0,0.1); }
         body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #001f14; --line-color: #004d40; --border-style: 2px solid #00695c; }
@@ -44,7 +44,7 @@
         body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #1a1005; --line-color: #873600; --border-style: 2px solid #8e44ad; }
         body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --border-style: 2px solid #ff69b4; --c-ghost: rgba(0,0,0,0.1); }
         body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f8f9f9; --line-color: #34495e; --border-style: 2px solid #5d6d7e; --c-ghost: rgba(0,0,0,0.1); }
-        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #f0f8ff; --line-color: #4dd0e1; --border-style: 2px solid #b39ddb; border-radius: 12px; --c-ghost: rgba(0,0,0,0.1); }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #f0f8ff; --line-color: #4dd0e1; --border-style: 2px solid #b39ddb; --c-ghost: rgba(0,0,0,0.1); }
         body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #000; --board-texture: none; --line-color: #0ff; --border-style: 2px solid #0ff; }
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 2px solid #222; --c-ghost: rgba(0,0,0,0.1); }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #111; --board-texture: none; --line-color: #111; --border-style: 2px solid #555; }
@@ -73,12 +73,15 @@
             transition: all 0.3s ease;
         }
 
-        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; }
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; flex-wrap: wrap;}
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
         
         .status-container { display: flex; align-items: center; gap: 12px; }
         .status { color: #f1c40f; font-weight: bold; font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; font-variant-numeric: tabular-nums; }
         .stats { color: #ff9800; font-size: 0.85rem; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;}
+        
+        /* 速度顯示採用不同顏色區別 */
+        #speed-display { color: #4dd0e1; }
 
         .btn-group { display: flex; gap: 8px; align-items: center; margin-top: 5px; flex-wrap: wrap; justify-content: center;}
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -87,7 +90,7 @@
         .btn-pause { background: rgba(230, 140, 20, 0.85); border: none; }
         .btn-blue { background: rgba(52, 152, 219, 0.85); border: none; }
 
-        /* === 主體區塊 === */
+        /* === 主體區塊排版 === */
         #main-content {
             flex: 1;
             display: flex;
@@ -99,8 +102,8 @@
         #game-area-wrapper {
             flex: 1;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: center; /* 精準置中對齊 */
+            align-items: center; /* 垂直置中對齊 */
             position: relative;
             overflow: hidden;
             width: 100%;
@@ -109,25 +112,18 @@
         /* 縮放與平移容器 */
         #zoom-container {
             display: flex;
-            gap: calc(var(--cell-size) * 0.5); /* 動態間距 */
-            align-items: flex-end; /* 讓方塊佇列貼齊棋盤下方 */
+            gap: calc(var(--cell-size) * 1.5); /* 加大間距避免花式邊框重疊 */
+            align-items: flex-start; /* 讓方塊預覽區貼齊棋盤右上角 */
+            justify-content: center; 
             transition: transform 0.1s ease-out;
             transform-origin: center center;
         }
 
-        /* === 遊戲網格 (精緻化外框設計) === */
+        /* === 遊戲基礎網格設定 === */
         .board-wrap {
             position: relative;
             background: var(--line-color);
             border: var(--border-style);
-            border-radius: 4px;
-            /* 華麗的多重立體陰影與框線 */
-            box-shadow:
-                0 0 0 4px rgba(0,0,0,0.8), 
-                0 0 0 6px var(--line-color), 
-                inset 0 0 0 2px rgba(255,255,255,0.3), 
-                0 20px 50px rgba(0,0,0,0.7), 
-                inset 0 0 60px rgba(0,0,0,0.5);
             display: grid;
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(20, 1fr);
@@ -136,28 +132,61 @@
             width: calc(var(--cell-size) * 10);
             height: calc(var(--cell-size) * 20);
             box-sizing: border-box;
+            transition: box-shadow 0.3s, border-radius 0.3s;
         }
 
-        /* 邊框精緻化裝飾角 (上下對稱) */
-        .board-wrap::before, .board-wrap::after {
-            content: '';
-            position: absolute;
-            width: calc(var(--cell-size) * 1.5); 
-            height: calc(var(--cell-size) * 1.5);
-            border: 3px solid rgba(255,255,255,0.7);
-            pointer-events: none;
-            z-index: 10;
-        }
-        .board-wrap::before {
-            top: -6px; left: -6px;
-            border-right: none; border-bottom: none;
-        }
-        .board-wrap::after {
-            bottom: -6px; right: -6px;
-            border-left: none; border-top: none;
+        /* -------------------------------------------
+           === 6種精緻 CSS 外框樣式設定 (純CSS繪製) === 
+           ------------------------------------------- */
+        /* 1. 經典立體 (Classic) */
+        .board-wrap.b-classic { border-radius: 4px; box-shadow: 0 0 0 4px rgba(0,0,0,0.8), 0 0 0 6px var(--line-color), inset 0 0 0 2px rgba(255,255,255,0.3), 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.5); }
+        .board-wrap.b-classic::before, .board-wrap.b-classic::after { content: ''; position: absolute; width: calc(var(--cell-size) * 1.5); height: calc(var(--cell-size) * 1.5); border: 3px solid rgba(255,255,255,0.7); pointer-events: none; z-index: 10; }
+        .board-wrap.b-classic::before { top: -6px; left: -6px; border-right: none; border-bottom: none; }
+        .board-wrap.b-classic::after { bottom: -6px; right: -6px; border-left: none; border-top: none; }
+
+        /* 2. 花紋圖騰 (Floral) */
+        .board-wrap.b-floral { border-radius: 8px; box-shadow: 0 0 0 8px #8d6e63, 0 0 15px rgba(0,0,0,0.5); }
+        .board-wrap.b-floral::before { 
+            content: ''; position: absolute; z-index: -1; 
+            top: -20px; left: -20px; right: -20px; bottom: -20px; 
+            background-color: #d7ccc8; 
+            background-image: radial-gradient(#5d4037 15%, transparent 16%), radial-gradient(#5d4037 15%, transparent 16%); 
+            background-size: 20px 20px; background-position: 0 0, 10px 10px; 
+            border-radius: 12px; border: 3px solid #5d4037; box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
         }
 
-        /* 下一個方塊區列 */
+        /* 3. 幾何圖騰 (Totem) */
+        .board-wrap.b-totem { border-radius: 0; box-shadow: 0 0 0 6px #111, 0 0 0 12px #e67e22, 0 0 0 18px #111; }
+        .board-wrap.b-totem::before { 
+            content: ''; position: absolute; z-index: -1; 
+            top: -24px; left: -24px; right: -24px; bottom: -24px; 
+            background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 10px, #e74c3c 10px, #e74c3c 20px); 
+            border: 4px solid #f1c40f; box-shadow: 0 15px 40px rgba(0,0,0,0.9); 
+        }
+
+        /* 4. 霓虹科技 (Neon) */
+        .board-wrap.b-neon { 
+            border-radius: 8px; border: 2px solid #fff; 
+            box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0ff, 0 0 40px #0ff, 0 0 70px #0ff, inset 0 0 15px #0ff; 
+        }
+
+        /* 5. 華麗宮廷 (Royal) */
+        .board-wrap.b-royal { border-radius: 2px; box-shadow: 0 0 0 4px #333, 0 0 0 12px #d4af37, 0 0 0 16px #333, 0 10px 30px rgba(0,0,0,0.8); }
+        .board-wrap.b-royal::before { 
+            content: ''; position: absolute; top: -16px; left: -16px; right: -16px; bottom: -16px; 
+            border: 2px dashed #d4af37; z-index: 10; pointer-events: none; 
+        }
+
+        /* 6. 點陣像素 (Pixel) */
+        .board-wrap.b-pixel { 
+            border-radius: 0; border: none;
+            box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff, 
+                        -8px 0 0 0 #000, 8px 0 0 0 #000, 0 -8px 0 0 #000, 0 8px 0 0 #000, 
+                        -4px -4px 0 0 #000, 4px -4px 0 0 #000, -4px 4px 0 0 #000, 4px 4px 0 0 #000, 
+                        0 15px 30px rgba(0,0,0,0.8); 
+        }
+
+        /* --- 下一個方塊區列 --- */
         .next-queue-wrap {
             display: flex;
             flex-direction: column;
@@ -210,7 +239,6 @@
             user-select: none;
         }
 
-        /* 只有在支援觸控且螢幕夠小時才強制顯示虛擬按鈕 */
         @media (hover: none) and (pointer: coarse) {
             #mobile-controls { display: flex; }
             #zoom-container { transform-origin: top center; }
@@ -239,7 +267,7 @@
         }
         .ctrl-btn:active { transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,0.5); background: rgba(255,255,255,0.3); }
 
-        /* === 設定面板樣式 (沿用) === */
+        /* === 設定面板樣式 === */
         #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
         .set-row { margin-bottom: 12px; }
         .flex-split { display: flex; gap: 10px; justify-content: space-between; }
@@ -264,7 +292,7 @@
         #win-overlay .msg-box { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
         .win-title {
-            font-size: 8vmin; /* 使用 vmin 同步放大 */
+            font-size: 8vmin; 
             color: #fff; 
             text-shadow: 0 0 2vmin #0ff, 0 0 4vmin #0ff, 0 0 8vmin #0ff; 
             margin-bottom: 2vmin;
@@ -298,20 +326,21 @@
         <div class="status-container">
             <div class="status" id="timer-display">00:00</div>
             <div class="stats" id="stats-display">得分: 0</div>
+            <div class="stats" id="speed-display">速度: 1.00 格/秒</div>
         </div>
     </div>
     <div class="btn-group">
-        <button class="btn" onclick="toggleSet()">⚙️ 設定</button>
+        <button class="btn" id="btn-set" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-pause" onclick="togglePause()" id="btn-pause-text">⏸️ 暫停</button>
-        <button class="btn btn-red" onclick="restart()">🔄 重開</button>
-        <button class="btn btn-blue" onclick="showInstructions()">ℹ️ 操作說明</button>
+        <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        <button class="btn btn-blue" id="btn-rules-ui" onclick="showInstructions()">ℹ️ 操作說明</button>
     </div>
 </header>
 
 <div id="settings">
     <div class="set-row flex-split">
         <div>
-            <label>遊戲難度</label>
+            <label id="lbl-diff">遊戲難度</label>
             <select id="diff-sel" onchange="changeDiff()">
                 <option value="easy">🟩 簡單 (5預覽)</option>
                 <option value="medium" selected>🟨 普通 (3預覽)</option>
@@ -319,7 +348,7 @@
             </select>
         </div>
         <div>
-            <label>視覺風格</label>
+            <label id="lbl-theme">視覺風格</label>
             <select id="theme-sel" onchange="changeTheme()">
                 <option value="t-classic">💎 經典</option>
                 <option value="t-ink">🏔️ 水墨</option>
@@ -341,7 +370,18 @@
 
     <div class="set-row flex-split">
         <div>
-            <label>背景音樂</label>
+            <label id="lbl-border">外框樣式</label>
+            <select id="border-sel" onchange="changeBorder()">
+                <option value="b-classic" selected>💎 經典立體</option>
+                <option value="b-floral">🌸 花紋圖騰</option>
+                <option value="b-totem">🧿 幾何圖騰</option>
+                <option value="b-neon">✨ 霓虹科技</option>
+                <option value="b-royal">👑 華麗宮廷</option>
+                <option value="b-pixel">👾 點陣像素</option>
+            </select>
+        </div>
+        <div>
+            <label id="lbl-music">背景音樂</label>
             <select id="music-sel" onchange="changeMusic()">
                 <option value="none">🔇 靜音</option>
                 <option value="01">🎵 樂曲 01</option>
@@ -353,71 +393,67 @@
                 <option value="07">🎵 樂曲 07</option>
             </select>
         </div>
+    </div>
+
+    <div class="set-row flex-split">
         <div>
-            <label>語言</label>
+            <label id="lbl-lang">語言</label>
             <select id="lang-sel" onchange="changeLang()">
                 <option value="tw" selected>繁中</option>
                 <option value="cn">简中</option>
                 <option value="en">English</option>
             </select>
         </div>
+        <div>
+            </div>
     </div>
 
     <div class="set-row flex-split vol-row">
         <div>
-            <label>音樂音量<span id="bgm-val-hint" class="vol-hint">20</span></label>
+            <label><span id="lbl-vol-m">音樂音量</span><span id="bgm-val-hint" class="vol-hint">20</span></label>
             <input type="range" id="bgm-vol" min="0" max="100" value="20" oninput="adjBgm()">
         </div>
         <div>
-            <label>音效音量<span id="sfx-val-hint" class="vol-hint">50</span></label>
+            <label><span id="lbl-vol-s">音效音量</span><span id="sfx-val-hint" class="vol-hint">50</span></label>
             <input type="range" id="sfx-vol" min="0" max="100" value="50" oninput="adjSfx()">
         </div>
     </div>
     
     <div class="set-row flex-split" style="margin-top:10px;">
-        <button class="btn" onclick="goHome()" style="flex:1; background:#c0392b; padding: 10px;">🏠 回首頁</button>
+        <button class="btn" id="btn-home" onclick="goHome()" style="flex:1; background:#c0392b; padding: 10px;">🏠 回首頁</button>
     </div>
 
-    <button class="btn" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+    <button class="btn" id="btn-finish" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
     <div style="text-align:center; font-size:10px; color:#aaa; margin-top:15px; letter-spacing: 0.5px;">© 2026 Johsok. All rights reserved.</div>
 </div>
 
 <div id="rules-modal">
     <div class="rules-content">
         <h3 id="rules-title">遊戲操作說明</h3>
-        <ul style="padding-left: 20px; line-height: 1.6;">
-            <li>經典 10×20 網格，落下的方塊可旋轉及平移。</li>
-            <li><strong>每消掉一格得1分</strong> (即消除一整行獲得 10 分)。</li>
-            <li>方塊堆疊到最頂端時即遊戲結束。</li>
-        </ul>
+        <ul id="rules-list" style="padding-left: 20px; line-height: 1.6;">
+            </ul>
         <hr style="border-color: #444; margin: 15px 0;">
         
         <div class="device-rules">
-            <h4 style="color:#4dd0e1; margin-bottom: 5px; margin-top: 0;">💻 桌上型電腦操作：</h4>
-            <ul style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
-                <li>【左 / 右方向鍵】移動方塊</li>
-                <li>【上方向鍵】旋轉方塊</li>
-                <li>【下方向鍵】加速下落</li>
-                <li>【空白鍵】瞬間落下 (Hard Drop)</li>
-            </ul>
+            <h4 id="rules-pc-title" style="color:#4dd0e1; margin-bottom: 5px; margin-top: 0;">💻 桌上型電腦操作：</h4>
+            <ul id="rules-pc-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
+                </ul>
         </div>
         
         <div class="device-rules">
-            <h4 style="color:#ff9a9e; margin-bottom: 5px; margin-top: 0;">📱 手機與平板操作：</h4>
-            <ul style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
-                <li>請使用畫面下方的<strong>專屬虛擬方向與動作按鍵</strong>進行操作。</li>
-                <li>支援<strong>雙指縮放</strong>以及<strong>單指滑動平移</strong>畫面，讓您隨時看清楚！</li>
-            </ul>
+            <h4 id="rules-mobile-title" style="color:#ff9a9e; margin-bottom: 5px; margin-top: 0;">📱 手機與平板操作：</h4>
+            <ul id="rules-mobile-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
+                </ul>
         </div>
 
-        <button class="close-rules" onclick="closeInstructions()">我知道了，繼續遊戲</button>
+        <button class="close-rules" id="btn-close-rules" onclick="closeInstructions()">我知道了，自動繼續遊戲</button>
     </div>
 </div>
 
 <div id="main-content">
     <div id="game-area-wrapper">
         <div id="zoom-container">
-            <div class="board-wrap" id="board"></div>
+            <div class="board-wrap b-classic" id="board"></div>
             <div class="next-queue-wrap" id="next-queue"></div>
         </div>
         <div id="win-overlay" onclick="restart()"></div>
@@ -457,9 +493,9 @@ function resizeBoard() {
     let availableH = window.innerHeight - header.offsetHeight - (isMobileCtrlVisible ? mobileControls.offsetHeight : 0) - 40; 
     let availableW = window.innerWidth - 40; 
     
-    // 計算出最大的方塊 Cell 尺寸 (高度可容納20格，寬度約需容納15格(棋盤10+預覽4+間距))
+    // 計算出最大的方塊 Cell 尺寸 (高度可容納20格，寬度約需容納18格(棋盤10+預覽4+邊框間距4))
     let maxCellH = availableH / 20;
-    let maxCellW = availableW / 15;
+    let maxCellW = availableW / 18;
     
     let cellSize = Math.min(maxCellH, maxCellW);
     
@@ -469,6 +505,103 @@ function resizeBoard() {
     applyZoom(); // 套用縮放狀態
 }
 window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
+
+/* === 語言切換 (i18n) 字典設定 === */
+const i18n = {
+    tw: {
+        title: "俄羅斯方塊 2026", score: "得分", speed: "速度", grid_sec: "格/秒",
+        btn_set: "⚙️ 設定", btn_restart: "🔄 重開", btn_rules_ui: "ℹ️ 操作說明",
+        btn_home: "🏠 回首頁", btn_finish: "完成設定",
+        lbl_diff: "遊戲難度", lbl_theme: "視覺風格", lbl_border: "外框樣式", lbl_music: "背景音樂", lbl_lang: "語言",
+        lbl_vol_m: "音樂音量", lbl_vol_s: "音效音量",
+        rules_title: "遊戲操作說明",
+        rules_list: "<li>經典 10×20 網格，落下的方塊可旋轉及平移。</li><li><strong>每消掉一格得1分</strong> (即消除一整行獲得 10 分)。</li><li><strong>方塊下落速度會隨時間極緩慢增加；但每消除一行，即可減少1%的當前下落速度！</strong></li><li>方塊堆疊到最頂端時即遊戲結束。</li>",
+        rules_pc_title: "💻 桌上型電腦操作：",
+        rules_pc_list: "<li>【左 / 右方向鍵】移動方塊</li><li>【上方向鍵】旋轉方塊</li><li>【下方向鍵】加速下落</li><li>【空白鍵】瞬間落下 (Hard Drop)</li>",
+        rules_mobile_title: "📱 手機與平板操作：",
+        rules_mobile_list: "<li>請使用畫面下方的<strong>專屬虛擬方向與動作按鍵</strong>進行操作。</li><li>支援<strong>雙指縮放</strong>以及<strong>單指滑動平移</strong>畫面，讓您隨時看清楚！</li>",
+        btn_close_rules: "我知道了，自動繼續遊戲",
+        pause: "⏸️ 暫停", resume: "▶️ 繼續",
+        game_over: "遊 戲 結 束", final_score: "最終得分",
+        border_opts: ["💎 經典立體", "🌸 花紋圖騰", "🧿 幾何圖騰", "✨ 霓虹科技", "👑 華麗宮廷", "👾 點陣像素"]
+    },
+    cn: {
+        title: "俄罗斯方块 2026", score: "得分", speed: "速度", grid_sec: "格/秒",
+        btn_set: "⚙️ 设置", btn_restart: "🔄 重开", btn_rules_ui: "ℹ️ 操作说明",
+        btn_home: "🏠 回首页", btn_finish: "完成设置",
+        lbl_diff: "游戏难度", lbl_theme: "视觉风格", lbl_border: "外框样式", lbl_music: "背景音乐", lbl_lang: "语言",
+        lbl_vol_m: "音乐音量", lbl_vol_s: "音效音量",
+        rules_title: "游戏操作说明",
+        rules_list: "<li>经典 10×20 网格，落下的方块可旋转及平移。</li><li><strong>每消掉一格得1分</strong> (即消除一整行获得 10 分)。</li><li><strong>方块下落速度会随时间极缓慢增加；但每消除一行，即可减少1%的当前下落速度！</strong></li><li>方块堆叠到最顶端时即游戏结束。</li>",
+        rules_pc_title: "💻 桌上型电脑操作：",
+        rules_pc_list: "<li>【左 / 右方向键】移动方块</li><li>【上方向键】旋转方块</li><li>【下方向键】加速下落</li><li>【空格键】瞬间落下 (Hard Drop)</li>",
+        rules_mobile_title: "📱 手机与平板操作：",
+        rules_mobile_list: "<li>请使用画面下方的<strong>专属虚拟方向与动作按键</strong>进行操作。</li><li>支持<strong>双指缩放</strong>以及<strong>单指滑动平移</strong>画面，让您随时看清楚！</li>",
+        btn_close_rules: "我知道了，自动继续游戏",
+        pause: "⏸️ 暂停", resume: "▶️ 继续",
+        game_over: "游 戏 结 束", final_score: "最终得分",
+        border_opts: ["💎 经典立体", "🌸 花纹图腾", "🧿 几何图腾", "✨ 霓虹科技", "👑 华丽宫廷", "👾 点阵像素"]
+    },
+    en: {
+        title: "Tetris 2026", score: "Score", speed: "Speed", grid_sec: "grids/s",
+        btn_set: "⚙️ Settings", btn_restart: "🔄 Restart", btn_rules_ui: "ℹ️ Rules",
+        btn_home: "🏠 Home", btn_finish: "Done",
+        lbl_diff: "Difficulty", lbl_theme: "Theme", lbl_border: "Border Style", lbl_music: "Music", lbl_lang: "Language",
+        lbl_vol_m: "Music Vol", lbl_vol_s: "SFX Vol",
+        rules_title: "Game Instructions",
+        rules_list: "<li>Classic 10x20 grid. Falling blocks can be rotated and moved.</li><li><strong>Earn 1 point per grid cell cleared</strong> (10 pts per full line).</li><li><strong>Drop speed slightly increases over time; but clearing a line reduces current speed by 1%!</strong></li><li>Game over when blocks reach the top.</li>",
+        rules_pc_title: "💻 Desktop Controls:",
+        rules_pc_list: "<li>[Left/Right Arrow] Move block</li><li>[Up Arrow] Rotate block</li><li>[Down Arrow] Soft drop</li><li>[Spacebar] Hard drop</li>",
+        rules_mobile_title: "📱 Mobile/Tablet Controls:",
+        rules_mobile_list: "<li>Use the <strong>virtual D-pad and action buttons</strong> below the screen.</li><li>Supports <strong>pinch-to-zoom</strong> and <strong>one-finger pan</strong>!</li>",
+        btn_close_rules: "Got it, Auto-Resume Game",
+        pause: "⏸️ Pause", resume: "▶️ Resume",
+        game_over: "G A M E   O V E R", final_score: "Final Score",
+        border_opts: ["💎 Classic", "🌸 Floral", "🧿 Totem", "✨ Neon", "👑 Royal", "👾 Pixel"]
+    }
+};
+
+function changeLang() {
+    const lang = document.getElementById('lang-sel').value;
+    const dict = i18n[lang];
+    
+    // UI 文字更新
+    document.getElementById('app-title').innerText = dict.title;
+    document.title = dict.title;
+    document.getElementById('btn-set').innerText = dict.btn_set;
+    document.getElementById('btn-restart').innerText = dict.btn_restart;
+    document.getElementById('btn-rules-ui').innerText = dict.btn_rules_ui;
+    document.getElementById('btn-home').innerText = dict.btn_home;
+    document.getElementById('btn-finish').innerText = dict.btn_finish;
+    
+    // 設定選單標籤更新
+    document.getElementById('lbl-diff').innerText = dict.lbl_diff;
+    document.getElementById('lbl-theme').innerText = dict.lbl_theme;
+    document.getElementById('lbl-border').innerText = dict.lbl_border;
+    document.getElementById('lbl-music').innerText = dict.lbl_music;
+    document.getElementById('lbl-lang').innerText = dict.lbl_lang;
+    document.getElementById('lbl-vol-m').innerText = dict.lbl_vol_m;
+    document.getElementById('lbl-vol-s').innerText = dict.lbl_vol_s;
+
+    // 更新外框選項文字
+    const bSel = document.getElementById('border-sel');
+    for(let i=0; i<6; i++) { bSel.options[i].text = dict.border_opts[i]; }
+
+    // 操作說明視窗更新
+    document.getElementById('rules-title').innerText = dict.rules_title;
+    document.getElementById('rules-list').innerHTML = dict.rules_list;
+    document.getElementById('rules-pc-title').innerText = dict.rules_pc_title;
+    document.getElementById('rules-pc-list').innerHTML = dict.rules_pc_list;
+    document.getElementById('rules-mobile-title').innerText = dict.rules_mobile_title;
+    document.getElementById('rules-mobile-list').innerHTML = dict.rules_mobile_list;
+    document.getElementById('btn-close-rules').innerText = dict.btn_close_rules;
+
+    updatePauseBtnUI();
+    updateStatsDisplay();
+
+    // 如果在結算畫面，同步更新結算語言
+    if(gameOver && document.getElementById('win-overlay').classList.contains('show')) { triggerGameOver(); }
+}
 
 /* === 音效與設定核心 === */
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -520,7 +653,7 @@ function playSfx(freq, type) {
     }
 }
 
-/* === Tetris 遊戲邏輯 === */
+/* === Tetris 遊戲與速度邏輯 === */
 const COLS = 10, ROWS = 20;
 let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 let score = 0;
@@ -529,21 +662,26 @@ let isPaused = false;
 let timerInterval, timeElapsed = 0;
 
 const SHAPES = [
-    [], // 0 placeholder
-    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I - 1
-    [[2,0,0],[2,2,2],[0,0,0]], // J - 2
-    [[0,0,3],[3,3,3],[0,0,0]], // L - 3
-    [[4,4],[4,4]], // O - 4
-    [[0,5,5],[5,5,0],[0,0,0]], // S - 5
-    [[0,6,0],[6,6,6],[0,0,0]], // T - 6
-    [[7,7,0],[0,7,7],[0,0,0]]  // Z - 7
+    [], 
+    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I 
+    [[2,0,0],[2,2,2],[0,0,0]], // J 
+    [[0,0,3],[3,3,3],[0,0,0]], // L 
+    [[4,4],[4,4]], // O 
+    [[0,5,5],[5,5,0],[0,0,0]], // S 
+    [[0,6,0],[6,6,6],[0,0,0]], // T 
+    [[7,7,0],[0,7,7],[0,0,0]]  // Z 
 ];
 
 let piecesQueue = [];
-let previewCount = 3; // 預設普通
+let previewCount = 3; 
 let player = { pos: {x: 0, y: 0}, matrix: null };
-let dropCounter = 0, dropInterval = 1000, lastTime = 0;
+let dropCounter = 0, lastTime = 0;
 let animationId;
+
+// 速度控制變數
+let dropInterval = 1000; 
+let timeAccelRate = 0.999; // 每秒隨時間加速的比率 (調降)
+let minDropLimit = 100; 
 
 // DOM Nodes array 避免每幀重複建立
 let boardNodes = [];
@@ -586,25 +724,16 @@ function initNextDOM() {
     }
 }
 
-function generatePiece() {
-    const typeId = Math.floor(Math.random() * 7) + 1;
-    return SHAPES[typeId];
-}
-
-function fillQueue() {
-    while(piecesQueue.length <= previewCount) {
-        piecesQueue.push(generatePiece());
-    }
-}
+function generatePiece() { return SHAPES[Math.floor(Math.random() * 7) + 1]; }
+function fillQueue() { while(piecesQueue.length <= previewCount) { piecesQueue.push(generatePiece()); } }
 
 function resetPlayer() {
     fillQueue();
     player.matrix = piecesQueue.shift();
     player.pos.y = 0;
     player.pos.x = Math.floor(COLS / 2) - Math.floor(player.matrix[0].length / 2);
-    fillQueue(); // 立即補滿UI佇列
+    fillQueue(); 
     
-    // 檢查結束
     if (collide(board, player)) {
         gameOver = true;
         triggerGameOver();
@@ -618,11 +747,8 @@ function drawMatrix(matrix, offset, isBoard = true, isGhost = false) {
                 let actualY = y + offset.y;
                 let actualX = x + offset.x;
                 if (isBoard && actualY >= 0 && actualY < ROWS && actualX >= 0 && actualX < COLS) {
-                    if (isGhost) {
-                        boardNodes[actualY][actualX].className = 'cell c-ghost';
-                    } else {
-                        boardNodes[actualY][actualX].className = `cell c-${value}`;
-                    }
+                    if (isGhost) boardNodes[actualY][actualX].className = 'cell c-ghost';
+                    else boardNodes[actualY][actualX].className = `cell c-${value}`;
                 }
             }
         });
@@ -630,70 +756,45 @@ function drawMatrix(matrix, offset, isBoard = true, isGhost = false) {
 }
 
 function drawNextQueue() {
-    nextNodes.forEach(box => {
-        box.forEach(row => row.forEach(cell => cell.className = 'cell'));
-    });
+    nextNodes.forEach(box => { box.forEach(row => row.forEach(cell => cell.className = 'cell')); });
     for(let i=0; i<previewCount; i++) {
         let matrix = piecesQueue[i];
-        let offset = {
-            x: Math.floor((4 - matrix[0].length)/2),
-            y: Math.floor((4 - matrix.length)/2)
-        };
+        let offset = { x: Math.floor((4 - matrix[0].length)/2), y: Math.floor((4 - matrix.length)/2) };
         matrix.forEach((row, y) => {
-            row.forEach((val, x) => {
-                if (val !== 0) nextNodes[i][y+offset.y][x+offset.x].className = `cell c-${val}`;
-            });
+            row.forEach((val, x) => { if (val !== 0) nextNodes[i][y+offset.y][x+offset.x].className = `cell c-${val}`; });
         });
     }
 }
 
 function draw() {
-    // 繪製基底
-    board.forEach((row, y) => {
-        row.forEach((val, x) => {
-            boardNodes[y][x].className = val ? `cell c-${val}` : 'cell';
-        });
-    });
-    
+    board.forEach((row, y) => { row.forEach((val, x) => { boardNodes[y][x].className = val ? `cell c-${val}` : 'cell'; }); });
     if(!gameOver) {
-        // 繪製落點幽靈方塊
         let ghost = { matrix: player.matrix, pos: { x: player.pos.x, y: player.pos.y } };
         while (!collide(board, ghost)) { ghost.pos.y++; }
         ghost.pos.y--;
         drawMatrix(ghost.matrix, ghost.pos, true, true);
-        
-        // 繪製玩家方塊
         drawMatrix(player.matrix, player.pos);
     }
     drawNextQueue();
 }
 
 function collide(arena, p) {
-    const m = p.matrix;
-    const o = p.pos;
+    const m = p.matrix, o = p.pos;
     for (let y = 0; y < m.length; ++y) {
         for (let x = 0; x < m[y].length; ++x) {
-            if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
-                return true;
-            }
+            if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) return true;
         }
     }
     return false;
 }
 
 function merge(arena, p) {
-    p.matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) arena[y + p.pos.y][x + p.pos.x] = value;
-        });
-    });
+    p.matrix.forEach((row, y) => { row.forEach((value, x) => { if (value !== 0) arena[y + p.pos.y][x + p.pos.x] = value; }); });
 }
 
 function rotate(matrix, dir) {
     for (let y = 0; y < matrix.length; ++y) {
-        for (let x = 0; x < y; ++x) {
-            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-        }
+        for (let x = 0; x < y; ++x) { [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]]; }
     }
     if (dir > 0) matrix.forEach(row => row.reverse());
     else matrix.reverse();
@@ -708,7 +809,7 @@ function playerRotate(dir) {
         player.pos.x += offset;
         offset = -(offset + (offset > 0 ? 1 : -1));
         if (offset > player.matrix[0].length) {
-            rotate(player.matrix, -dir); // 退回
+            rotate(player.matrix, -dir); 
             player.pos.x = pos;
             return;
         }
@@ -720,11 +821,8 @@ function playerRotate(dir) {
 function playerMove(offset) {
     if (isPaused || gameOver) return;
     player.pos.x += offset;
-    if (collide(board, player)) {
-        player.pos.x -= offset;
-    } else {
-        playSfx(200, 'move');
-    }
+    if (collide(board, player)) player.pos.x -= offset;
+    else playSfx(200, 'move');
     draw();
 }
 
@@ -756,22 +854,18 @@ function playerHardDrop() {
 function arenaSweep() {
     let linesCleared = 0;
     outer: for (let y = ROWS - 1; y >= 0; --y) {
-        for (let x = 0; x < COLS; ++x) {
-            if (board[y][x] === 0) continue outer;
-        }
+        for (let x = 0; x < COLS; ++x) { if (board[y][x] === 0) continue outer; }
         const row = board.splice(y, 1)[0].fill(0);
         board.unshift(row);
         ++y;
         linesCleared++;
     }
     if (linesCleared > 0) {
-        // 每消掉一格得1分 => 1行 = 10分
         score += linesCleared * 10;
+        // 每消除一行，減緩速度 1% (間隔時間增加 1%)
+        dropInterval = dropInterval * Math.pow(1.01, linesCleared);
         updateStatsDisplay();
         playSfx(600, 'clear');
-        
-        // 微幅加速
-        dropInterval = Math.max(150, dropInterval - (linesCleared * 10));
     }
 }
 
@@ -782,13 +876,17 @@ function update(time = 0) {
         dropCounter += deltaTime;
         if (dropCounter > dropInterval) playerDrop();
     } else {
-        lastTime = time; // 確保暫停恢復後不會瞬間下落
+        lastTime = time; 
     }
     animationId = requestAnimationFrame(update);
 }
 
 function updateStatsDisplay() {
-    document.getElementById('stats-display').innerText = `得分: ${score}`;
+    const lang = document.getElementById('lang-sel').value;
+    const dict = i18n[lang];
+    document.getElementById('stats-display').innerText = `${dict.score}: ${score}`;
+    let blocksPerSec = (1000 / dropInterval).toFixed(2);
+    document.getElementById('speed-display').innerText = `${dict.speed}: ${blocksPerSec} ${dict.grid_sec}`;
 }
 
 function startTimer() {
@@ -801,6 +899,10 @@ function startTimer() {
             let m = String(Math.floor(timeElapsed / 60)).padStart(2, '0');
             let s = String(timeElapsed % 60).padStart(2, '0');
             document.getElementById('timer-display').innerText = `${m}:${s}`;
+            
+            // 隨時間推移，持續微幅加速下落 (已大幅調降加速幅度)
+            dropInterval = Math.max(minDropLimit, dropInterval * timeAccelRate);
+            updateStatsDisplay(); 
         }
     }, 1000);
 }
@@ -808,14 +910,14 @@ function startTimer() {
 function triggerGameOver() {
     clearInterval(timerInterval);
     playSfx(0, 'over');
-    const lang = document.getElementById('lang-sel').value;
-    const msgTxt = lang === 'en' ? "G A M E O V E R" : (lang === 'cn' ? "游 戏 结 束" : "遊 戲 結 束");
     
-    // 使用 vmin 動態巨型特效
+    const lang = document.getElementById('lang-sel').value;
+    const dict = i18n[lang];
+    
     const ol = document.getElementById('win-overlay');
     ol.innerHTML = `
-        <div class="msg-box win-title">${msgTxt}</div>
-        <div class="msg-box win-score">最終得分：${score}</div>
+        <div class="msg-box win-title">${dict.game_over}</div>
+        <div class="msg-box win-score">${dict.final_score}：${score}</div>
     `;
     ol.classList.add('show');
 }
@@ -831,11 +933,21 @@ function restart() {
     piecesQueue = [];
     dropCounter = 0;
     
-    // 設定難度預覽數
-    const diffMap = { 'easy': {q:5, s:1200}, 'medium': {q:3, s:800}, 'hard': {q:1, s:400} };
+    // 設定難度專屬的速度與加速曲線 (已減緩加速比率)
+    const diffMap = { 
+        // 簡單: 初始 1.2秒，每秒加速 0.1%，極限 0.2秒
+        'easy':   {q:5, startSpeed: 1200, accel: 0.999, minSpeed: 200}, 
+        // 普通: 初始 0.8秒，每秒加速 0.2%，極限 0.15秒
+        'medium': {q:3, startSpeed: 800,  accel: 0.998, minSpeed: 150}, 
+        // 困難: 初始 0.4秒，每秒加速 0.5%，極限 0.08秒
+        'hard':   {q:1, startSpeed: 400,  accel: 0.995, minSpeed: 80} 
+    };
+    
     const diff = document.getElementById('diff-sel').value;
     previewCount = diffMap[diff].q;
-    dropInterval = diffMap[diff].s;
+    dropInterval = diffMap[diff].startSpeed;
+    timeAccelRate = diffMap[diff].accel;
+    minDropLimit = diffMap[diff].minSpeed;
     
     initBoardDOM();
     initNextDOM();
@@ -856,7 +968,9 @@ function togglePause() {
 function updatePauseBtnUI() {
     const btn = document.getElementById('btn-pause-text');
     if (btn) {
-        btn.innerText = isPaused ? "▶️ 繼續" : "⏸️ 暫停";
+        const lang = document.getElementById('lang-sel').value;
+        const dict = i18n[lang];
+        btn.innerText = isPaused ? dict.resume : dict.pause;
         btn.style.background = isPaused ? "rgba(46, 204, 113, 0.85)" : "rgba(230, 140, 20, 0.85)";
     }
 }
@@ -865,11 +979,11 @@ function updatePauseBtnUI() {
 document.addEventListener('keydown', event => {
     if(isPaused || gameOver) return;
     switch (event.keyCode) {
-        case 37: playerMove(-1); event.preventDefault(); break; // L
-        case 39: playerMove(1); event.preventDefault(); break;  // R
-        case 40: playerDrop(); event.preventDefault(); break;   // D
-        case 38: playerRotate(1); event.preventDefault(); break; // U
-        case 32: playerHardDrop(); event.preventDefault(); break; // Space
+        case 37: playerMove(-1); event.preventDefault(); break; 
+        case 39: playerMove(1); event.preventDefault(); break;  
+        case 40: playerDrop(); event.preventDefault(); break;   
+        case 38: playerRotate(1); event.preventDefault(); break; 
+        case 32: playerHardDrop(); event.preventDefault(); break; 
     }
 });
 
@@ -878,7 +992,6 @@ function startAction(action, e) {
     if(e) e.preventDefault();
     if(isPaused || gameOver) return;
     executeAction(action);
-    // 連續移動支援
     if(action === 'left' || action === 'right' || action === 'down') {
         actionIntervals[action] = setInterval(() => executeAction(action), 100);
     }
@@ -897,15 +1010,12 @@ function executeAction(action) {
     }
 }
 
-/* === 縮放與平移 (僅套用於遊戲畫面，不影響按鈕) === */
+/* === 縮放與平移 === */
 const gameArea = document.getElementById('game-area-wrapper');
 const zoomContainer = document.getElementById('zoom-container');
-let currentZoom = 1.0; 
-let isPanning = false;
-let lastPanX = 0, lastPanY = 0;
-let panX = 0, panY = 0; 
-let initialPinchDistance = null;
-let startZoom = 1.0;
+let currentZoom = 1.0, isPanning = false;
+let lastPanX = 0, lastPanY = 0, panX = 0, panY = 0; 
+let initialPinchDistance = null, startZoom = 1.0;
 
 function applyZoom() {
     if (currentZoom === 1.0) { panX = 0; panY = 0; }
@@ -946,19 +1056,18 @@ gameArea.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) isPanning = false;
 });
 
-
 /* === UI 與設定 === */
 function toggleSet() { 
     const s = document.getElementById('settings'); 
     if(s.style.display !== 'block') {
         s.style.display = 'block';
-        if(!isPaused && !gameOver) togglePause(); // 打開設定時自動暫停
+        if(!isPaused && !gameOver) togglePause(); 
     } else {
         s.style.display = 'none';
     }
 }
 
-// 獨立的操作說明視窗邏輯
+// === 操作說明視窗 (無縫恢復遊戲) ===
 let wasPausedByRules = false;
 function showInstructions() {
     wasPausedByRules = !isPaused && !gameOver;
@@ -970,30 +1079,27 @@ function showInstructions() {
 }
 function closeInstructions() {
     document.getElementById('rules-modal').style.display = 'none';
-    // 若原先是在遊戲中，則自動恢復
     if (wasPausedByRules) {
         isPaused = false;
+        // 即時讓計時與下落迴圈繼續
+        lastTime = performance.now();
         updatePauseBtnUI();
     }
 }
 
 function changeTheme() { document.body.className = document.getElementById('theme-sel').value; }
+function changeBorder() { 
+    const val = document.getElementById('border-sel').value; 
+    document.getElementById('board').className = `board-wrap ${val}`; 
+}
 function changeDiff() { restart(); }
 function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
 function adjSfx() { document.getElementById('sfx-val-hint').innerText = document.getElementById('sfx-vol').value; } 
 function changeMusic() {
     if(!userInteracted) unlockAudio();
     const val = document.getElementById('music-sel').value; 
-    if(val === 'none') { 
-        audio.pause(); audio.src = ""; 
-    } else { 
-        audio.src = getMp3Path(val); audio.load(); audio.play().catch(()=>{});
-    } 
-}
-function changeLang() {
-    const lang = document.getElementById('lang-sel').value;
-    const t = { tw: "俄羅斯方塊 2026", cn: "俄罗斯方块 2026", en: "Tetris 2026" };
-    document.getElementById('app-title').innerText = t[lang];
+    if(val === 'none') { audio.pause(); audio.src = ""; } 
+    else { audio.src = getMp3Path(val); audio.load(); audio.play().catch(()=>{}); } 
 }
 function goHome() {
     try { if (window.parent && typeof window.parent.closeGame === 'function') window.parent.closeGame(); } catch (e) { console.error(e); }
@@ -1010,7 +1116,9 @@ console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight
 
 // 啟動程式
 window.onload = () => { 
-    resizeBoard(); // 初始化先計算完美畫面比例
+    resizeBoard(); 
+    changeLang(); 
+    changeBorder(); // 套用預設外框
     restart(); 
 };
 </script>
