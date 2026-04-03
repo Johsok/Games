@@ -211,10 +211,15 @@
             z-index: auto; 
         }
         
+        /* * 修正: 縮小棋子的比例並加入 max-width/max-height 限制
+         * 避免在棋盤網格無法被均分為正方形時， aspect-ratio 導致棋子溢出被截斷。
+         */
         .piece { 
             position: relative; 
-            width: 95%; 
-            height: 95%;
+            width: 92%; 
+            height: 92%;
+            max-width: 92%;
+            max-height: 92%;
             aspect-ratio: 1 / 1; 
             border-radius: 50% !important; 
             
@@ -1057,8 +1062,11 @@ function resizeBoard() {
     lastWinW = window.innerWidth;
 
     const h = document.getElementById('main-header').offsetHeight;
-    const w = winW; 
-    const ah = winH - h - 5; 
+    
+    // 修正: 預留安全邊距 (Margin)，避免在寬版面時棋盤貼緊硬體邊界，導致 CSS 邊框被 RWD 裁切
+    const safePadding = 16; 
+    const w = winW - safePadding; 
+    const ah = winH - h - safePadding; 
     
     const r = 4/8; 
     let fw = w, fh = fw/r; 
