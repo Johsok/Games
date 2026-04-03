@@ -17,7 +17,7 @@
             
             /* 統一邊框寬度，避免切換風格時跳動 */
             --border-width: 12px;
-            --border-style: solid;
+            --border-style: solid; /* 修正1：這裡統一改為固定的 solid，避免瀏覽器在 50% 圓角上渲染 ridge/double 導致的半圓形破圖 Bug */
             --border-color: #5d4037;
             
             --safe-top: env(safe-area-inset-top, 0px); 
@@ -32,21 +32,21 @@
         }
 
         /* === 視覺風格定義 === */
-        /* 注意：只改變顏色、材質和 border-style，嚴禁改變 border-width, padding, margin */
-        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93, 64, 55, 0.4); --border-style: ridge; --border-color: #6d4c41; }
-        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --hole-bg: rgba(0,0,0,0.1); --line-color: rgba(66, 66, 66, 0.2); --border-style: double; --border-color: #424242; }
-        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --hole-bg: rgba(0,77,64,0.3); --line-color: rgba(0, 77, 64, 0.3); --border-style: inset; --border-color: #00695c; }
-        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --hole-bg: rgba(62, 39, 35, 0.4); --line-color: rgba(62, 39, 35, 0.4); --border-style: groove; --border-color: #4e342e; }
-        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --hole-bg: #333; --line-color: rgba(255, 215, 0, 0.3); --border-style: solid; --border-color: #ffd700; }
-        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --hole-bg: rgba(0,0,81,0.3); --line-color: rgba(187, 222, 251, 0.3); --border-style: double; --border-color: #90caf9; }
-        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --hole-bg: rgba(74, 0, 114, 0.3); --line-color: rgba(225, 190, 231, 0.3); --border-style: solid; --border-color: #4a0072; }
-        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --hole-bg: rgba(94, 49, 5, 0.4); --line-color: rgba(94, 49, 5, 0.3); --border-style: dashed; --border-color: #8e44ad; }
-        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --hole-bg: rgba(255, 105, 180, 0.2); --line-color: rgba(255, 105, 180, 0.3); --border-style: dotted; --border-color: #ff69b4; }
-        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --hole-bg: rgba(93, 109, 126, 0.3); --line-color: rgba(93, 109, 126, 0.3); --border-style: double; --border-color: #5d6d7e; }
-        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --hole-bg: rgba(77, 208, 225, 0.3); --line-color: rgba(77, 208, 225, 0.4); --border-style: solid; --border-color: #b39ddb; }
-        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --hole-bg: #1a1a1a; --line-color: rgba(0, 255, 255, 0.3); --border-style: solid; --border-color: #0ff; }
-        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --hole-bg: #eee; --line-color: rgba(34, 34, 34, 0.1); --border-style: solid; --border-color: #222; }
-        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --hole-bg: #111; --line-color: rgba(119, 119, 119, 0.3); --border-style: solid; --border-color: #555; }
+        /* 注意：為了維持外框的完美圓形，所有的 --border-style 都已經在 CSS 渲染層強制視為 solid */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93, 64, 55, 0.4); --border-color: #6d4c41; }
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --hole-bg: rgba(0,0,0,0.1); --line-color: rgba(66, 66, 66, 0.2); --border-color: #424242; }
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --hole-bg: rgba(0,77,64,0.3); --line-color: rgba(0, 77, 64, 0.3); --border-color: #00695c; }
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --hole-bg: rgba(62, 39, 35, 0.4); --line-color: rgba(62, 39, 35, 0.4); --border-color: #4e342e; }
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --hole-bg: #333; --line-color: rgba(255, 215, 0, 0.3); --border-color: #ffd700; }
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --hole-bg: rgba(0,0,81,0.3); --line-color: rgba(187, 222, 251, 0.3); --border-color: #90caf9; }
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --hole-bg: rgba(74, 0, 114, 0.3); --line-color: rgba(225, 190, 231, 0.3); --border-color: #4a0072; }
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --hole-bg: rgba(94, 49, 5, 0.4); --line-color: rgba(94, 49, 5, 0.3); --border-color: #8e44ad; }
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --hole-bg: rgba(255, 105, 180, 0.2); --line-color: rgba(255, 105, 180, 0.3); --border-color: #ff69b4; }
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --hole-bg: rgba(93, 109, 126, 0.3); --line-color: rgba(93, 109, 126, 0.3); --border-color: #5d6d7e; }
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --hole-bg: rgba(77, 208, 225, 0.3); --line-color: rgba(77, 208, 225, 0.4); --border-color: #b39ddb; }
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --hole-bg: #1a1a1a; --line-color: rgba(0, 255, 255, 0.3); --border-color: #0ff; }
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --hole-bg: #eee; --line-color: rgba(34, 34, 34, 0.1); --border-color: #222; }
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --hole-bg: #111; --line-color: rgba(119, 119, 119, 0.3); --border-color: #555; }
 
         html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
         
@@ -76,7 +76,10 @@
 
         .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; flex-wrap: wrap;}
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
-        .status { color: #f1c40f; font-weight: bold; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%;}
+        
+        /* 調整2：讓 status 成為橫向排列，移除會造成斷行的 width 和 justify-content 設定 */
+        .status { color: #f1c40f; font-weight: bold; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; display: flex; align-items: center; gap: 15px; justify-content: center; width: auto; flex-direction: row;}
+        
         .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.5); vertical-align: middle; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .player-info { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #ddd; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; }
 
@@ -115,7 +118,10 @@
         }
         body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
         body.is-landscape h2 { white-space: normal; text-align: center; }
-        body.is-landscape .status { font-size: 0.9rem; margin-bottom: 10px; text-align: center; flex-direction: column;}
+        
+        /* 調整2：橫向模式下，也保持 UI 同列相鄰或適當置中排列 */
+        body.is-landscape .status { font-size: 0.9rem; margin-bottom: 10px; text-align: center; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px;}
+        
         body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
         body.is-landscape .btn { width: 85%; text-align: center; padding: 10px 0; }
 
@@ -135,25 +141,51 @@
         #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
+        /* 修正：簡約、扁平的「雙重外框」設計 */
         .board-wrap { 
-            position: relative; background: var(--board-bg);
-            border: var(--border-width) var(--border-style) var(--border-color);
+            position: relative; 
+            background: var(--board-bg);
+            
+            /* 1. 外層主邊框：將粗細調細為 6px，讓雙線比例更優雅 */
+            border: 6px solid var(--border-color);
             border-radius: 50%; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            width: var(--board-size); height: var(--board-size);
+            aspect-ratio: 1 / 1; 
+            
+            width: var(--board-size); 
+            height: var(--board-size);
+            min-width: var(--board-size); 
+            min-height: var(--board-size);
+            max-width: var(--board-size); 
+            max-height: var(--board-size);
+
+            /* 2. 巧用 box-shadow 畫出無縫的「間隔」與「內側細線」 */
+            box-shadow: 
+                /* 底部柔和投影，保持扁平輕盈感 */
+                0 15px 40px rgba(0,0,0,0.4),
+                /* 內層第 1 圈 (間隙)：寬度 4px，填入與盤面相同的底色 */
+                inset 0 0 0 4px var(--board-bg),
+                /* 內層第 2 圈 (內線)：推到 6px (4px間隙 + 2px細線)，填入邊框顏色 */
+                inset 0 0 0 6px var(--border-color);
+            
             box-sizing: border-box; 
-            flex-shrink: 0; transition: all 0.3s ease;
+            flex-shrink: 0; 
+            transition: all 0.3s ease;
+            background-clip: padding-box;
         }
         
+        /* (確認沒有 ::before 或 ::after，維持程式碼與視覺的極致簡約) */
+
         .board-inner { position: relative; width: 100%; height: 100%; }
         
         svg.board-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        circle.hole { fill: var(--hole-bg); transition: fill 0.2s; }
-        line.grid-line { stroke: var(--line-color); stroke-width: 2px; stroke-linecap: round; }
+        circle.hole { fill: var(--hole-bg); transition: fill 0.2s, stroke 0.3s; } 
+        line.grid-line { stroke: var(--line-color); stroke-width: 2.5px; stroke-linecap: round; }
         
         /* 互動層 */
         .piece { 
-            position: absolute; width: 4.8%; height: 4.8%; margin: 0; 
+            position: absolute; margin: 0; 
+            /* 修正2：放大棋子尺寸 (由 4.8% 提升至 5.4%) */
+            width: 5.4%; height: 5.4%; 
             transform: translate(-50%, -50%) scale(0.85); border-radius: 50%; 
             box-shadow: var(--piece-shadow); cursor: pointer; z-index: 10; 
             transition: top var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), left var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), transform 0.1s; 
@@ -187,7 +219,9 @@
         .piece.p5 { background: var(--p5-color); }
 
         .hint {
-            position: absolute; width: 5%; height: 5%; 
+            position: absolute; 
+            /* 修正2：同步放大提示點尺寸 (由 5% 提升至 5.4%) */
+            width: 5.4%; height: 5.4%; 
             transform: translate(-50%, -50%); border-radius: 50%;
             background: var(--hint-color); z-index: 5; cursor: pointer;
             animation: pulse 1.5s infinite;
@@ -222,7 +256,7 @@
     <div class="header-top">
         <h2 id="app-title">跳棋大師 2026</h2>
         <div class="status">
-            <div id="player-indicator" style="display:none; width:100%; justify-content:center; gap:10px; margin-bottom:4px;"></div>
+            <div id="player-indicator" style="display:none; justify-content:center; gap:10px;"></div>
             <div id="msg"><span class="turn-dot" style="background:red"></span> 紅方走棋</div>
         </div>
     </div>
@@ -663,7 +697,8 @@ function initBoardGeometry() {
 }
 
 function addPoint(q, r) {
-    const scale = 3.3; 
+    // 修正2：將佈局擴展係數由 3.3 提升至 3.8，讓棋格佔滿更多圓形空間，更貼近邊框
+    const scale = 3.8; 
     const cx = 50, cy = 50;
     let x = cx + scale * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
     let y = cy + scale * (1.5 * r);
@@ -772,7 +807,8 @@ function drawBoard() {
     }
     for(let i=0; i<boardCoords.length; i++) {
         let p = boardCoords[i];
-        html += `<circle cx="${p.x}%" cy="${p.y}%" r="1.5%" class="hole" />`;
+        // 修正2：將棋格的半徑從 1.5% 放大至 1.7% 以配合整體佈局放大
+        html += `<circle id="hole-${i}" cx="${p.x}%" cy="${p.y}%" r="1.7%" class="hole" />`;
     }
     svg.innerHTML = html;
 }
@@ -831,15 +867,6 @@ function setupPlayers() {
         ind.style.display = 'none';
         document.getElementById('side-select-container').style.display = 'none';
         
-        // P1 default red (unless changed), others fixed for now based on ID
-        // P1=1(Red), P2=6(Black) in mode 2.
-        // In mode 3: P1=1(Red), P2=3(Blue), P3=5(White) usually, but logic used specific IDs.
-        // Let's deduce color names from PIECE_COLORS based on default ID mapping.
-        // ID 1: Red (idx 0)
-        // ID 3: Blue (idx 2)
-        // ID 5: White (idx 4)
-        // ID 6: Black (idx 5)
-        
         if (mode === "2") {
             players.push({id: 1, type: 'human', name: "P1", startZone: 1, target: ZONES[1].target, colorName: "Red"});
             players.push({id: 6, type: 'human', name: "P2", startZone: 4, target: ZONES[4].target, colorName: "Black"});
@@ -849,6 +876,42 @@ function setupPlayers() {
             players.push({id: 5, type: 'human', name: "P3", startZone: 5, target: ZONES[5].target, colorName: "White"});
         }
     }
+}
+
+// 調整1保留：新增函數以高亮各玩家的起始與目標區圓圈外框
+function updateZoneHighlights() {
+    // 1. 清除所有圓圈的舊外框設定
+    const holes = document.querySelectorAll('.hole');
+    holes.forEach(hole => {
+        hole.style.stroke = '';
+        hole.style.strokeWidth = '';
+    });
+
+    // 2. 為每位玩家設定其專屬顏色的外框
+    players.forEach(p => {
+        // 從 CSS 變數中獲取玩家顏色
+        let colorVar = (p.id === 1) ? getComputedStyle(document.documentElement).getPropertyValue('--p1-color') 
+                     : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
+                     : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
+                     
+        // 提取主要顏色 (例如從 radial-gradient 取出第一個 Hex 值)
+        let cleanColor = colorVar.trim().replace('radial-gradient(circle at 30% 30%, ', '').replace(')', '').split(',')[0].trim();
+        
+        // 設定目標區與起始區的篩選器
+        let startZoneFilter = ZONES[p.startZone].filter;
+        let targetZoneFilter = ZONES[ZONES[p.startZone].opposite].filter;
+
+        // 將符合條件的格子加上顏色的 stroke 外框
+        boardCoords.forEach(c => {
+            if (startZoneFilter(c) || targetZoneFilter(c)) {
+                let holeEl = document.getElementById(`hole-${c.idx}`);
+                if (holeEl) {
+                    holeEl.style.stroke = cleanColor;
+                    holeEl.style.strokeWidth = "3px"; // 使提示的外框清晰可見
+                }
+            }
+        });
+    });
 }
 
 function restart() {
@@ -872,6 +935,7 @@ function restart() {
     
     currentPlayer = 0; 
     updateStatus();
+    updateZoneHighlights(); // 調整1保留：在此呼叫繪製區域提示的函數
     renderPieces();
     
     setTimeout(checkAiTurn, 500);
@@ -1026,22 +1090,18 @@ function checkWin() {
         let count = 0;
         targetIndices.forEach(idx => { if (boardState[idx] === p.id) count++; });
         if (count === 10) {
-            // === 獲勝效果 (符合新需求) ===
             playWinSfx();
             
             let winText = "";
             const mode = document.getElementById('mode-sel').value;
 
             if (mode === "1") {
-                // 單人模式
                 if (p.type === 'human') {
                     winText = "You Win !";
                 } else {
                     winText = "You Lose !";
                 }
             } else {
-                // 雙人/三人模式 (使用顏色名稱)
-                // 從 player 物件中獲取存好的顏色名稱
                 let colorName = p.colorName || "Player";
                 winText = `${colorName} Win !`;
             }
@@ -1229,7 +1289,6 @@ function playSfx(freq, type) {
     const osc = audioCtx.createOscillator(), g = audioCtx.createGain(); 
     osc.connect(g); g.connect(audioCtx.destination); 
     if(type === 'win') {
-        // 保留舊的 win 作為備用
         osc.type = "square"; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
         g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
         osc.start(); osc.stop(audioCtx.currentTime+1);
@@ -1241,16 +1300,15 @@ function playSfx(freq, type) {
     }
 }
 
-// === 勝利音效 (循環播放5次) ===
 function playWinSfx() { 
     if(audioCtx.state === 'suspended') audioCtx.resume(); 
     const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; 
     
     const notes = [523.25, 659.25, 783.99, 1046.50]; 
-    const loops = 5; // 循環次數
+    const loops = 5; 
     const noteSpeed = 0.12; 
     const loopDuration = notes.length * noteSpeed;
-    const gap = 0.05; // 循環間隔
+    const gap = 0.05; 
     
     const now = audioCtx.currentTime; 
 
