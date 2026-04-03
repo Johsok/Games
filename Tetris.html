@@ -21,6 +21,8 @@
             
             /* 動態計算的方塊大小 (由JS注入，實現畫面最大化) */
             --cell-size: 25px; 
+            /* 預覽區塊縮小至 60% 大小 */
+            --preview-cell-size: calc(var(--cell-size) * 0.6);
 
             /* 方塊基礎顏色 (可依主題微調) */
             --c-ghost: rgba(255, 255, 255, 0.3);
@@ -80,7 +82,6 @@
         .status { color: #f1c40f; font-weight: bold; font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; font-variant-numeric: tabular-nums; }
         .stats { color: #ff9800; font-size: 0.85rem; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;}
         
-        /* 速度顯示採用不同顏色區別 */
         #speed-display { color: #4dd0e1; }
 
         .btn-group { display: flex; gap: 8px; align-items: center; margin-top: 5px; flex-wrap: wrap; justify-content: center;}
@@ -102,8 +103,8 @@
         #game-area-wrapper {
             flex: 1;
             display: flex;
-            justify-content: center; /* 精準置中對齊 */
-            align-items: center; /* 垂直置中對齊 */
+            justify-content: center; /* 讓遊戲內容整體置中 */
+            align-items: center; 
             position: relative;
             overflow: hidden;
             width: 100%;
@@ -112,8 +113,8 @@
         /* 縮放與平移容器 */
         #zoom-container {
             display: flex;
-            gap: calc(var(--cell-size) * 1.5); /* 加大間距避免花式邊框重疊 */
-            align-items: flex-start; /* 讓方塊預覽區貼齊棋盤右上角 */
+            gap: calc(var(--cell-size) * 1); /* 主棋盤與預覽區的間距 */
+            align-items: flex-start; /* 讓方塊預覽區貼齊棋盤的右上角 */
             justify-content: center; 
             transition: transform 0.1s ease-out;
             transform-origin: center center;
@@ -128,21 +129,26 @@
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(20, 1fr);
             gap: 1px;
-            /* 依據 JS 精算的 cell-size 動態放滿 */
             width: calc(var(--cell-size) * 10);
             height: calc(var(--cell-size) * 20);
             box-sizing: border-box;
             transition: box-shadow 0.3s, border-radius 0.3s;
         }
 
-        /* -------------------------------------------
-           === 6種精緻 CSS 外框樣式設定 (純CSS繪製) === 
-           ------------------------------------------- */
-        /* 1. 經典立體 (Classic) */
-        .board-wrap.b-classic { border-radius: 4px; box-shadow: 0 0 0 4px rgba(0,0,0,0.8), 0 0 0 6px var(--line-color), inset 0 0 0 2px rgba(255,255,255,0.3), 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.5); }
-        .board-wrap.b-classic::before, .board-wrap.b-classic::after { content: ''; position: absolute; width: calc(var(--cell-size) * 1.5); height: calc(var(--cell-size) * 1.5); border: 3px solid rgba(255,255,255,0.7); pointer-events: none; z-index: 10; }
-        .board-wrap.b-classic::before { top: -6px; left: -6px; border-right: none; border-bottom: none; }
-        .board-wrap.b-classic::after { bottom: -6px; right: -6px; border-left: none; border-top: none; }
+        /* ---------------------------------------------------
+           === 9種精緻 CSS 外框樣式設定 (包含新增的高級質感花紋) === 
+           --------------------------------------------------- */
+        
+        /* 1. 經典立體 (Classic) - 增加內裡金邊鑲飾 */
+        .board-wrap.b-classic { 
+            border-radius: 6px; 
+            box-shadow: 0 0 0 4px #222, 0 0 0 8px var(--line-color), 0 0 0 10px #d4af37, inset 0 0 0 2px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.8); 
+        }
+        .board-wrap.b-classic::before, .board-wrap.b-classic::after { 
+            content: ''; position: absolute; width: calc(var(--cell-size) * 1.5); height: calc(var(--cell-size) * 1.5); border: 4px solid #d4af37; pointer-events: none; z-index: 10; 
+        }
+        .board-wrap.b-classic::before { top: -10px; left: -10px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0;}
+        .board-wrap.b-classic::after { bottom: -10px; right: -10px; border-left: none; border-top: none; border-radius: 0 0 8px 0;}
 
         /* 2. 花紋圖騰 (Floral) */
         .board-wrap.b-floral { border-radius: 8px; box-shadow: 0 0 0 8px #8d6e63, 0 0 15px rgba(0,0,0,0.5); }
@@ -186,25 +192,71 @@
                         0 15px 30px rgba(0,0,0,0.8); 
         }
 
-        /* --- 下一個方塊區列 --- */
+        /* 7. 新增：歐式古典 (Euro) - 帶圓角螺旋裝飾感 */
+        .board-wrap.b-euro {
+            border: 6px double #d4af37;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8), inset 0 0 20px rgba(212,175,55,0.3);
+        }
+        .board-wrap.b-euro::before, .board-wrap.b-euro::after {
+            content: ''; position: absolute;
+            width: calc(var(--cell-size) * 2); height: calc(var(--cell-size) * 2);
+            border: 4px solid #d4af37; border-radius: 50% 0 50% 0; 
+            z-index: 10; pointer-events: none;
+        }
+        .board-wrap.b-euro::before { top: -10px; left: -10px; border-right: none; border-bottom: none; }
+        .board-wrap.b-euro::after { bottom: -10px; right: -10px; border-left: none; border-top: none; }
+
+        /* 8. 新增：證書花邊 (Cert) - 交錯紋理邊框 */
+        .board-wrap.b-cert {
+            border: calc(var(--cell-size) * 0.5) solid transparent;
+            border-image: repeating-linear-gradient(135deg, #d4af37, #d4af37 10px, #8b6508 10px, #8b6508 20px) 20;
+            box-shadow: 0 0 0 4px #4a3500, inset 0 0 0 4px #4a3500, 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        /* 9. 新增：精緻蕾絲 (Lace) - 多層虛線與圓點漸層 */
+        .board-wrap.b-lace {
+            border: 4px solid #fff; border-radius: 16px;
+            box-shadow: 0 0 0 4px #d4af37, 0 0 15px rgba(0,0,0,0.5); padding: 2px;
+        }
+        .board-wrap.b-lace::before {
+            content: ''; position: absolute;
+            top: -12px; left: -12px; right: -12px; bottom: -12px;
+            border: 2px dashed #d4af37; border-radius: 20px; pointer-events: none;
+        }
+        .board-wrap.b-lace::after {
+            content: ''; position: absolute;
+            top: -24px; left: -24px; right: -24px; bottom: -24px;
+            background: radial-gradient(circle at 50% 0, #d4af37 4px, transparent 5px),
+                        radial-gradient(circle at 50% 100%, #d4af37 4px, transparent 5px),
+                        radial-gradient(circle at 0 50%, #d4af37 4px, transparent 5px),
+                        radial-gradient(circle at 100% 50%, #d4af37 4px, transparent 5px);
+            background-size: 20px 20px; pointer-events: none; z-index: -1;
+        }
+
+        /* --- 下一個方塊區域 (RWD 尺寸為標準方塊的 60%) --- */
         .next-queue-wrap {
             display: flex;
             flex-direction: column;
-            gap: calc(var(--cell-size) * 0.4);
-            padding: calc(var(--cell-size) * 0.5);
+            gap: calc(var(--preview-cell-size) * 0.5);
+            padding: calc(var(--preview-cell-size) * 1);
             background: rgba(0,0,0,0.5);
             border-radius: 8px;
             border: 2px solid rgba(255,255,255,0.2);
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            /* 限制最大高度與棋盤相同，防止溢出 */
+            max-height: calc(var(--cell-size) * 20);
+            justify-content: center;
         }
 
         .next-box {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: repeat(4, 1fr);
-            width: calc(var(--cell-size) * 4);
-            height: calc(var(--cell-size) * 4);
+            width: calc(var(--preview-cell-size) * 4);
+            height: calc(var(--preview-cell-size) * 4);
             gap: 1px;
+            align-self: center; /* 讓每個方塊預覽盒自身居中 */
         }
 
         /* 網格單元 */
@@ -227,7 +279,7 @@
 
         /* === 虛擬控制器 (手機端) === */
         #mobile-controls {
-            display: none; /* 預設隱藏，若為觸控裝置則顯示 */
+            display: none; 
             height: 120px;
             padding: 10px 20px calc(var(--safe-bottom) + 10px);
             background: rgba(0,0,0,0.6);
@@ -277,7 +329,7 @@
         .vol-hint { color: #f1c40f; font-weight: bold; margin-left: 4px; }
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; height: 38px; }
 
-        /* === 遊戲結束/勝利特效 (以 vmin 定義確保大畫面震撼感) === */
+        /* === 遊戲結束/勝利特效 === */
         #win-overlay { 
             position: absolute; top: 50%; left: 50%; 
             transform: translate(-50%,-50%); 
@@ -378,6 +430,9 @@
                 <option value="b-neon">✨ 霓虹科技</option>
                 <option value="b-royal">👑 華麗宮廷</option>
                 <option value="b-pixel">👾 點陣像素</option>
+                <option value="b-euro">⚜️ 歐式古典</option>
+                <option value="b-cert">📜 證書花邊</option>
+                <option value="b-lace">💠 精緻蕾絲</option>
             </select>
         </div>
         <div>
@@ -483,23 +538,25 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === 動態計算畫面最大化 (RWD) === */
+/* === 動態計算畫面最大化 (RWD) 完美防溢出機制 === */
 function resizeBoard() {
     const header = document.getElementById('main-header');
     const mobileControls = document.getElementById('mobile-controls');
     const isMobileCtrlVisible = window.getComputedStyle(mobileControls).display !== 'none';
     
-    // 計算可用高寬 (扣除Header、手機控制區與邊距)
-    let availableH = window.innerHeight - header.offsetHeight - (isMobileCtrlVisible ? mobileControls.offsetHeight : 0) - 40; 
-    let availableW = window.innerWidth - 40; 
+    // 計算可用高寬 (扣除Header、手機控制區與邊距 20px)
+    let availableH = window.innerHeight - header.offsetHeight - (isMobileCtrlVisible ? mobileControls.offsetHeight : 0) - 20; 
+    let availableW = window.innerWidth - 20; 
     
-    // 計算出最大的方塊 Cell 尺寸 (高度可容納20格，寬度約需容納18格(棋盤10+預覽4+邊框間距4))
-    let maxCellH = availableH / 20;
-    let maxCellW = availableW / 18;
+    // 計算出最大的方塊 Cell 尺寸 
+    // 預留高度：棋盤 20格 + 裝飾邊框緩衝 1格 = 21格
+    let maxCellH = availableH / 21;
+    // 預留寬度：棋盤 10格 + 預覽區間距 1格 + 預覽區寬度(4格*0.6倍=2.4格) + 預覽區內距與外框約 1.6格 = 15格
+    let maxCellW = availableW / 15; 
     
     let cellSize = Math.min(maxCellH, maxCellW);
     
-    // 將精算後的基準尺寸注入 CSS 變數中，讓所有網格同步響應
+    // 將精算後的基準尺寸注入 CSS 變數中，讓主棋盤與預覽區(60%)同步響應不溢出
     document.documentElement.style.setProperty('--cell-size', `${cellSize}px`);
     
     applyZoom(); // 套用縮放狀態
@@ -523,7 +580,7 @@ const i18n = {
         btn_close_rules: "我知道了，自動繼續遊戲",
         pause: "⏸️ 暫停", resume: "▶️ 繼續",
         game_over: "遊 戲 結 束", final_score: "最終得分",
-        border_opts: ["💎 經典立體", "🌸 花紋圖騰", "🧿 幾何圖騰", "✨ 霓虹科技", "👑 華麗宮廷", "👾 點陣像素"]
+        border_opts: ["💎 經典立體", "🌸 花紋圖騰", "🧿 幾何圖騰", "✨ 霓虹科技", "👑 華麗宮廷", "👾 點陣像素", "⚜️ 歐式古典", "📜 證書花邊", "💠 精緻蕾絲"]
     },
     cn: {
         title: "俄罗斯方块 2026", score: "得分", speed: "速度", grid_sec: "格/秒",
@@ -540,7 +597,7 @@ const i18n = {
         btn_close_rules: "我知道了，自动继续游戏",
         pause: "⏸️ 暂停", resume: "▶️ 继续",
         game_over: "游 戏 结 束", final_score: "最终得分",
-        border_opts: ["💎 经典立体", "🌸 花纹图腾", "🧿 几何图腾", "✨ 霓虹科技", "👑 华丽宫廷", "👾 点阵像素"]
+        border_opts: ["💎 经典立体", "🌸 花纹图腾", "🧿 几何图腾", "✨ 霓虹科技", "👑 华丽宫廷", "👾 点阵像素", "⚜️ 欧式古典", "📜 证书花边", "💠 精致蕾丝"]
     },
     en: {
         title: "Tetris 2026", score: "Score", speed: "Speed", grid_sec: "grids/s",
@@ -557,7 +614,7 @@ const i18n = {
         btn_close_rules: "Got it, Auto-Resume Game",
         pause: "⏸️ Pause", resume: "▶️ Resume",
         game_over: "G A M E   O V E R", final_score: "Final Score",
-        border_opts: ["💎 Classic", "🌸 Floral", "🧿 Totem", "✨ Neon", "👑 Royal", "👾 Pixel"]
+        border_opts: ["💎 Classic", "🌸 Floral", "🧿 Totem", "✨ Neon", "👑 Royal", "👾 Pixel", "⚜️ Euro", "📜 Cert.", "💠 Lace"]
     }
 };
 
@@ -585,7 +642,7 @@ function changeLang() {
 
     // 更新外框選項文字
     const bSel = document.getElementById('border-sel');
-    for(let i=0; i<6; i++) { bSel.options[i].text = dict.border_opts[i]; }
+    for(let i=0; i<9; i++) { bSel.options[i].text = dict.border_opts[i]; }
 
     // 操作說明視窗更新
     document.getElementById('rules-title').innerText = dict.rules_title;
@@ -680,7 +737,7 @@ let animationId;
 
 // 速度控制變數
 let dropInterval = 1000; 
-let timeAccelRate = 0.999; // 每秒隨時間加速的比率 (調降)
+let timeAccelRate = 0.9995; // 已調降：更平滑溫和的每秒加速比率
 let minDropLimit = 100; 
 
 // DOM Nodes array 避免每幀重複建立
@@ -759,7 +816,11 @@ function drawNextQueue() {
     nextNodes.forEach(box => { box.forEach(row => row.forEach(cell => cell.className = 'cell')); });
     for(let i=0; i<previewCount; i++) {
         let matrix = piecesQueue[i];
-        let offset = { x: Math.floor((4 - matrix[0].length)/2), y: Math.floor((4 - matrix.length)/2) };
+        // 優化視覺置中演算法：使用 Math.round() 取代 floor，可讓 3x3 方塊完美對準 4x4 預覽格中心
+        let offset = { 
+            x: Math.round((4 - matrix[0].length) / 2), 
+            y: Math.round((4 - matrix.length) / 2) 
+        };
         matrix.forEach((row, y) => {
             row.forEach((val, x) => { if (val !== 0) nextNodes[i][y+offset.y][x+offset.x].className = `cell c-${val}`; });
         });
@@ -900,7 +961,7 @@ function startTimer() {
             let s = String(timeElapsed % 60).padStart(2, '0');
             document.getElementById('timer-display').innerText = `${m}:${s}`;
             
-            // 隨時間推移，持續微幅加速下落 (已大幅調降加速幅度)
+            // 隨時間推移，持續微幅加速下落 (加速比率已減緩，讓玩家更有喘息空間)
             dropInterval = Math.max(minDropLimit, dropInterval * timeAccelRate);
             updateStatsDisplay(); 
         }
@@ -933,14 +994,14 @@ function restart() {
     piecesQueue = [];
     dropCounter = 0;
     
-    // 設定難度專屬的速度與加速曲線 (已減緩加速比率)
+    // 設定難度專屬的速度與柔和的加速曲線
     const diffMap = { 
-        // 簡單: 初始 1.2秒，每秒加速 0.1%，極限 0.2秒
-        'easy':   {q:5, startSpeed: 1200, accel: 0.999, minSpeed: 200}, 
-        // 普通: 初始 0.8秒，每秒加速 0.2%，極限 0.15秒
-        'medium': {q:3, startSpeed: 800,  accel: 0.998, minSpeed: 150}, 
-        // 困難: 初始 0.4秒，每秒加速 0.5%，極限 0.08秒
-        'hard':   {q:1, startSpeed: 400,  accel: 0.995, minSpeed: 80} 
+        // 簡單: 初始 1.2秒，每秒極緩慢加速 0.05%，極限 0.3秒
+        'easy':   {q:5, startSpeed: 1200, accel: 0.9995, minSpeed: 300}, 
+        // 普通: 初始 0.8秒，每秒加速 0.1%，極限 0.2秒
+        'medium': {q:3, startSpeed: 800,  accel: 0.9990, minSpeed: 200}, 
+        // 困難: 初始 0.4秒，每秒加速 0.2%，極限 0.1秒
+        'hard':   {q:1, startSpeed: 400,  accel: 0.9980, minSpeed: 100} 
     };
     
     const diff = document.getElementById('diff-sel').value;
@@ -949,6 +1010,8 @@ function restart() {
     timeAccelRate = diffMap[diff].accel;
     minDropLimit = diffMap[diff].minSpeed;
     
+    // 每次重新開始前，確保視窗已依照新難度(預覽方塊數不同)正確對齊與適應 RWD
+    resizeBoard();
     initBoardDOM();
     initNextDOM();
     updateStatsDisplay();
@@ -1067,7 +1130,7 @@ function toggleSet() {
     }
 }
 
-// === 操作說明視窗 (無縫恢復遊戲) ===
+// === 操作說明視窗 (無縫自動恢復遊戲) ===
 let wasPausedByRules = false;
 function showInstructions() {
     wasPausedByRules = !isPaused && !gameOver;
