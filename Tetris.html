@@ -371,13 +371,13 @@
         <div>
             <label id="lbl-border">外框樣式</label>
             <select id="border-sel" onchange="changeBorder()">
-                <option value="b-classic" selected>💎 經典立體</option>
+                <option value="b-classic">💎 經典立體</option>
                 <option value="b-floral">🌸 花紋圖騰</option>
                 <option value="b-totem">🧿 幾何圖騰</option>
                 <option value="b-neon">✨ 霓虹科技</option>
                 <option value="b-royal">👑 華麗宮廷</option>
                 <option value="b-pixel">👾 點陣像素</option>
-                <option value="b-euro">⚜️ 歐式古典</option>
+                <option value="b-euro" selected>⚜️ 歐式古典</option>
                 <option value="b-cert">📜 證書花邊</option>
                 <option value="b-lace">💠 精緻蕾絲</option>
             </select>
@@ -448,7 +448,7 @@
 <div id="main-content">
     <div id="game-area-wrapper">
         <div id="zoom-container">
-            <div class="board-wrap b-classic" id="board"></div>
+            <div class="board-wrap b-euro" id="board"></div>
             <div class="next-queue-wrap" id="next-queue"></div>
         </div>
         <div id="win-overlay" onclick="restart()"></div>
