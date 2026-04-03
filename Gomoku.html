@@ -78,11 +78,12 @@
         
         /* 修正3：手動縮放按鈕樣式 */
         .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; }
-        .mobile-only { display: none; } /* 預設隱藏，桌機看不到 */
-        
-        @media (max-width: 768px) {
-            /* 當螢幕寬度小於 768px (手機版) 時，顯示縮放按鈕 */
-            .mobile-only { display: inline-block; }
+        /* 預設隱藏，加上 !important 確保權重 */
+        .mobile-only { display: none !important; } 
+
+        /* 當螢幕寬度小於 1000px，或是偵測到「觸控螢幕裝置」時，強制顯示按鈕 */
+        @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
+            .mobile-only { display: inline-block !important; }
         }
 
         /* === 橫向模式 UI 適配 === */
