@@ -625,49 +625,58 @@
             background: linear-gradient(to top, #000, transparent);
         }
 
-        /* === 手機適配 === */
+        /* === [NEW] 手機適配更新 (雙欄配置 + 整體比例微調) === */
         @media (max-width: 480px) {
-            h1 { font-size: 2.2rem; }
+            h1 { font-size: 2rem; } /* 配合版面適當縮小標題 */
             h1::after { width: 80%; }
-            .container { grid-template-columns: 1fr; width: 85%; gap: 15px; } /* 縮小手機版間隙 */
-            .icon-box { height: 75px; }
-            .game-card { padding: 20px 10px; }
+            /* 改為 2 欄式，並縮小間隙與內距以完美適應雙欄空間 */
+            .container { 
+                grid-template-columns: repeat(2, 1fr); 
+                width: 95%; 
+                gap: 12px; 
+                padding: 10px; 
+                padding-bottom: 60px; 
+            } 
+            .icon-box { height: 65px; margin-bottom: 10px; }
+            .game-card { padding: 15px 8px; }
+            .game-title { font-size: 1.1rem; margin-top: 5px; letter-spacing: 3px; }
+            .game-en-title { font-size: 0.65rem; margin-top: 4px; }
             
-            /* 圖示微調 (配合整體縮小，此處部分尺寸再下調) */
-            .chess-orbit-container { width: 65px; height: 65px; }
-            .chess-piece { width: 32px; height: 32px; font-size: 16px; }
+            /* 所有遊戲圖示按比例再次微幅縮小，確保於雙欄 RWD 中不跑版，且特效依舊滑順 */
+            .chess-orbit-container { width: 55px; height: 55px; }
+            .chess-piece { width: 28px; height: 28px; font-size: 14px; }
             
-            .icon-dark-box { width: 60px; height: 60px; }
-            .dc-card { width: 22px; height: 22px; font-size: 12px; }
+            .icon-dark-box { width: 50px; height: 50px; }
+            .dc-card { width: 18px; height: 18px; font-size: 11px; }
 
-            .icon-mj-box { width: 80px; height: 50px; gap: 2px;}
-            .mj-tile { width: 14px; height: 22px; font-size: 11px; }
+            .icon-mj-box { width: 70px; height: 45px; gap: 2px;}
+            .mj-tile { width: 12px; height: 18px; font-size: 10px; }
             
-            .icon-othello { width: 55px; height: 55px; }
-            .icon-checkers { width: 50px; height: 50px; }
-            .icon-checkers::after { width: 22px; height: 22px; }
-            .icon-gomoku-container { width: 70px; height: 70px; }
-            .g-stone { width: 10px; height: 10px; }
+            .icon-othello { width: 45px; height: 45px; }
+            .icon-checkers { width: 45px; height: 45px; border-width: 2px;}
+            .icon-checkers::after { width: 18px; height: 18px; }
+            .icon-gomoku-container { width: 60px; height: 60px; }
+            .g-stone { width: 9px; height: 9px; }
 
-            .icon-puzzle-box { width: 60px; height: 60px; }
-            .p-piece { width: 26px; height: 26px; }
+            .icon-puzzle-box { width: 50px; height: 50px; }
+            .p-piece { width: 22px; height: 22px; }
 
-            /* 三角棋手機版微調 */
-            .icon-triangle-box { width: 50px; height: 50px; }
-            .icon-triangle-box::before { border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 25px solid rgba(100,255,218,0.2); top: 15%; }
-            .t-node { width: 10px; height: 10px; }
-            .t-center { width: 12px; height: 12px; }
+            /* 三角棋手機版雙欄微調 */
+            .icon-triangle-box { width: 45px; height: 45px; }
+            .icon-triangle-box::before { border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 20px solid rgba(100,255,218,0.2); top: 15%; }
+            .t-node { width: 8px; height: 8px; border-width: 1px;}
+            .t-center { width: 10px; height: 10px; }
 
-            /* 大富翁手機版微調 */
-            .icon-monopoly-box { width: 50px; height: 50px; }
-            .icon-monopoly-box::before { top: 8px; left: 8px; right: 8px; bottom: 8px; font-size: 12px;}
+            /* 大富翁手機版雙欄微調 */
+            .icon-monopoly-box { width: 45px; height: 45px; border-width: 2px;}
+            .icon-monopoly-box::before { top: 6px; left: 6px; right: 6px; bottom: 6px; font-size: 10px;}
 
-            /* 數獨手機版微調 */
-            .icon-sudoku-box { width: 54px; height: 54px; padding: 1px; gap: 1px; }
-            .sudoku-cell { font-size: 12px; }
+            /* 數獨手機版雙欄微調 */
+            .icon-sudoku-box { width: 48px; height: 48px; padding: 1px; gap: 1px; }
+            .sudoku-cell { font-size: 11px; }
 
-            /* 俄羅斯方塊手機版微調：使用 scale 自適應縮小以保持內部完美比例 */
-            .icon-tetris-box { transform: scale(0.83); transform-origin: center; }
+            /* 俄羅斯方塊手機版微調：使用 scale 自適應縮小以保持內部完美掉落比例 */
+            .icon-tetris-box { transform: scale(0.75); transform-origin: center; }
         }
     </style>
 </head>
@@ -1002,7 +1011,7 @@
         setInterval(refreshSudoku, 3500);
     })();
 
-    // === [NEW] 俄羅斯方塊動畫邏輯 (每2秒隨機掉落10種其中1個) ===
+    // === [NEW] 俄羅斯方塊動畫邏輯 (每2秒隨機掉落3個不同顏色的方塊) ===
     (function startTetrisAnimation() {
         const container = document.getElementById('tetris-container');
         if (!container) return;
@@ -1014,20 +1023,25 @@
             // 1. 清空上一個掉落完成的方塊
             container.innerHTML = '';
 
-            // 2. 隨機選取 1 個方塊
-            const randomIndex = Math.floor(Math.random() * shapes.length);
-            const selectedShape = shapes[randomIndex];
+            // 2. 隨機選取 3 個不重複的方塊，以確保顏色及形狀不同
+            const shuffledShapes = [...shapes].sort(() => 0.5 - Math.random());
+            const selectedShapes = shuffledShapes.slice(0, 3);
 
-            // 3. 建立方塊元素並賦予 class
-            const shapeDiv = document.createElement('div');
-            shapeDiv.className = `tetris-shape is-dropping ${selectedShape}`;
-            
-            // 4. 賦予方塊在容器內左右偏移的隨機起始點 (介於 15px 到 30px 之間，增加豐富度)
-            const randomX = Math.floor(Math.random() * 15) + 15;
-            shapeDiv.style.left = `${randomX}px`;
+            // 3. 定義 3 條固定的掉落軌道 (left 屬性)，分別對應左、中、右，確保落在 60x60px 範圍內不完全重疊
+            const lanes = [15, 30, 45]; 
 
-            // 5. 將方塊推入容器以觸發 CSS Animation
-            container.appendChild(shapeDiv);
+            selectedShapes.forEach((selectedShape, index) => {
+                // 4. 建立方塊元素並賦予對應形狀的 class 與 掉落動畫
+                const shapeDiv = document.createElement('div');
+                shapeDiv.className = `tetris-shape is-dropping ${selectedShape}`;
+                
+                // 5. 賦予方塊在其對應軌道內微小的隨機水平偏移 (-2px 到 2px)，增加自然錯落感
+                const randomOffset = Math.floor(Math.random() * 5) - 2;
+                shapeDiv.style.left = `${lanes[index] + randomOffset}px`;
+
+                // 6. 將方塊推入容器以觸發同步掉落的 CSS Animation
+                container.appendChild(shapeDiv);
+            });
         }
 
         // 初始化並設定每 2000 毫秒 (2秒) 掉落一次
