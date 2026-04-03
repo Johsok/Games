@@ -21,8 +21,8 @@
             
             /* 動態計算的方塊大小 (由JS注入，實現畫面最大化) */
             --cell-size: 25px; 
-            /* 預覽區塊縮小至 60% 大小 */
-            --preview-cell-size: calc(var(--cell-size) * 0.6);
+            /* 預覽區塊進一步縮小至主區塊的 45%，騰出更多空間給主棋盤 */
+            --preview-cell-size: calc(var(--cell-size) * 0.45);
 
             /* 方塊基礎顏色 (可依主題微調) */
             --c-ghost: rgba(255, 255, 255, 0.3);
@@ -97,7 +97,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 10px;
+            padding: 5px;
         }
 
         #game-area-wrapper {
@@ -113,7 +113,7 @@
         /* 縮放與平移容器 */
         #zoom-container {
             display: flex;
-            gap: calc(var(--cell-size) * 1); /* 主棋盤與預覽區的間距 */
+            gap: calc(var(--cell-size) * 0.5); /* 縮小與預覽區的間距，讓棋盤有更大空間 */
             align-items: flex-start; /* 讓方塊預覽區貼齊棋盤的右上角 */
             justify-content: center; 
             transition: transform 0.1s ease-out;
@@ -136,115 +136,47 @@
         }
 
         /* ---------------------------------------------------
-           === 9種精緻 CSS 外框樣式設定 (包含新增的高級質感花紋) === 
+           === 9種精緻 CSS 外框樣式設定 === 
            --------------------------------------------------- */
-        
-        /* 1. 經典立體 (Classic) - 增加內裡金邊鑲飾 */
-        .board-wrap.b-classic { 
-            border-radius: 6px; 
-            box-shadow: 0 0 0 4px #222, 0 0 0 8px var(--line-color), 0 0 0 10px #d4af37, inset 0 0 0 2px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.8); 
-        }
-        .board-wrap.b-classic::before, .board-wrap.b-classic::after { 
-            content: ''; position: absolute; width: calc(var(--cell-size) * 1.5); height: calc(var(--cell-size) * 1.5); border: 4px solid #d4af37; pointer-events: none; z-index: 10; 
-        }
+        .board-wrap.b-classic { border-radius: 6px; box-shadow: 0 0 0 4px #222, 0 0 0 8px var(--line-color), 0 0 0 10px #d4af37, inset 0 0 0 2px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.8); }
+        .board-wrap.b-classic::before, .board-wrap.b-classic::after { content: ''; position: absolute; width: calc(var(--cell-size) * 1.5); height: calc(var(--cell-size) * 1.5); border: 4px solid #d4af37; pointer-events: none; z-index: 10; }
         .board-wrap.b-classic::before { top: -10px; left: -10px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0;}
         .board-wrap.b-classic::after { bottom: -10px; right: -10px; border-left: none; border-top: none; border-radius: 0 0 8px 0;}
 
-        /* 2. 花紋圖騰 (Floral) */
         .board-wrap.b-floral { border-radius: 8px; box-shadow: 0 0 0 8px #8d6e63, 0 0 15px rgba(0,0,0,0.5); }
-        .board-wrap.b-floral::before { 
-            content: ''; position: absolute; z-index: -1; 
-            top: -20px; left: -20px; right: -20px; bottom: -20px; 
-            background-color: #d7ccc8; 
-            background-image: radial-gradient(#5d4037 15%, transparent 16%), radial-gradient(#5d4037 15%, transparent 16%); 
-            background-size: 20px 20px; background-position: 0 0, 10px 10px; 
-            border-radius: 12px; border: 3px solid #5d4037; box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
-        }
+        .board-wrap.b-floral::before { content: ''; position: absolute; z-index: -1; top: -20px; left: -20px; right: -20px; bottom: -20px; background-color: #d7ccc8; background-image: radial-gradient(#5d4037 15%, transparent 16%), radial-gradient(#5d4037 15%, transparent 16%); background-size: 20px 20px; background-position: 0 0, 10px 10px; border-radius: 12px; border: 3px solid #5d4037; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 
-        /* 3. 幾何圖騰 (Totem) */
         .board-wrap.b-totem { border-radius: 0; box-shadow: 0 0 0 6px #111, 0 0 0 12px #e67e22, 0 0 0 18px #111; }
-        .board-wrap.b-totem::before { 
-            content: ''; position: absolute; z-index: -1; 
-            top: -24px; left: -24px; right: -24px; bottom: -24px; 
-            background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 10px, #e74c3c 10px, #e74c3c 20px); 
-            border: 4px solid #f1c40f; box-shadow: 0 15px 40px rgba(0,0,0,0.9); 
-        }
+        .board-wrap.b-totem::before { content: ''; position: absolute; z-index: -1; top: -24px; left: -24px; right: -24px; bottom: -24px; background: repeating-linear-gradient(45deg, #2c3e50, #2c3e50 10px, #e74c3c 10px, #e74c3c 20px); border: 4px solid #f1c40f; box-shadow: 0 15px 40px rgba(0,0,0,0.9); }
 
-        /* 4. 霓虹科技 (Neon) */
-        .board-wrap.b-neon { 
-            border-radius: 8px; border: 2px solid #fff; 
-            box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0ff, 0 0 40px #0ff, 0 0 70px #0ff, inset 0 0 15px #0ff; 
-        }
+        .board-wrap.b-neon { border-radius: 8px; border: 2px solid #fff; box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0ff, 0 0 40px #0ff, 0 0 70px #0ff, inset 0 0 15px #0ff; }
 
-        /* 5. 華麗宮廷 (Royal) */
         .board-wrap.b-royal { border-radius: 2px; box-shadow: 0 0 0 4px #333, 0 0 0 12px #d4af37, 0 0 0 16px #333, 0 10px 30px rgba(0,0,0,0.8); }
-        .board-wrap.b-royal::before { 
-            content: ''; position: absolute; top: -16px; left: -16px; right: -16px; bottom: -16px; 
-            border: 2px dashed #d4af37; z-index: 10; pointer-events: none; 
-        }
+        .board-wrap.b-royal::before { content: ''; position: absolute; top: -16px; left: -16px; right: -16px; bottom: -16px; border: 2px dashed #d4af37; z-index: 10; pointer-events: none; }
 
-        /* 6. 點陣像素 (Pixel) */
-        .board-wrap.b-pixel { 
-            border-radius: 0; border: none;
-            box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff, 
-                        -8px 0 0 0 #000, 8px 0 0 0 #000, 0 -8px 0 0 #000, 0 8px 0 0 #000, 
-                        -4px -4px 0 0 #000, 4px -4px 0 0 #000, -4px 4px 0 0 #000, 4px 4px 0 0 #000, 
-                        0 15px 30px rgba(0,0,0,0.8); 
-        }
+        .board-wrap.b-pixel { border-radius: 0; border: none; box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff, -8px 0 0 0 #000, 8px 0 0 0 #000, 0 -8px 0 0 #000, 0 8px 0 0 #000, -4px -4px 0 0 #000, 4px -4px 0 0 #000, -4px 4px 0 0 #000, 4px 4px 0 0 #000, 0 15px 30px rgba(0,0,0,0.8); }
 
-        /* 7. 新增：歐式古典 (Euro) - 帶圓角螺旋裝飾感 */
-        .board-wrap.b-euro {
-            border: 6px double #d4af37;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8), inset 0 0 20px rgba(212,175,55,0.3);
-        }
-        .board-wrap.b-euro::before, .board-wrap.b-euro::after {
-            content: ''; position: absolute;
-            width: calc(var(--cell-size) * 2); height: calc(var(--cell-size) * 2);
-            border: 4px solid #d4af37; border-radius: 50% 0 50% 0; 
-            z-index: 10; pointer-events: none;
-        }
+        .board-wrap.b-euro { border: 6px double #d4af37; border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.8), inset 0 0 20px rgba(212,175,55,0.3); }
+        .board-wrap.b-euro::before, .board-wrap.b-euro::after { content: ''; position: absolute; width: calc(var(--cell-size) * 2); height: calc(var(--cell-size) * 2); border: 4px solid #d4af37; border-radius: 50% 0 50% 0; z-index: 10; pointer-events: none; }
         .board-wrap.b-euro::before { top: -10px; left: -10px; border-right: none; border-bottom: none; }
         .board-wrap.b-euro::after { bottom: -10px; right: -10px; border-left: none; border-top: none; }
 
-        /* 8. 新增：證書花邊 (Cert) - 交錯紋理邊框 */
-        .board-wrap.b-cert {
-            border: calc(var(--cell-size) * 0.5) solid transparent;
-            border-image: repeating-linear-gradient(135deg, #d4af37, #d4af37 10px, #8b6508 10px, #8b6508 20px) 20;
-            box-shadow: 0 0 0 4px #4a3500, inset 0 0 0 4px #4a3500, 0 10px 30px rgba(0,0,0,0.8);
-        }
+        .board-wrap.b-cert { border: calc(var(--cell-size) * 0.5) solid transparent; border-image: repeating-linear-gradient(135deg, #d4af37, #d4af37 10px, #8b6508 10px, #8b6508 20px) 20; box-shadow: 0 0 0 4px #4a3500, inset 0 0 0 4px #4a3500, 0 10px 30px rgba(0,0,0,0.8); }
 
-        /* 9. 新增：精緻蕾絲 (Lace) - 多層虛線與圓點漸層 */
-        .board-wrap.b-lace {
-            border: 4px solid #fff; border-radius: 16px;
-            box-shadow: 0 0 0 4px #d4af37, 0 0 15px rgba(0,0,0,0.5); padding: 2px;
-        }
-        .board-wrap.b-lace::before {
-            content: ''; position: absolute;
-            top: -12px; left: -12px; right: -12px; bottom: -12px;
-            border: 2px dashed #d4af37; border-radius: 20px; pointer-events: none;
-        }
-        .board-wrap.b-lace::after {
-            content: ''; position: absolute;
-            top: -24px; left: -24px; right: -24px; bottom: -24px;
-            background: radial-gradient(circle at 50% 0, #d4af37 4px, transparent 5px),
-                        radial-gradient(circle at 50% 100%, #d4af37 4px, transparent 5px),
-                        radial-gradient(circle at 0 50%, #d4af37 4px, transparent 5px),
-                        radial-gradient(circle at 100% 50%, #d4af37 4px, transparent 5px);
-            background-size: 20px 20px; pointer-events: none; z-index: -1;
-        }
+        .board-wrap.b-lace { border: 4px solid #fff; border-radius: 16px; box-shadow: 0 0 0 4px #d4af37, 0 0 15px rgba(0,0,0,0.5); padding: 2px; }
+        .board-wrap.b-lace::before { content: ''; position: absolute; top: -12px; left: -12px; right: -12px; bottom: -12px; border: 2px dashed #d4af37; border-radius: 20px; pointer-events: none; }
+        .board-wrap.b-lace::after { content: ''; position: absolute; top: -24px; left: -24px; right: -24px; bottom: -24px; background: radial-gradient(circle at 50% 0, #d4af37 4px, transparent 5px), radial-gradient(circle at 50% 100%, #d4af37 4px, transparent 5px), radial-gradient(circle at 0 50%, #d4af37 4px, transparent 5px), radial-gradient(circle at 100% 50%, #d4af37 4px, transparent 5px); background-size: 20px 20px; pointer-events: none; z-index: -1; }
 
-        /* --- 下一個方塊區域 (RWD 尺寸為標準方塊的 60%) --- */
+        /* --- 下一個方塊區域 (極小化，不占空間) --- */
         .next-queue-wrap {
             display: flex;
             flex-direction: column;
             gap: calc(var(--preview-cell-size) * 0.5);
-            padding: calc(var(--preview-cell-size) * 1);
+            padding: calc(var(--preview-cell-size) * 0.8);
             background: rgba(0,0,0,0.5);
             border-radius: 8px;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            /* 限制最大高度與棋盤相同，防止溢出 */
             max-height: calc(var(--cell-size) * 20);
             justify-content: center;
         }
@@ -256,7 +188,7 @@
             width: calc(var(--preview-cell-size) * 4);
             height: calc(var(--preview-cell-size) * 4);
             gap: 1px;
-            align-self: center; /* 讓每個方塊預覽盒自身居中 */
+            align-self: center; 
         }
 
         /* 網格單元 */
@@ -277,47 +209,77 @@
         .cell.c-6 { background: var(--c-6); box-shadow: inset 0 0 8px rgba(0,0,0,0.3); }
         .cell.c-7 { background: var(--c-7); box-shadow: inset 0 0 8px rgba(0,0,0,0.3); }
 
-        /* === 虛擬控制器 (手機端) === */
+        /* === 虛擬控制器 (手機端) 高質感立體升級版 === */
         #mobile-controls {
             display: none; 
-            height: 120px;
-            padding: 10px 20px calc(var(--safe-bottom) + 10px);
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
+            padding: 15px 5vw calc(var(--safe-bottom) + 15px);
+            background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5));
             border-top: 1px solid rgba(255,255,255,0.1);
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
             user-select: none;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         @media (hover: none) and (pointer: coarse) {
             #mobile-controls { display: flex; }
             #zoom-container { transform-origin: top center; }
+            
+            /* 在手機螢幕下放大按鍵與配置 */
+            .d-pad { 
+                display: grid; 
+                grid-template-columns: repeat(3, 16vw); 
+                grid-template-rows: repeat(2, 16vw); 
+                gap: 2vw; 
+                max-width: 200px;
+            }
+            .action-pad { 
+                display: flex; gap: 4vw; 
+            }
+            .action-pad .ctrl-btn { 
+                width: 18vw; height: 18vw; max-width: 80px; max-height: 80px;
+                border-radius: 50%; font-size: 2rem;
+            }
+            .ctrl-btn {
+                border-radius: 16px;
+                font-size: 2rem;
+            }
         }
 
-        .ctrl-cluster { display: flex; gap: 10px; align-items: center; }
-        .d-pad { display: grid; grid-template-columns: 50px 50px 50px; grid-template-rows: 50px 50px; gap: 5px; }
         .d-pad .btn-l { grid-column: 1; grid-row: 2; }
         .d-pad .btn-r { grid-column: 3; grid-row: 2; }
         .d-pad .btn-d { grid-column: 2; grid-row: 2; }
 
-        .action-pad { display: flex; gap: 15px; }
-        .action-pad button { width: 65px; height: 65px; border-radius: 50%; }
-
+        /* 高質感按鈕基底設計 */
         .ctrl-btn {
-            background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.3);
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid rgba(255,255,255,0.3);
             color: white;
-            font-size: 1.5rem;
-            border-radius: 12px;
             display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+            box-shadow: 0 6px 0 rgba(0,0,0,0.5), 0 10px 15px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
             transition: transform 0.05s, box-shadow 0.05s;
             cursor: pointer;
             touch-action: manipulation;
         }
-        .ctrl-btn:active { transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,0.5); background: rgba(255,255,255,0.3); }
+        /* 按壓時的厚度物理回饋 */
+        .ctrl-btn:active { 
+            transform: translateY(6px); 
+            box-shadow: 0 0 0 rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1); 
+        }
+
+        /* 旋轉與下落鍵獨立亮色系 */
+        .btn-rotate {
+            background: linear-gradient(180deg, rgba(52, 152, 219, 0.7) 0%, rgba(41, 128, 185, 0.7) 100%);
+            border-color: rgba(52, 152, 219, 0.8);
+        }
+        .btn-drop {
+            background: linear-gradient(180deg, rgba(231, 76, 60, 0.7) 0%, rgba(192, 57, 43, 0.7) 100%);
+            border-color: rgba(231, 76, 60, 0.8);
+        }
 
         /* === 設定面板樣式 === */
         #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
@@ -343,22 +305,8 @@
         #win-overlay.show { opacity: 1; pointer-events: auto; }
         #win-overlay .msg-box { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
-        .win-title {
-            font-size: 8vmin; 
-            color: #fff; 
-            text-shadow: 0 0 2vmin #0ff, 0 0 4vmin #0ff, 0 0 8vmin #0ff; 
-            margin-bottom: 2vmin;
-            letter-spacing: 1vmin;
-            white-space: nowrap;
-        }
-        .win-score {
-            font-size: 5vmin; 
-            color: #007aff; 
-            -webkit-text-stroke: 0.15vmin #fff; 
-            text-shadow: 0.2vmin 0.2vmin 0.5vmin rgba(0,0,0,0.6); 
-            margin-top: 2vmin; 
-            letter-spacing: 0.5vmin;
-        }
+        .win-title { font-size: 8vmin; color: #fff; text-shadow: 0 0 2vmin #0ff, 0 0 4vmin #0ff, 0 0 8vmin #0ff; margin-bottom: 2vmin; letter-spacing: 1vmin; white-space: nowrap; }
+        .win-score { font-size: 5vmin; color: #007aff; -webkit-text-stroke: 0.15vmin #fff; text-shadow: 0.2vmin 0.2vmin 0.5vmin rgba(0,0,0,0.6); margin-top: 2vmin; letter-spacing: 0.5vmin; }
         @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         /* === 操作說明視窗 === */
@@ -459,8 +407,7 @@
                 <option value="en">English</option>
             </select>
         </div>
-        <div>
-            </div>
+        <div></div>
     </div>
 
     <div class="set-row flex-split vol-row">
@@ -485,22 +432,16 @@
 <div id="rules-modal">
     <div class="rules-content">
         <h3 id="rules-title">遊戲操作說明</h3>
-        <ul id="rules-list" style="padding-left: 20px; line-height: 1.6;">
-            </ul>
+        <ul id="rules-list" style="padding-left: 20px; line-height: 1.6;"></ul>
         <hr style="border-color: #444; margin: 15px 0;">
-        
         <div class="device-rules">
             <h4 id="rules-pc-title" style="color:#4dd0e1; margin-bottom: 5px; margin-top: 0;">💻 桌上型電腦操作：</h4>
-            <ul id="rules-pc-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
-                </ul>
+            <ul id="rules-pc-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;"></ul>
         </div>
-        
         <div class="device-rules">
             <h4 id="rules-mobile-title" style="color:#ff9a9e; margin-bottom: 5px; margin-top: 0;">📱 手機與平板操作：</h4>
-            <ul id="rules-mobile-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;">
-                </ul>
+            <ul id="rules-mobile-list" style="padding-left: 20px; margin-top: 5px; margin-bottom: 5px;"></ul>
         </div>
-
         <button class="close-rules" id="btn-close-rules" onclick="closeInstructions()">我知道了，自動繼續遊戲</button>
     </div>
 </div>
@@ -521,8 +462,8 @@
             <div class="ctrl-btn btn-r" ontouchstart="startAction('right', event)" ontouchend="stopAction('right', event)">▶</div>
         </div>
         <div class="ctrl-cluster action-pad">
-            <div class="ctrl-btn" ontouchstart="startAction('rotate', event)" ontouchend="stopAction('rotate', event)">↻</div>
-            <div class="ctrl-btn" style="background: rgba(231, 76, 60, 0.5);" ontouchstart="startAction('drop', event)" ontouchend="stopAction('drop', event)">⤓</div>
+            <div class="ctrl-btn btn-rotate" ontouchstart="startAction('rotate', event)" ontouchend="stopAction('rotate', event)">↻</div>
+            <div class="ctrl-btn btn-drop" ontouchstart="startAction('drop', event)" ontouchend="stopAction('drop', event)">⤓</div>
         </div>
     </div>
 </div>
@@ -538,28 +479,29 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === 動態計算畫面最大化 (RWD) 完美防溢出機制 === */
+/* === 動態計算畫面最大化 (RWD) 完美防溢出與放大機制 === */
 function resizeBoard() {
     const header = document.getElementById('main-header');
     const mobileControls = document.getElementById('mobile-controls');
     const isMobileCtrlVisible = window.getComputedStyle(mobileControls).display !== 'none';
     
-    // 計算可用高寬 (扣除Header、手機控制區與邊距 20px)
-    let availableH = window.innerHeight - header.offsetHeight - (isMobileCtrlVisible ? mobileControls.offsetHeight : 0) - 20; 
-    let availableW = window.innerWidth - 20; 
+    // 計算可用高寬 (扣除Header、手機控制區與些許邊距)
+    let availableH = window.innerHeight - header.offsetHeight - (isMobileCtrlVisible ? mobileControls.offsetHeight : 0) - 15; 
+    let availableW = window.innerWidth - 10; 
     
     // 計算出最大的方塊 Cell 尺寸 
-    // 預留高度：棋盤 20格 + 裝飾邊框緩衝 1格 = 21格
+    // 高度：棋盤 20格 + 裝飾邊框緩衝 1格 = 21格
     let maxCellH = availableH / 21;
-    // 預留寬度：棋盤 10格 + 預覽區間距 1格 + 預覽區寬度(4格*0.6倍=2.4格) + 預覽區內距與外框約 1.6格 = 15格
-    let maxCellW = availableW / 15; 
+    // 寬度：棋盤 10格 + 預覽區寬度(4格*0.45倍=1.8格) + 間距與邊框約 1.5格 = 13.3格
+    let maxCellW = availableW / 13.3; 
     
     let cellSize = Math.min(maxCellH, maxCellW);
     
-    // 將精算後的基準尺寸注入 CSS 變數中，讓主棋盤與預覽區(60%)同步響應不溢出
+    // 將精算後的基準尺寸注入 CSS 變數中，最大化主棋盤，並縮小預覽區(45%)
     document.documentElement.style.setProperty('--cell-size', `${cellSize}px`);
+    document.documentElement.style.setProperty('--preview-cell-size', `calc(var(--cell-size) * 0.45)`);
     
-    applyZoom(); // 套用縮放狀態
+    applyZoom(); 
 }
 window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
 
@@ -622,7 +564,6 @@ function changeLang() {
     const lang = document.getElementById('lang-sel').value;
     const dict = i18n[lang];
     
-    // UI 文字更新
     document.getElementById('app-title').innerText = dict.title;
     document.title = dict.title;
     document.getElementById('btn-set').innerText = dict.btn_set;
@@ -631,7 +572,6 @@ function changeLang() {
     document.getElementById('btn-home').innerText = dict.btn_home;
     document.getElementById('btn-finish').innerText = dict.btn_finish;
     
-    // 設定選單標籤更新
     document.getElementById('lbl-diff').innerText = dict.lbl_diff;
     document.getElementById('lbl-theme').innerText = dict.lbl_theme;
     document.getElementById('lbl-border').innerText = dict.lbl_border;
@@ -640,11 +580,9 @@ function changeLang() {
     document.getElementById('lbl-vol-m').innerText = dict.lbl_vol_m;
     document.getElementById('lbl-vol-s').innerText = dict.lbl_vol_s;
 
-    // 更新外框選項文字
     const bSel = document.getElementById('border-sel');
     for(let i=0; i<9; i++) { bSel.options[i].text = dict.border_opts[i]; }
 
-    // 操作說明視窗更新
     document.getElementById('rules-title').innerText = dict.rules_title;
     document.getElementById('rules-list').innerHTML = dict.rules_list;
     document.getElementById('rules-pc-title').innerText = dict.rules_pc_title;
@@ -655,8 +593,6 @@ function changeLang() {
 
     updatePauseBtnUI();
     updateStatsDisplay();
-
-    // 如果在結算畫面，同步更新結算語言
     if(gameOver && document.getElementById('win-overlay').classList.contains('show')) { triggerGameOver(); }
 }
 
@@ -737,10 +673,9 @@ let animationId;
 
 // 速度控制變數
 let dropInterval = 1000; 
-let timeAccelRate = 0.9995; // 已調降：更平滑溫和的每秒加速比率
+let timeAccelRate = 0.9995; 
 let minDropLimit = 100; 
 
-// DOM Nodes array 避免每幀重複建立
 let boardNodes = [];
 let nextNodes = [];
 
@@ -816,7 +751,7 @@ function drawNextQueue() {
     nextNodes.forEach(box => { box.forEach(row => row.forEach(cell => cell.className = 'cell')); });
     for(let i=0; i<previewCount; i++) {
         let matrix = piecesQueue[i];
-        // 優化視覺置中演算法：使用 Math.round() 取代 floor，可讓 3x3 方塊完美對準 4x4 預覽格中心
+        // 預覽方塊完美視覺居中
         let offset = { 
             x: Math.round((4 - matrix[0].length) / 2), 
             y: Math.round((4 - matrix.length) / 2) 
@@ -923,7 +858,6 @@ function arenaSweep() {
     }
     if (linesCleared > 0) {
         score += linesCleared * 10;
-        // 每消除一行，減緩速度 1% (間隔時間增加 1%)
         dropInterval = dropInterval * Math.pow(1.01, linesCleared);
         updateStatsDisplay();
         playSfx(600, 'clear');
@@ -961,7 +895,6 @@ function startTimer() {
             let s = String(timeElapsed % 60).padStart(2, '0');
             document.getElementById('timer-display').innerText = `${m}:${s}`;
             
-            // 隨時間推移，持續微幅加速下落 (加速比率已減緩，讓玩家更有喘息空間)
             dropInterval = Math.max(minDropLimit, dropInterval * timeAccelRate);
             updateStatsDisplay(); 
         }
@@ -971,10 +904,8 @@ function startTimer() {
 function triggerGameOver() {
     clearInterval(timerInterval);
     playSfx(0, 'over');
-    
     const lang = document.getElementById('lang-sel').value;
     const dict = i18n[lang];
-    
     const ol = document.getElementById('win-overlay');
     ol.innerHTML = `
         <div class="msg-box win-title">${dict.game_over}</div>
@@ -994,13 +925,10 @@ function restart() {
     piecesQueue = [];
     dropCounter = 0;
     
-    // 設定難度專屬的速度與柔和的加速曲線
+    // 平滑溫和的速度曲線
     const diffMap = { 
-        // 簡單: 初始 1.2秒，每秒極緩慢加速 0.05%，極限 0.3秒
         'easy':   {q:5, startSpeed: 1200, accel: 0.9995, minSpeed: 300}, 
-        // 普通: 初始 0.8秒，每秒加速 0.1%，極限 0.2秒
         'medium': {q:3, startSpeed: 800,  accel: 0.9990, minSpeed: 200}, 
-        // 困難: 初始 0.4秒，每秒加速 0.2%，極限 0.1秒
         'hard':   {q:1, startSpeed: 400,  accel: 0.9980, minSpeed: 100} 
     };
     
@@ -1010,7 +938,6 @@ function restart() {
     timeAccelRate = diffMap[diff].accel;
     minDropLimit = diffMap[diff].minSpeed;
     
-    // 每次重新開始前，確保視窗已依照新難度(預覽方塊數不同)正確對齊與適應 RWD
     resizeBoard();
     initBoardDOM();
     initNextDOM();
@@ -1144,7 +1071,6 @@ function closeInstructions() {
     document.getElementById('rules-modal').style.display = 'none';
     if (wasPausedByRules) {
         isPaused = false;
-        // 即時讓計時與下落迴圈繼續
         lastTime = performance.now();
         updatePauseBtnUI();
     }
