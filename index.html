@@ -541,7 +541,7 @@
         .game-card:hover .icon-sudoku-box { border-color: var(--jade-glow); box-shadow: 0 0 15px rgba(100, 255, 218, 0.3); }
         .game-card:hover .sudoku-cell { background: rgba(100, 255, 218, 0.1); box-shadow: inset 0 0 5px rgba(255,255,255,0.2); }
 
-        /* === [NEW] 10. 俄羅斯方塊圖示專屬 CSS (方塊掉落) === */
+        /* === [NEW] 10. 俄羅斯方塊圖示專屬 CSS (10種隨機掉落) === */
         .icon-tetris-box {
             width: 60px; height: 60px;
             position: relative;
@@ -567,43 +567,38 @@
             transition: filter 0.3s;
             z-index: 1;
         }
-        /* O-Shape (黃色方塊) - 利用 box-shadow 畫出剩餘 3 個格子 */
-        .ts-o {
-            background: #f9cb28; color: #f9cb28;
-            box-shadow: 10px 0 0 currentColor, 0 10px 0 currentColor, 10px 10px 0 currentColor;
-            left: 35px; top: -40px;
-            animation: tetris-drop-o 4s cubic-bezier(0.8, 0, 0.2, 1) infinite;
-        }
-        /* I-Shape (科技藍直條) - 利用 box-shadow 畫出垂直 3 個格子 */
-        .ts-i {
-            background: var(--cyber-blue); color: var(--cyber-blue);
-            box-shadow: 0 10px 0 currentColor, 0 20px 0 currentColor, 0 30px 0 currentColor;
-            left: 15px; top: -40px;
-            animation: tetris-drop-i 4s cubic-bezier(0.8, 0, 0.2, 1) infinite;
-        }
-        /* T-Shape (霓虹紫T型) - 利用 box-shadow 畫出下面 3 個格子 */
-        .ts-t {
-            background: var(--neon-purple); color: var(--neon-purple);
-            box-shadow: -10px 10px 0 currentColor, 0 10px 0 currentColor, 10px 10px 0 currentColor;
-            left: 35px; top: -40px;
-            animation: tetris-drop-t 4s cubic-bezier(0.8, 0, 0.2, 1) infinite;
-        }
 
-        /* 定義方塊各自的掉落堆疊與消失動畫 */
-        @keyframes tetris-drop-o {
-            0%, 10% { top: -40px; opacity: 1; }
-            20%, 80% { top: 35px; opacity: 1; } /* 掉落到底部 */
-            85%, 100% { top: 35px; opacity: 0; } /* 閃爍消失 */
+        /* 以下為 10 種不同形狀與顏色的定義 (利用 box-shadow 畫出其他格子) */
+        /* 1. I 型 (Cyber Blue) */
+        .ts-1 { background: #00b4d8; color: #00b4d8; box-shadow: 0 10px 0 currentColor, 0 20px 0 currentColor, 0 30px 0 currentColor; }
+        /* 2. J 型 (藍色) */
+        .ts-2 { background: #2196f3; color: #2196f3; box-shadow: 0 10px 0 currentColor, 0 20px 0 currentColor, -10px 20px 0 currentColor; }
+        /* 3. L 型 (橘色) */
+        .ts-3 { background: #ff9f1c; color: #ff9f1c; box-shadow: 0 10px 0 currentColor, 0 20px 0 currentColor, 10px 20px 0 currentColor; }
+        /* 4. O 型 (黃色) */
+        .ts-4 { background: #f9cb28; color: #f9cb28; box-shadow: 10px 0 0 currentColor, 0 10px 0 currentColor, 10px 10px 0 currentColor; }
+        /* 5. S 型 (綠色) */
+        .ts-5 { background: #00e676; color: #00e676; box-shadow: 10px 0 0 currentColor, -10px 10px 0 currentColor, 0 10px 0 currentColor; }
+        /* 6. T 型 (紫色) */
+        .ts-6 { background: #bd34fe; color: #bd34fe; box-shadow: -10px 0 0 currentColor, 10px 0 0 currentColor, 0 10px 0 currentColor; }
+        /* 7. Z 型 (紅色) */
+        .ts-7 { background: #ff4d4d; color: #ff4d4d; box-shadow: -10px 0 0 currentColor, 0 10px 0 currentColor, 10px 10px 0 currentColor; }
+        /* 8. 單點 (銀灰) */
+        .ts-8 { background: #dcdfe3; color: #dcdfe3; box-shadow: none; }
+        /* 9. 骨牌 1x2 (粉紅) */
+        .ts-9 { background: #ff499e; color: #ff499e; box-shadow: 0 10px 0 currentColor; }
+        /* 10. 十字型 (青玉光) */
+        .ts-10 { background: #64ffda; color: #64ffda; box-shadow: -10px 0 0 currentColor, 10px 0 0 currentColor, 0 -10px 0 currentColor, 0 10px 0 currentColor; }
+
+        /* 動態方塊專用掉落動畫 (為期 2 秒) */
+        .is-dropping {
+            animation: tetris-drop-dynamic 2s cubic-bezier(0.8, 0, 0.2, 1) forwards;
         }
-        @keyframes tetris-drop-i {
-            0%, 25% { top: -40px; opacity: 1; }
-            35%, 80% { top: 15px; opacity: 1; } /* 掉落到左側底部 */
-            85%, 100% { top: 15px; opacity: 0; }
-        }
-        @keyframes tetris-drop-t {
-            0%, 40% { top: -40px; opacity: 1; }
-            50%, 80% { top: 15px; opacity: 1; } /* 掉落到O方塊正上方 */
-            85%, 100% { top: 15px; opacity: 0; }
+        @keyframes tetris-drop-dynamic {
+            0% { top: -40px; opacity: 1; transform: scale(1); }
+            60% { top: 20px; opacity: 1; transform: scale(1); } /* 掉落到底部並觸發碰撞 */
+            75% { top: 20px; opacity: 1; transform: scale(1); filter: brightness(1.5); } /* 短暫停留並閃爍 */
+            90%, 100% { top: 20px; opacity: 0; transform: scale(0.8); } /* 縮小消失 */
         }
 
         /* HOVER GLOW FOR TETRIS */
@@ -815,10 +810,7 @@
 
         <a href="javascript:void(0)" class="game-card" onclick="openGame('https://johsok.github.io/Games/Tetris.html')">
             <div class="icon-box">
-                <div class="icon-tetris-box">
-                    <div class="tetris-shape ts-o"></div>
-                    <div class="tetris-shape ts-i"></div>
-                    <div class="tetris-shape ts-t"></div>
+                <div class="icon-tetris-box" id="tetris-container">
                 </div>
             </div>
             <span class="game-title">俄羅斯方塊</span>
@@ -1008,6 +1000,39 @@
         // 初始化與定時器 (每3.5秒刷新一次)
         refreshSudoku();
         setInterval(refreshSudoku, 3500);
+    })();
+
+    // === [NEW] 俄羅斯方塊動畫邏輯 (每2秒隨機掉落10種其中1個) ===
+    (function startTetrisAnimation() {
+        const container = document.getElementById('tetris-container');
+        if (!container) return;
+
+        // 定義 CSS 中對應的 10 個方塊 class
+        const shapes = ['ts-1', 'ts-2', 'ts-3', 'ts-4', 'ts-5', 'ts-6', 'ts-7', 'ts-8', 'ts-9', 'ts-10'];
+
+        function dropRandomShape() {
+            // 1. 清空上一個掉落完成的方塊
+            container.innerHTML = '';
+
+            // 2. 隨機選取 1 個方塊
+            const randomIndex = Math.floor(Math.random() * shapes.length);
+            const selectedShape = shapes[randomIndex];
+
+            // 3. 建立方塊元素並賦予 class
+            const shapeDiv = document.createElement('div');
+            shapeDiv.className = `tetris-shape is-dropping ${selectedShape}`;
+            
+            // 4. 賦予方塊在容器內左右偏移的隨機起始點 (介於 15px 到 30px 之間，增加豐富度)
+            const randomX = Math.floor(Math.random() * 15) + 15;
+            shapeDiv.style.left = `${randomX}px`;
+
+            // 5. 將方塊推入容器以觸發 CSS Animation
+            container.appendChild(shapeDiv);
+        }
+
+        // 初始化並設定每 2000 毫秒 (2秒) 掉落一次
+        dropRandomShape();
+        setInterval(dropRandomShape, 2000);
     })();
 
     // 安全防護
