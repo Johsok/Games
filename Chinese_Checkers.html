@@ -48,7 +48,8 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --hole-bg: #eee; --line-color: rgba(34, 34, 34, 0.1); --border-color: #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --hole-bg: #111; --line-color: rgba(119, 119, 119, 0.3); --border-color: #555; }
 
-        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        /* 修正3：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
+        html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -60,12 +61,15 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            touch-action: none; 
+            /* 修正3：開啟 touch-action，讓捲動行為生效 */
+            touch-action: auto; 
             box-sizing: border-box; 
         }
 
         /* === 頂部 UI 樣式 === */
         header { 
+            /* 修正3：讓頂部 UI 在畫面滾動時黏在上方 */
+            position: sticky; top: 0; left: 0;
             width: 100%; height: auto; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
             z-index: 100; padding: calc(var(--safe-top) + 8px) 0 8px 0; 
@@ -97,6 +101,17 @@
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+        
+        /* 修正3：手動縮放按鈕樣式 */
+        .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
+        
+        /* 預設隱藏，加上 !important 確保權重 (桌機預設隱藏) */
+        .mobile-only { display: none !important; } 
+
+        /* 當螢幕寬度小於 1000px，或是偵測到「觸控螢幕裝置」時，強制顯示縮放按鈕 */
+        @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
+            .mobile-only { display: inline-block !important; }
+        }
 
         /* === 橫向模式 UI 適配 === */
         body.is-landscape {
@@ -138,7 +153,8 @@
         input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; }
 
         /* === 遊戲容器與棋盤 === */
-        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        /* 修正3：加上 overflow: auto 允許縮放後捲動，並加上 touch-action: none 徹底防止瀏覽器原生手勢干擾此區塊 */
+        #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; width: 100%; box-sizing: border-box; touch-action: none; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
         /* 修正：簡約、扁平的「雙重外框」設計 */
@@ -151,6 +167,7 @@
             border-radius: 50%; 
             aspect-ratio: 1 / 1; 
             
+            /* 這裡統一透過 var(--board-size) 讓 JS 能動態一鍵控制所有尺寸 */
             width: var(--board-size); 
             height: var(--board-size);
             min-width: var(--board-size); 
@@ -169,11 +186,12 @@
             
             box-sizing: border-box; 
             flex-shrink: 0; 
-            transition: all 0.3s ease;
+            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; /* 調整 transition 以防縮放時卡頓 */
             background-clip: padding-box;
+            
+            /* 修正3：確保放大超出螢幕時，利用 margin auto 使其能被正常捲動而不裁切左上角 */
+            margin: auto; 
         }
-        
-        /* (確認沒有 ::before 或 ::after，維持程式碼與視覺的極致簡約) */
 
         .board-inner { position: relative; width: 100%; height: 100%; }
         
@@ -264,6 +282,9 @@
         <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
         <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(1)">➕</button>
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(-1)">➖</button>
     </div>
 </header>
 
@@ -620,6 +641,10 @@ let lastMovedPiece = -1;
 let aiTimerInterval = null;
 let animEnabled = true;
 
+/* 修正3：新增手動縮放狀態變數 */
+let currentZoom = 1.0; 
+let baseBoardSize = 0; 
+
 const ZONE_CONFIG = {
     1: { id: 1, name: "Bottom", filter: c => c.r >= 5, center: {q:0, r:6} }, 
     2: { id: 2, name: "BottomRight", filter: c => c.q >= 5, center: {q:6, r:0} },
@@ -681,6 +706,23 @@ const TRANSLATIONS = {
 };
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* 修正3：新增縮放觸發函數 */
+function zoomBoard(direction) {
+    currentZoom += direction * 0.2; // 每次放大或縮小 20%
+    if (currentZoom < 0.5) currentZoom = 0.5; // 限制最小縮小至 50%
+    if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
+    applyZoom();
+}
+
+/* 修正3：根據目前的 currentZoom 倍率動態更新棋盤尺寸的 CSS 變數 */
+function applyZoom() {
+    const wrap = document.getElementById('board-wrap');
+    if(baseBoardSize > 0) {
+        let finalSize = baseBoardSize * currentZoom;
+        wrap.style.setProperty('--board-size', `${finalSize}px`);
+    }
+}
 
 function initBoardGeometry() {
     boardCoords = [];
@@ -778,6 +820,8 @@ function resizeBoard() {
     isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape');
     const wrap = document.getElementById('board-wrap');
     const header = document.getElementById('main-header');
+    
+    /* 修正3：清除舊有的 margin/width，利用 CSS 的 margin auto 配合縮放 */
     wrap.style.width = wrap.style.height = wrap.style.marginTop = '';
     header.style.marginRight = '0';
     
@@ -791,7 +835,10 @@ function resizeBoard() {
         wrap.style.marginTop = '10px';
         finalSize = Math.min(winW - 40, winH - header.offsetHeight - 40);
     }
-    wrap.style.setProperty('--board-size', `${Math.max(280, finalSize)}px`);
+    
+    /* 修正3：將計算出的基礎大小儲存，再套用 currentZoom 進行渲染 */
+    baseBoardSize = Math.max(280, finalSize);
+    applyZoom();
 }
 
 function drawBoard() {
@@ -1176,9 +1223,9 @@ function updateStatus(customText = null) {
         const p = players[currentPlayer];
         let pName = p.name;
         let colorVar = (p.id === 1) ? getComputedStyle(document.documentElement).getPropertyValue('--p1-color') 
-                      : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
-                      : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
-                      
+                       : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
+                       : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
+                       
         let cleanColor = colorVar.trim().replace('radial-gradient(circle at 30% 30%, ', '').replace(')', '').split(',')[0];
         
         let turnText = (currentLang === 'en') ? `${pName}'s Turn` : `${pName} 走棋`;
@@ -1363,6 +1410,54 @@ document.onkeydown = function(e) {
     if (e.ctrlKey && (e.keyCode == 'U'.charCodeAt(0) || e.keyCode == 'S'.charCodeAt(0))) return false;
 };
 console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
+
+// === 修正4：完美版雙指縮放 (無段比例計算) ===
+let initialPinchDistance = null;
+let startZoom = 1.0;
+const gameContainerEl = document.getElementById('game-container');
+
+// 1. 偵測兩根手指放上螢幕
+gameContainerEl.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault(); // 阻擋瀏覽器預設行為
+        // 計算兩指初始直線距離
+        initialPinchDistance = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+        startZoom = currentZoom; // 記下剛捏合時的縮放倍率
+    }
+}, { passive: false });
+
+// 2. 偵測兩根手指滑動 (縮放中)
+gameContainerEl.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialPinchDistance) {
+        e.preventDefault(); // 阻擋畫面原生滾動
+        
+        // 計算當下的兩指距離
+        let currentDistance = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+        
+        // 核心邏輯：現在距離 / 初始距離 = 縮放比例
+        let scale = currentDistance / initialPinchDistance;
+        currentZoom = startZoom * scale;
+        
+        // 限制最大與最小倍率
+        if (currentZoom < 0.5) currentZoom = 0.5;
+        if (currentZoom > 3.0) currentZoom = 3.0;
+        
+        applyZoom(); // 即時套用畫面
+    }
+}, { passive: false });
+
+// 3. 手指離開螢幕，重置距離
+gameContainerEl.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+        initialPinchDistance = null;
+    }
+});
 </script>
 </body>
 </html>
