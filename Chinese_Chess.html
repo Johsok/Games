@@ -57,8 +57,9 @@
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --piece-bg: radial-gradient(circle at 30% 30%, #555, #222); --piece-border: #888; --red-c: #ff5252; --black-c: #000; --text-engrave: 0 0 5px rgba(255,255,255,0.3); --border-style: 8px solid #555; }
 
 
-        /* 修正3：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
-        html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
+        /* 修正3 原有註解保留：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
+        /* 修正4：將 overflow 從 auto 改為 hidden。完全鎖死外層網頁本身的捲動，只讓底下的 #game-container 可以捲動，確保 UI 永遠固定不位移 */
+        html, body { min-height: 100vh; width: 100%; overflow: hidden; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -682,7 +683,7 @@ function updateVolLabels() {
 /* 修正3：新增手動縮放觸發函數 */
 function zoomBoard(direction) {
     currentZoom += direction * 0.2; // 每次放大或縮小 20%
-    if (currentZoom < 0.5) currentZoom = 0.5; // 限制最小縮小至 50%
+    if (currentZoom < 1.0) currentZoom = 1.0; /* 修正4：限制最小縮小至 100% (初始大小) */
     if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
     applyZoom();
 }
@@ -1100,7 +1101,8 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             let scale = currentDistance / initialPinchDistance;
             currentZoom = startZoom * scale;
             
-            if (currentZoom < 0.5) currentZoom = 0.5;
+            /* 修正4：限制縮放最小為初始畫面大小 (100%) */
+            if (currentZoom < 1.0) currentZoom = 1.0;
             if (currentZoom > 3.0) currentZoom = 3.0;
             applyZoom(); 
             
@@ -1113,10 +1115,9 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
             let moveX = currentX - lastPanX;
             let moveY = currentY - lastPanY;
             
-            // 針對容器與外層視窗雙重滾動，確保畫面能順利被拖拉
+            /* 修正4：僅針對棋盤容器區域做捲動，移除外層視窗捲動，徹底將 UI 固定住 */
             gameContainerEl.scrollLeft -= moveX;
             gameContainerEl.scrollTop -= moveY;
-            window.scrollBy(-moveX, -moveY);
             
             // 即時更新最後座標，讓畫面緊緊黏著手指移動
             lastPanX = currentX;
