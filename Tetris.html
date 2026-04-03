@@ -154,14 +154,18 @@
         .board-wrap.b-royal { border-radius: 2px; box-shadow: 0 0 0 4px #333, 0 0 0 12px #d4af37, 0 0 0 16px #333, 0 10px 30px rgba(0,0,0,0.8); }
         .board-wrap.b-royal::before { content: ''; position: absolute; top: -16px; left: -16px; right: -16px; bottom: -16px; border: 2px dashed #d4af37; z-index: 10; pointer-events: none; }
 
-        .board-wrap.b-pixel { border-radius: 0; border: none; box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff, -8px 0 0 0 #000, 8px 0 0 0 #000, 0 -8px 0 0 #000, 0 8px 0 0 #000, -4px -4px 0 0 #000, 4px -4px 0 0 #000, -4px 4px 0 0 #000, 4px 4px 0 0 #000, 0 15px 30px rgba(0,0,0,0.8); }
+        /* 新版：精緻點陣像素 (復古街機螢幕感) */
+        .board-wrap.b-pixel { border-radius: 0; border: none; box-shadow: 0 0 0 4px #fff, 0 0 0 8px #000, 0 0 0 12px #999, 0 0 0 16px #000, 0 15px 30px rgba(0,0,0,0.8); }
+        .board-wrap.b-pixel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(rgba(255,255,255,0.05) 50%, transparent 50%); background-size: 100% 4px; pointer-events: none; z-index: 10; }
 
-        .board-wrap.b-euro { border: 6px double #d4af37; border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.8), inset 0 0 20px rgba(212,175,55,0.3); }
-        .board-wrap.b-euro::before, .board-wrap.b-euro::after { content: ''; position: absolute; width: calc(var(--cell-size) * 2); height: calc(var(--cell-size) * 2); border: 4px solid #d4af37; border-radius: 50% 0 50% 0; z-index: 10; pointer-events: none; }
-        .board-wrap.b-euro::before { top: -10px; left: -10px; border-right: none; border-bottom: none; }
-        .board-wrap.b-euro::after { bottom: -10px; right: -10px; border-left: none; border-top: none; }
+        /* 新版：精緻歐式古典 (高雅燙金與鳶尾花飾) */
+        .board-wrap.b-euro { border: none; border-radius: 8px; box-shadow: 0 0 0 4px #b89947, 0 0 0 10px #2a2a2a, 0 0 0 14px #d4af37, 0 20px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(212,175,55,0.3); }
+        .board-wrap.b-euro::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 2px solid rgba(212,175,55,0.5); border-radius: 6px; pointer-events: none; z-index: 10; }
+        .board-wrap.b-euro::after { content: '⚜'; position: absolute; top: -34px; left: 50%; transform: translateX(-50%); color: #d4af37; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 11; }
 
-        .board-wrap.b-cert { border: calc(var(--cell-size) * 0.5) solid transparent; border-image: repeating-linear-gradient(135deg, #d4af37, #d4af37 10px, #8b6508 10px, #8b6508 20px) 20; box-shadow: 0 0 0 4px #4a3500, inset 0 0 0 4px #4a3500, 0 10px 30px rgba(0,0,0,0.8); }
+        /* 新版：精緻證書花邊 (象牙白與海軍藍經典配色) */
+        .board-wrap.b-cert { border: none; border-radius: 2px; box-shadow: 0 0 0 8px #fdf5e6, 0 0 0 10px #d4af37, 0 0 0 16px #1a365d, 0 0 0 18px #d4af37, 0 20px 50px rgba(0,0,0,0.8), inset 0 0 0 2px #d4af37; }
+        .board-wrap.b-cert::before { content: ''; position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border: 1px dashed #d4af37; pointer-events: none; z-index: 10; }
 
         .board-wrap.b-lace { border: 4px solid #fff; border-radius: 16px; box-shadow: 0 0 0 4px #d4af37, 0 0 15px rgba(0,0,0,0.5); padding: 2px; }
         .board-wrap.b-lace::before { content: ''; position: absolute; top: -12px; left: -12px; right: -12px; bottom: -12px; border: 2px dashed #d4af37; border-radius: 20px; pointer-events: none; }
@@ -215,48 +219,47 @@
             padding: 15px 5vw calc(var(--safe-bottom) + 15px);
             background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5));
             border-top: 1px solid rgba(255,255,255,0.1);
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-            user-select: none;
             width: 100%;
             box-sizing: border-box;
+            user-select: none;
         }
 
         @media (hover: none) and (pointer: coarse) {
-            #mobile-controls { display: flex; }
+            #mobile-controls {
+                display: grid;
+                /* 改為 6 行網格系統，實現兩列佈局並均勻分配 */
+                grid-template-columns: repeat(6, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+                gap: 3vw;
+                align-content: center;
+                justify-content: center;
+            }
             #zoom-container { transform-origin: top center; }
             
+            /* 第一列：翻轉與直接落下 (各佔3格，置中對稱) */
+            .btn-rotate { grid-column: 1 / 4; grid-row: 1; }
+            .btn-drop   { grid-column: 4 / 7; grid-row: 1; }
+            
+            /* 第二列：向左、向下加速、向右 (各佔2格，均勻分佈) */
+            .btn-l      { grid-column: 1 / 3; grid-row: 2; }
+            .btn-d      { grid-column: 3 / 5; grid-row: 2; }
+            .btn-r      { grid-column: 5 / 7; grid-row: 2; }
+
             /* 在手機螢幕下放大按鍵與配置 */
-            .d-pad { 
-                display: grid; 
-                grid-template-columns: repeat(3, 16vw); 
-                grid-template-rows: repeat(2, 16vw); 
-                gap: 2vw; 
-                max-width: 200px;
-            }
-            .action-pad { 
-                display: flex; gap: 4vw; 
-            }
-            .action-pad .ctrl-btn { 
-                width: 18vw; height: 18vw; max-width: 80px; max-height: 80px;
-                border-radius: 50%; font-size: 2rem;
-            }
             .ctrl-btn {
+                width: 100%;
+                height: 18vw; 
+                min-height: 60px;
+                max-height: 90px;
                 border-radius: 16px;
-                font-size: 2rem;
+                font-size: 2.2rem; /* 加大圖示 */
             }
         }
 
-        .d-pad .btn-l { grid-column: 1; grid-row: 2; }
-        .d-pad .btn-r { grid-column: 3; grid-row: 2; }
-        .d-pad .btn-d { grid-column: 2; grid-row: 2; }
-
-        /* 高質感按鈕基底設計 */
+        /* 統一的高質感按鈕基底設計 (全透明玻璃擬態) */
         .ctrl-btn {
             background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
             border: 1px solid rgba(255,255,255,0.3);
-            color: white;
             display: flex; justify-content: center; align-items: center;
             box-shadow: 0 6px 0 rgba(0,0,0,0.5), 0 10px 15px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
             text-shadow: 0 2px 4px rgba(0,0,0,0.8);
@@ -265,20 +268,16 @@
             cursor: pointer;
             touch-action: manipulation;
         }
+        
+        /* 統一按鍵圖示文字色彩，給予微調以資區別 */
+        .btn-rotate { color: #81d4fa; }
+        .btn-drop   { color: #ffab91; }
+        .btn-l, .btn-d, .btn-r { color: #ffffff; }
+
         /* 按壓時的厚度物理回饋 */
         .ctrl-btn:active { 
             transform: translateY(6px); 
             box-shadow: 0 0 0 rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1); 
-        }
-
-        /* 旋轉與下落鍵獨立亮色系 */
-        .btn-rotate {
-            background: linear-gradient(180deg, rgba(52, 152, 219, 0.7) 0%, rgba(41, 128, 185, 0.7) 100%);
-            border-color: rgba(52, 152, 219, 0.8);
-        }
-        .btn-drop {
-            background: linear-gradient(180deg, rgba(231, 76, 60, 0.7) 0%, rgba(192, 57, 43, 0.7) 100%);
-            border-color: rgba(231, 76, 60, 0.8);
         }
 
         /* === 設定面板樣式 === */
@@ -456,15 +455,11 @@
     </div>
 
     <div id="mobile-controls">
-        <div class="ctrl-cluster d-pad">
-            <div class="ctrl-btn btn-l" ontouchstart="startAction('left', event)" ontouchend="stopAction('left', event)">◀</div>
-            <div class="ctrl-btn btn-d" ontouchstart="startAction('down', event)" ontouchend="stopAction('down', event)">▼</div>
-            <div class="ctrl-btn btn-r" ontouchstart="startAction('right', event)" ontouchend="stopAction('right', event)">▶</div>
-        </div>
-        <div class="ctrl-cluster action-pad">
-            <div class="ctrl-btn btn-rotate" ontouchstart="startAction('rotate', event)" ontouchend="stopAction('rotate', event)">↻</div>
-            <div class="ctrl-btn btn-drop" ontouchstart="startAction('drop', event)" ontouchend="stopAction('drop', event)">⤓</div>
-        </div>
+        <div class="ctrl-btn btn-rotate" ontouchstart="startAction('rotate', event)" ontouchend="stopAction('rotate', event)">↻</div>
+        <div class="ctrl-btn btn-drop" ontouchstart="startAction('drop', event)" ontouchend="stopAction('drop', event)">⤓</div>
+        <div class="ctrl-btn btn-l" ontouchstart="startAction('left', event)" ontouchend="stopAction('left', event)">◀</div>
+        <div class="ctrl-btn btn-d" ontouchstart="startAction('down', event)" ontouchend="stopAction('down', event)">▼</div>
+        <div class="ctrl-btn btn-r" ontouchstart="startAction('right', event)" ontouchend="stopAction('right', event)">▶</div>
     </div>
 </div>
 
