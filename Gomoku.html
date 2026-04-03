@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#3a3a3a">
     <title>五子棋大師 2026</title>
     <link rel="manifest" id="manifest-placeholder">
@@ -39,7 +39,8 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --border-style: 6px solid #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --border-style: 8px solid #555; }
 
-        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        /* 修正2：將 overflow: hidden 改為 overflow: auto，允許放大後可以滑動檢視 */
+        html, body { height: 100%; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -51,7 +52,8 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            touch-action: none; 
+            /* 修正2：將 touch-action: none 改為 auto，讓瀏覽器允許縮放及滑動等原生觸控行為 */
+            touch-action: auto; 
             box-sizing: border-box; 
         }
 
@@ -552,12 +554,16 @@ function resizeBoard() {
     const winW = window.innerWidth, winH = window.innerHeight; 
     let finalSize;
     if (isLand) {
-        const headerW = 140, gap = winW * 0.02;
+        // 修正1：桌機或橫向螢幕模式時，縮減間距與邊緣留白，讓棋盤與棋子盡可能放大
+        const headerW = 140, gap = winW * 0.005; // 將原始 0.02 間距比例大幅縮小
         header.style.marginRight = `${gap}px`;
-        finalSize = Math.min(winW - headerW - gap - 20, winH - 20);
+        // 將原本 -20 改為 -6，爭取最大顯示空間
+        finalSize = Math.min(winW - headerW - gap - 6, winH - 6);
     } else {
-        wrap.style.marginTop = '10px'; wrap.style.marginBottom = '10px';
-        finalSize = Math.min(winW - 20, winH - header.offsetHeight - 20);
+        // 修正1：手機或直向螢幕模式時，也同步縮小上下邊緣留白
+        wrap.style.marginTop = '2px'; wrap.style.marginBottom = '2px';
+        // 將原本 -20 改為 -10，爭取最大顯示空間
+        finalSize = Math.min(winW - 10, winH - header.offsetHeight - 10);
     }
     wrap.style.width = wrap.style.height = `${finalSize}px`;
     wrap.style.setProperty('--board-size', `${finalSize}px`);
