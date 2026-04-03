@@ -119,7 +119,8 @@
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
             border: var(--border-style); border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            padding: 4%; box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
+            padding: 0.7%; /* ⬇️ 改成 1% 或 10px，讓網格向外擴張 */
+            box-sizing: border-box; flex-shrink: 0; transition: all 0.3s ease;
         }
         
         .board-inner { position: relative; width: 100%; height: 100%; }
