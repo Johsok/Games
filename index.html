@@ -541,7 +541,7 @@
         .game-card:hover .icon-sudoku-box { border-color: var(--jade-glow); box-shadow: 0 0 15px rgba(100, 255, 218, 0.3); }
         .game-card:hover .sudoku-cell { background: rgba(100, 255, 218, 0.1); box-shadow: inset 0 0 5px rgba(255,255,255,0.2); }
 
-        /* === [NEW] 10. 俄羅斯方塊圖示專屬 CSS (10種隨機掉落) === */
+        /* === [NEW] 10. 俄羅斯方塊圖示專屬 CSS (10種隨機掉落、堆疊) === */
         .icon-tetris-box {
             width: 60px; height: 60px;
             position: relative;
@@ -590,15 +590,17 @@
         /* 10. 十字型 (青玉光) */
         .ts-10 { background: #64ffda; color: #64ffda; box-shadow: -10px 0 0 currentColor, 10px 0 0 currentColor, 0 -10px 0 currentColor, 0 10px 0 currentColor; }
 
-        /* 動態方塊專用掉落動畫 (為期 2 秒) */
+        /* 動態方塊專用掉落動畫 (單次動畫耗時 1.2 秒) */
+        /* animation-fill-mode: both; 能確保方塊在延遲 (delay) 的這段時間內先隱藏在頂部，不會提早曝光 */
         .is-dropping {
-            animation: tetris-drop-dynamic 2s cubic-bezier(0.8, 0, 0.2, 1) forwards;
+            animation: tetris-drop-dynamic 1.2s cubic-bezier(0.8, 0, 0.2, 1) both;
         }
         @keyframes tetris-drop-dynamic {
-            0% { top: -40px; opacity: 1; transform: scale(1); }
-            60% { top: 20px; opacity: 1; transform: scale(1); } /* 掉落到底部並觸發碰撞 */
-            75% { top: 20px; opacity: 1; transform: scale(1); filter: brightness(1.5); } /* 短暫停留並閃爍 */
-            90%, 100% { top: 20px; opacity: 0; transform: scale(0.8); } /* 縮小消失 */
+            0% { top: -40px; opacity: 0; transform: scale(1); }
+            10% { top: -40px; opacity: 1; transform: scale(1); } /* 開始顯現並掉落 */
+            50% { top: var(--end-y, 20px); opacity: 1; transform: scale(1); } /* 掉落到隨機堆疊高度 */
+            75% { top: var(--end-y, 20px); opacity: 1; transform: scale(1); filter: brightness(1.5); } /* 短暫停留並閃爍 */
+            90%, 100% { top: var(--end-y, 20px); opacity: 0; transform: scale(0.8); } /* 縮小消失 */
         }
 
         /* HOVER GLOW FOR TETRIS */
@@ -1011,7 +1013,7 @@
         setInterval(refreshSudoku, 3500);
     })();
 
-    // === [NEW] 俄羅斯方塊動畫邏輯 (每2秒隨機掉落3個不同顏色的方塊) ===
+    // === [NEW] 俄羅斯方塊動畫邏輯 (每2秒為一循環：1秒內依序掉落3個方塊並隨機堆疊) ===
     (function startTetrisAnimation() {
         const container = document.getElementById('tetris-container');
         if (!container) return;
@@ -1019,34 +1021,38 @@
         // 定義 CSS 中對應的 10 個方塊 class
         const shapes = ['ts-1', 'ts-2', 'ts-3', 'ts-4', 'ts-5', 'ts-6', 'ts-7', 'ts-8', 'ts-9', 'ts-10'];
 
-        function dropRandomShape() {
-            // 1. 清空上一個掉落完成的方塊
+        function dropRandomShapes() {
+            // 1. 清空上一次的方塊
             container.innerHTML = '';
 
-            // 2. 隨機選取 3 個不重複的方塊，以確保顏色及形狀不同
+            // 2. 隨機選取 3 個不重複的方塊 (確保形狀與顏色不同)
             const shuffledShapes = [...shapes].sort(() => 0.5 - Math.random());
             const selectedShapes = shuffledShapes.slice(0, 3);
 
-            // 3. 定義 3 條固定的掉落軌道 (left 屬性)，分別對應左、中、右，確保落在 60x60px 範圍內不完全重疊
-            const lanes = [15, 30, 45]; 
-
             selectedShapes.forEach((selectedShape, index) => {
-                // 4. 建立方塊元素並賦予對應形狀的 class 與 掉落動畫
+                // 3. 建立方塊元素並賦予 class
                 const shapeDiv = document.createElement('div');
                 shapeDiv.className = `tetris-shape is-dropping ${selectedShape}`;
                 
-                // 5. 賦予方塊在其對應軌道內微小的隨機水平偏移 (-2px 到 2px)，增加自然錯落感
-                const randomOffset = Math.floor(Math.random() * 5) - 2;
-                shapeDiv.style.left = `${lanes[index] + randomOffset}px`;
+                // 4. 賦予方塊在容器內隨機水平偏移 (左側 5px ~ 35px 之間，確保不出界)
+                const randomX = Math.floor(Math.random() * 30) + 5;
+                shapeDiv.style.left = `${randomX}px`;
 
-                // 6. 將方塊推入容器以觸發同步掉落的 CSS Animation
+                // 5. 賦予隨機的停止高度 (Y軸 15px ~ 35px)，模擬各自隨機堆疊的視覺效果
+                const randomEndY = Math.floor(Math.random() * 20) + 15;
+                shapeDiv.style.setProperty('--end-y', `${randomEndY}px`);
+
+                // 6. 設定動畫延遲：1 秒內陸續掉落 3 個 (第1個 0s, 第2個 0.33s, 第3個 0.66s)
+                shapeDiv.style.animationDelay = `${index * 0.33}s`;
+
+                // 7. 推入容器以觸發 CSS Animation
                 container.appendChild(shapeDiv);
             });
         }
 
-        // 初始化並設定每 2000 毫秒 (2秒) 掉落一次
-        dropRandomShape();
-        setInterval(dropRandomShape, 2000);
+        // 初始化並設定每 2000 毫秒 (2秒) 重新啟動一輪
+        dropRandomShapes();
+        setInterval(dropRandomShapes, 2000);
     })();
 
     // 安全防護
