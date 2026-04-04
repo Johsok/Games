@@ -423,25 +423,214 @@
 <audio id="bgm" loop></audio>
 
 <script>
-/* ================= WORKER SCRIPT (職業級引擎) ================= */
+/* ================= WORKER SCRIPT (升級版人工智慧引擎) ================= */
 const workerScript = `
-let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(30 * 2); let zobristTable = []; 
+let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(150 * 2); let zobristTable = []; 
 const MATE_VAL = 30000; const INFINITY = 999999;
+
+// 1. Zobrist Hash 初始化
 function initZobrist() { for(let i=0; i<90; i++) { zobristTable[i] = {}; [-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7].forEach(p => { zobristTable[i][p] = Math.floor(Math.random() * 0xFFFFFFFF); }); } }
 initZobrist();
 function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) h ^= zobristTable[i][bd[i]]; } return h; }
-self.onmessage = function(e) { const { bd, limit, turn, level } = e.data; const best = getBestMoveIterative(bd, limit.depth, limit.time, turn, level); self.postMessage(best); };
-const PST = { 3: [0,0,0,0,0,0,0,0,0, 0,6,0,0,0,0,0,6,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,4,0,0,0,0,0,4,0, 0,8,0,0,0,0,0,8,0, 2,4,4,4,8,4,4,4,2, 2,6,4,4,8,4,4,6,2, 10,12,10,10,10,10,10,12,10, 0,0,0,0,0,0,0,0,0], 4: [0,-4,0,0,0,0,0,-4,0, 0,2,4,4,0,4,4,2,0, 4,4,8,8,16,8,8,4,4, 2,8,8,8,12,8,8,8,2, 2,4,6,8,8,8,6,4,2, 2,2,6,8,8,8,6,2,2, 0,2,4,4,4,4,4,2,0, 0,-4,0,2,2,2,0,-4,0, 0,-6,-2,0,0,0,-2,-6,0, 0,0,0,0,0,0,0,0,0], 2: [0,0,2,6,6,6,2,0,0, 0,2,4,2,2,2,4,2,0, 2,2,2,6,8,6,2,2,2, 0,2,2,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2,4,0,-2,0,-2,0,4,2, 2,2,0,-4,-4,-4,0,2,2, 0,0,0,0,0,0,0,0,0], 1: [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 20,24,30,40,50,40,30,24,20, 16,20,30,36,40,36,30,20,16, 6,6,12,18,20,18,12,6,6, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] };
+
+self.onmessage = function(e) { 
+    const { bd, limit, turn, level } = e.data; 
+    const best = getBestMoveIterative(bd, limit.depth, limit.time, turn, level); 
+    self.postMessage(best); 
+};
+
+// 強化版位置表 (PST)，增加邊界意識
+const PST = { 
+    3: [0,0,0,0,0,0,0,0,0, 0,6,0,0,0,0,0,6,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,4,0,0,0,0,0,4,0, 0,8,0,0,0,0,0,8,0, 2,4,4,4,8,4,4,4,2, 2,6,4,4,8,4,4,6,2, 10,12,10,10,10,10,10,12,10, 0,0,0,0,0,0,0,0,0], 
+    4: [0,-4,0,0,0,0,0,-4,0, 0,2,4,4,0,4,4,2,0, 4,4,8,8,16,8,8,4,4, 2,8,8,8,12,8,8,8,2, 2,4,6,8,8,8,6,4,2, 2,2,6,8,8,8,6,2,2, 0,2,4,4,4,4,4,2,0, 0,-4,0,2,2,2,0,-4,0, 0,-6,-2,0,0,0,-2,-6,0, 0,0,0,0,0,0,0,0,0], 
+    2: [0,0,2,6,6,6,2,0,0, 0,2,4,2,2,2,4,2,0, 2,2,2,6,8,6,2,2,2, 0,2,2,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2,4,0,-2,0,-2,0,4,2, 2,2,0,-4,-4,-4,0,2,2, 0,0,0,0,0,0,0,0,0], 
+    1: [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 30,40,50,60,70,60,50,40,30, 20,30,40,50,60,50,40,30,20, 10,20,30,40,50,40,30,20,10, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] 
+};
 const VALS = { 1:100, 2:450, 3:900, 4:400, 5:200, 6:200, 7:100000 };
-function evalBd(bd, turn) { let s = 0; for(let i=0; i<90; i++) { const p = bd[i]; if(p===0) continue; const type = Math.abs(p); const val = VALS[type] + (PST[type] ? (p>0 ? PST[type][i] : PST[type][89-i]) : 0); s += (p > 0 ? val : -val); } return s * turn; }
-function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { const startTime = Date.now(); const safeTime = timeLimit * 0.95; let bestMove = null; let rootMoves = genMoves(bd, turn); killerTable.fill(0); let actualMaxDepth = maxDepth; if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); for (let d = 1; d <= actualMaxDepth; d++) { let alpha = -INFINITY, beta = INFINITY; let currentBest = null; rootMoves = sortMoves(rootMoves, bd, turn, 0, bestMove); for (let m of rootMoves) { make(bd, m); let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd)); unmake(bd, m); if (Date.now() - startTime > safeTime) break; if (score > alpha) { alpha = score; currentBest = m; } } if (currentBest) bestMove = currentBest; if (Date.now() - startTime > safeTime * 0.6) break; } if (level === 'easy' || level === 'medium' || level === 'hard') { return pickMoveWithProb(rootMoves, bd, turn, level, bestMove); } return bestMove || rootMoves[0]; }
-function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m === bestM) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
-function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { if ((ply & 2047) === 0 && Date.now() - startTime > limit) return alpha; const ttEntry = tt[hash]; if (ttEntry && ttEntry.depth >= depth) { if (ttEntry.flag === 0) return ttEntry.val; if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; } if (depth <= 0) return quiescence(bd, alpha, beta, turn); let moves = genMoves(bd, turn); if (moves.length === 0) return -MATE_VAL + ply; moves = sortMoves(moves, bd, turn, ply, null); let moveCount = 0; let originalAlpha = alpha; let bestM = null; for (let m of moves) { make(bd, m); let newHash = computeHash(bd); let score; if (moveCount === 0) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } else { score = -alphaBeta(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); if (score > alpha && score < beta) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } } unmake(bd, m); moveCount++; if (Date.now() - startTime > limit) return alpha; if (score > alpha) { alpha = score; bestM = m; historyTable[m.from * 90 + m.to] += depth * depth; } if (alpha >= beta) { if (bd[m.to] === 0) { killerTable[ply * 2 + 1] = killerTable[ply * 2]; killerTable[ply * 2] = m.from * 100 + m.to; } tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; return beta; } } if (alpha > originalAlpha) { tt[hash] = { depth: depth, val: alpha, flag: 0, best: bestM }; } else { tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; } return alpha; }
-function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; }
-function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; }
-function unmake(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; }
-function sortMoves(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS[Math.abs(bd[m.to])] * 10 - VALS[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); }
-function genMoves(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgts(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; }
+
+// 2. 升級版評估函數 (Evaluation): 引入大局觀與陣型判斷
+function evalBd(bd, turn) { 
+    let s = 0; 
+    let phaseMat = 0; // 用於判斷遊戲階段(殘局判定)
+
+    for(let i=0; i<90; i++) { 
+        const p = bd[i]; 
+        if(p===0) continue; 
+        const type = Math.abs(p); 
+        const color = p > 0 ? 1 : -1;
+
+        // 基礎價值與 PST
+        let val = VALS[type] + (PST[type] ? (color > 0 ? PST[type][i] : PST[type][89-i]) : 0); 
+        
+        // 紀錄非兵、將的子力總值，用於判斷殘局
+        if (type > 1 && type < 7) phaseMat += val;
+
+        // --- 陣型與兵種協同加分 (Piece Coordination) ---
+        let col = i % 9;
+        let row = Math.floor(i / 9);
+        let rRow = color === 1 ? row : 9 - row; // 轉為相對列 (0為敵方底線, 9為己方底線)
+
+        // 中炮 / 空頭炮 (Central Cannon)
+        if (type === 2 && col === 4) val += 30;
+        
+        // 沉底車 (Bottom Chariot - 極具威脅的戰術位置)
+        if (type === 3 && rRow < 2) val += 20;
+
+        // 兵卒過河威力加成 (Pawns crossing river)
+        if (type === 1 && rRow < 5) val += (5 - rRow) * 15;
+
+        s += (color === 1 ? val : -val); 
+    } 
+    return s * turn; 
+}
+
+// 3. 完美的迭代加深與時間管理 (Time Management Fallback)
+function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { 
+    const startTime = Date.now(); 
+    const safeTime = timeLimit * 0.95; 
+    let bestMove = null; 
+    let completedBestMove = null; // 【時間管理保護機制】儲存上一次完整算完的最佳步
+    let rootMoves = genMoves(bd, turn); 
+    killerTable.fill(0); 
+    
+    let actualMaxDepth = maxDepth; 
+    if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); 
+    if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); 
+
+    for (let d = 1; d <= actualMaxDepth; d++) { 
+        let alpha = -INFINITY, beta = INFINITY; 
+        let currentBest = null; 
+        rootMoves = sortMoves(rootMoves, bd, turn, 0, bestMove); 
+        let outOfTime = false;
+
+        for (let m of rootMoves) { 
+            make(bd, m); 
+            // 加入 isNullMove = false 參數
+            let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd), false); 
+            unmake(bd, m); 
+            
+            if (Date.now() - startTime > safeTime) {
+                outOfTime = true; // 時間到了，強制中斷此深度的計算
+                break;
+            }
+            if (score > alpha) { 
+                alpha = score; 
+                currentBest = m; 
+            } 
+        } 
+        
+        // 如果這層算到一半超時，直接放棄這層的結果，避免拿到半成品的蠢步
+        if (outOfTime) break; 
+
+        if (currentBest) bestMove = currentBest; 
+        completedBestMove = bestMove; // 確認算完這一層，才將結果設為可用
+
+        if (Date.now() - startTime > safeTime * 0.6) break; 
+    } 
+
+    if (level === 'easy' || level === 'medium' || level === 'hard') { 
+        // 將可靠的 completedBestMove 傳給隨機函數，作為防呆底線
+        return pickMoveWithProb(rootMoves, bd, turn, level, completedBestMove || rootMoves[0]); 
+    } 
+    // 若時間超時，安全地回退到上一層算完的完美結果
+    return completedBestMove || rootMoves[0]; 
+}
+
+function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m.from === bestM.from && m.to === bestM.to) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
+
+// 4. Alpha-Beta 剪枝大集合 (NMP, PVS, LMR)
+function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, isNullMove) { 
+    if ((ply & 1023) === 0 && Date.now() - startTime > limit) return alpha; 
+
+    const ttEntry = tt[hash]; 
+    let ttBest = null;
+    if (ttEntry && ttEntry.depth >= depth) { 
+        if (ttEntry.flag === 0) return ttEntry.val; 
+        if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; 
+        if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; 
+        ttBest = ttEntry.best;
+    } 
+    
+    if (depth <= 0) return quiescence(bd, alpha, beta, turn); 
+
+    // --- 升級 A：空步剪枝 (Null Move Pruning, NMP) ---
+    // 假設我們直接放棄一回合交給對手走，如果評分依然能大於 beta (好過頭了)，
+    // 就代表當前局勢極度優勢，對手根本不會走入這條分支，直接大膽剪枝。
+    if (depth >= 3 && !isNullMove && ply > 0) {
+        let R = 2; // 深度縮減量
+        let nullScore = -alphaBeta(bd, depth - 1 - R, -beta, -beta + 1, -turn, ply + 1, startTime, limit, hash, true);
+        if (nullScore >= beta) return beta; // 成功觸發空步剪枝！
+    }
+
+    let moves = genMoves(bd, turn); 
+    if (moves.length === 0) return -MATE_VAL + ply; 
+    moves = sortMoves(moves, bd, turn, ply, ttBest); 
+
+    let moveCount = 0; 
+    let originalAlpha = alpha; 
+    let bestM = null; 
+
+    for (let m of moves) { 
+        let isCapture = (bd[m.to] !== 0); // 在下子前預先判斷是否為吃子步
+        make(bd, m); 
+        let newHash = computeHash(bd); 
+        let score; 
+
+        // --- 升級 B & C：主要變例搜尋 (PVS) 與 後期著法縮減 (LMR) ---
+        if (moveCount === 0) { 
+            // 經過排序後，第一步最有可能是最佳步，所以用完整的窗口 (Full Window) 進行深搜
+            score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
+        } else { 
+            // LMR (後期著法縮減) 判斷：
+            // 若深度足夠、不是前三佳步、且不是吃子步，通常是廢步，大膽降低計算深度來節省時間
+            let reduction = 0;
+            if (depth >= 3 && moveCount >= 3 && !isCapture) {
+                reduction = 1; 
+            }
+
+            // PVS (零窗口搜尋 Null Window Search)：
+            // 既然這不是第一步，我們假設它比較差，用極窄的視窗 (-alpha-1, -alpha) 快速證明它無法超越目前的最佳解
+            score = -alphaBeta(bd, depth - 1 - reduction, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
+
+            // 如果發現這步竟然比預期的好 (超越了 alpha)，代表排序失準或 LMR 誤判
+            // 必須用完整的窗口、原深度重新嚴格搜尋一次 (Research)
+            if (score > alpha && score < beta) { 
+                score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
+            } 
+        } 
+        unmake(bd, m); 
+        moveCount++; 
+
+        if (Date.now() - startTime > limit) return alpha; // 超時保護
+
+        if (score > alpha) { 
+            alpha = score; 
+            bestM = m; 
+            historyTable[m.from * 90 + m.to] += depth * depth; 
+        } 
+        if (alpha >= beta) { 
+            if (!isCapture) { 
+                killerTable[ply * 2 + 1] = killerTable[ply * 2]; 
+                killerTable[ply * 2] = m.from * 100 + m.to; 
+            } 
+            tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; 
+            return beta; // Alpha-Beta Cutoff
+        } 
+    } 
+
+    if (alpha > originalAlpha) { 
+        tt[hash] = { depth: depth, val: alpha, flag: 0, best: bestM }; 
+    } else { 
+        tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; 
+    } 
+    return alpha; 
+} 
+
+function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; } 
+function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
+function unmake(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; } 
+function sortMoves(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS[Math.abs(bd[m.to])] * 10 - VALS[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); } 
+function genMoves(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgts(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; } 
 function getTgts(bd, i, type, color) { let x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { const dirs = [[0,1],[0,-1],[1,0],[-1,0]]; for(let k=0; k<dirs.length; k++){ let dx=dirs[k][0], dy=dirs[k][1], c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } } } else if(type===4) { const hDirs = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]]; for(let k=0; k<hDirs.length; k++){ let dx=hDirs[k][0], dy=hDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; for(let k=0; k<ds.length; k++){ let dx=ds[k][0], dy=ds[k][1], c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } } } return t; }
 `;
 
