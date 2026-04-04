@@ -76,6 +76,21 @@
             box-sizing: border-box; 
         }
 
+        /* --- 新增修正：CSS頂部極光進度條 (用於電腦 AI 計時倒數) --- */
+        #ai-progress-bar {
+            position: fixed;        /* 固定在視窗最上方 */
+            top: 0; 
+            left: 0; 
+            width: 0%;             /* 初始寬度為 0% */
+            height: 4px;           /* 進度條的高度 */
+            background: linear-gradient(90deg, #00f260, #0575e6); /* 極光綠到藍的漸層 */
+            z-index: 99999;        /* 確保它在所有元素的最上層 */
+            transition: width 0.15s ease-out, opacity 0.3s ease; /* 寬度平滑且加入透明度切換 */
+            box-shadow: 0 0 15px rgba(5, 117, 230, 0.7); /* 外發光效果 */
+            pointer-events: none;  /* 確保進度條不會干擾滑鼠點擊網頁內容 */
+            opacity: 0;            /* 預設為隱藏，啟動計時時顯示 */
+        }
+
         /* === Header === */
         header { 
             /* 修正3：讓頂部 UI 在畫面滾動時黏在上方 */
@@ -252,6 +267,8 @@
 </head>
 <body class="t-classic">
 
+<div id="ai-progress-bar"></div>
+
 <header id="main-header">
     <div class="header-top">
         <h2 id="app-title">象棋大師 2026</h2>
@@ -355,17 +372,26 @@
     
     <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
     
-    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
-        <div style="flex: 30%;">
-            <div class="check-container" onclick="document.getElementById('ghost-check').click()" style="justify-content: space-around; padding: 0 4px; height: 38px;">
-                <label id="lbl-ghost" style="font-size: 0.8rem;">提示</label>
-                <input type="checkbox" id="ghost-check" checked onchange="toggleGhost(); event.stopPropagation();">
+    <div class="set-row flex-split">
+        <div>
+            <div class="check-container" onclick="document.getElementById('ghost-check').click()">
+                <label id="lbl-ghost" style="font-size: 0.85rem;">移動提示</label>
+                <input type="checkbox" id="ghost-check" checked onclick="event.stopPropagation();" onchange="toggleGhost();">
             </div>
         </div>
-        <div style="flex: 30%;">
+        <div>
+            <div class="check-container" onclick="document.getElementById('progress-check').click()">
+                <label id="lbl-progress" style="font-size: 0.85rem;">思考進度</label>
+                <input type="checkbox" id="progress-check" checked onclick="event.stopPropagation();" onchange="toggleProgress();">
+            </div>
+        </div>
+    </div>
+
+    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 50%;">
              <button class="btn" id="btn-rules" style="width:100%; height:38px; background:#2c3e50; border:1px solid #456; padding: 0;" onclick="toggleRules()">📖 規則</button>
         </div>
-         <div style="flex: 40%;">
+         <div style="flex: 50%;">
              <button class="btn" id="btn-home" onclick="goHome()" style="width:100%; height:38px; background:#c0392b; border:1px solid #e74c3c; padding: 0;">🏠 回首頁</button>
         </div>
     </div>
@@ -620,6 +646,7 @@ function getTgts(bd, i, type, color) { let x=i%9, y=Math.floor(i/9), t=[]; const
 const INIT_BD = [-3,-4,-5,-6,-7,-6,-5,-4,-3, 0,0,0,0,0,0,0,0,0, 0,-2,0,0,0,0,0,-2,0, -1,0,-1,0,-1,0,-1,0,-1, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 1,0,1,0,1,0,1,0,1, 0,2,0,0,0,0,0,2,0, 0,0,0,0,0,0,0,0,0, 3,4,5,6,7,6,5,4,3];
 const TXT = {1:"兵",2:"炮",3:"俥",4:"傌",5:"相",6:"仕",7:"帥","-1":"卒","-2":"包","-3":"車","-4":"馬","-5":"象","-6":"士","-7":"將"};
 
+/* 更新翻譯字典，加入 lblProgress，並將 lblGhost 改為移動提示 */
 const TRANSLATIONS = {
     tw: {
         title: "象棋大師 2026",
@@ -645,7 +672,8 @@ const TRANSLATIONS = {
         lblLang: "語言",
         lblBgmVol: "音樂音量",
         lblSfxVol: "音效音量",
-        lblGhost: "提示",
+        lblGhost: "移動提示",
+        lblProgress: "思考進度",
         btnRules: "📖 規則",
         btnHome: "🏠 回首頁",
         btnDone: "完成設定",
@@ -688,7 +716,8 @@ const TRANSLATIONS = {
         lblLang: "语言",
         lblBgmVol: "音乐音量",
         lblSfxVol: "音效音量",
-        lblGhost: "提示",
+        lblGhost: "移动提示",
+        lblProgress: "思考进度",
         btnRules: "📖 规则",
         btnHome: "🏠 回首页",
         btnDone: "完成设置",
@@ -731,7 +760,8 @@ const TRANSLATIONS = {
         lblLang: "Language",
         lblBgmVol: "Music Vol",
         lblSfxVol: "SFX Vol",
-        lblGhost: "Hints",
+        lblGhost: "Move Hints",
+        lblProgress: "AI Progress",
         btnRules: "📖 Rules",
         btnHome: "🏠 Home",
         btnDone: "Done",
@@ -753,7 +783,9 @@ const TRANSLATIONS = {
 };
 
 let bd = [], turn = 1, sel = -1, moves = [], over = false, historyStack = [], lastMoveIdx = -1, worker, isPVP = false, aiTimer = null, aiStartTime = 0, isAiThinking = false, userInteracted = false;
-let lastMoveFrom = -1, lastMovePieceType = 0, showGhost = true;
+let lastMoveFrom = -1, lastMovePieceType = 0;
+// 加入 showAiProgress 變數
+let showGhost = true, showAiProgress = true;
 let currentLang = 'tw'; 
 let viewSide = 1; 
 let dragEl = null;
@@ -818,7 +850,11 @@ function changeLang() {
     document.getElementById('lbl-side').innerText = t.lblSide; 
     document.getElementById('lbl-music').innerText = t.lblMusic;
     document.getElementById('lbl-lang').innerText = t.lblLang;
+    
+    // 更新這兩個變數的名稱
     document.getElementById('lbl-ghost').innerText = t.lblGhost;
+    document.getElementById('lbl-progress').innerText = t.lblProgress;
+    
     document.getElementById('btn-rules').innerText = t.btnRules;
     document.getElementById('btn-home').innerText = t.btnHome; // 更新回首頁按鈕文字
     document.getElementById('btn-done').innerText = t.btnDone;
@@ -919,8 +955,46 @@ function unlockAudio() {
 }
 
 function initWorker() { const blob = new Blob([workerScript], {type: 'application/javascript'}); worker = new Worker(URL.createObjectURL(blob)); worker.onmessage = e => { stopAiTimer(); isAiThinking = false; const move = e.data; if(move) animateAiMove(move.from, move.to); else endGame(TRANSLATIONS[currentLang].aiResign); }; }
-function startAiTimer() { aiStartTime = Date.now(); aiTimer = setInterval(() => { let sec = ((Date.now() - aiStartTime) / 1000).toFixed(1); document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${sec}s)`; }, 100); }
-function stopAiTimer() { clearInterval(aiTimer); }
+
+/* === 新增修正：啟動 AI 倒數計時並計算進度條百分比 === */
+function startAiTimer(totalTime) { 
+    aiStartTime = Date.now(); 
+    const progressBar = document.getElementById('ai-progress-bar');
+    
+    // 顯示進度條並將初始長度歸零
+    if (progressBar && showAiProgress) {
+        progressBar.style.opacity = 1;
+        progressBar.style.width = '0%';
+    }
+
+    aiTimer = setInterval(() => { 
+        let elapsed = Date.now() - aiStartTime;
+        let sec = (elapsed / 1000).toFixed(1); 
+        document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${sec}s)`; 
+
+        // 動態計算百分比，並更新頂部進度條 (確保最高不超過 100%)
+        // 且只有在開啟設定時才去顯示與變動進度條
+        if (progressBar && showAiProgress) {
+            let p = Math.min((elapsed / totalTime) * 100, 100);
+            progressBar.style.opacity = 1; // 確保中途被勾選開啟時會正常浮現
+            progressBar.style.width = p + '%';
+        }
+    }, 100); 
+}
+
+/* === 新增修正：停止 AI 倒數計時，並隱藏/歸零進度條 === */
+function stopAiTimer() { 
+    clearInterval(aiTimer); 
+    const progressBar = document.getElementById('ai-progress-bar');
+    if (progressBar) {
+        // 利用 CSS transition 淡出隱藏
+        progressBar.style.opacity = 0;
+        // 等待淡出動畫結束後，再將進度條長度抽回 0%
+        setTimeout(() => {
+            progressBar.style.width = '0%';
+        }, 300);
+    }
+}
 
 // --- Game Logic Updates ---
 function restart() { 
@@ -1001,6 +1075,8 @@ function render() {
         const pos = getPos(sel);
         marker.style.left = pos.left + "%";
         marker.style.top = pos.top + "%";
+        // 修正：關閉提示時不顯示藍色閃爍框
+        if(!showGhost) marker.style.display = "none";
         div.appendChild(marker);
     }
 
@@ -1017,7 +1093,8 @@ function render() {
     bd.forEach((p, i) => { 
         if(p===0) return; 
         const el = document.createElement('div'); 
-        el.className = `piece ${p>0?'red':'black'} ${i===sel?'selected':''} ${i===lastMoveIdx?'last-move':''}`; 
+        // 修正：加入 showGhost 判斷，關閉時不賦予 'last-move' 樣式
+        el.className = `piece ${p>0?'red':'black'} ${i===sel?'selected':''} ${(showGhost && i===lastMoveIdx)?'last-move':''}`; 
         el.innerText = TXT[p]; 
         const pos = getPos(i);
         el.style.left = pos.left + "%"; 
@@ -1043,6 +1120,8 @@ function render() {
         const pos = getPos(m);
         d.style.left = pos.left + "%"; 
         d.style.top = pos.top + "%"; 
+        // 修正：關閉提示時設為全透明 (看不見，但玩家依然可以點擊該格子移動)
+        if(!showGhost) d.style.opacity = "0";
         d.onmousedown = (e) => { e.stopPropagation(); makeMove(sel, m); }; 
         d.ontouchstart = (e) => { e.stopPropagation(); makeMove(sel, m); };
         div.appendChild(d); 
@@ -1150,9 +1229,12 @@ function makeMove(from, to) {
         document.getElementById('msg').innerText = t.thinking; 
         document.getElementById('msg').style.color = "#e74c3c"; 
         isAiThinking = true; 
-        startAiTimer(); 
         const diffKey = document.getElementById('diff-sel').value;
         const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
+        
+        /* === 新增修正：啟動並傳入電腦思考總時間 === */
+        startAiTimer(levelConfig.time); 
+        
         setTimeout(() => worker.postMessage({ bd: bd, limit: levelConfig, turn: turn, level: diffKey }), 50); 
     } else { 
         updateStatus(); 
@@ -1194,6 +1276,16 @@ function changeMusic() {
 }
 
 function toggleGhost() { showGhost = document.getElementById('ghost-check').checked; render(); }
+
+// 新增功能：控制電腦進度條是否要顯示
+function toggleProgress() { 
+    showAiProgress = document.getElementById('progress-check').checked; 
+    const progressBar = document.getElementById('ai-progress-bar');
+    // 若被取消勾選，則立即將特效透明度設為0以隱藏
+    if (!showAiProgress && progressBar) {
+        progressBar.style.opacity = 0;
+    }
+}
 
 // 新增功能：回首頁
 function goHome() {
