@@ -123,7 +123,6 @@
         /* 31. 預設 */
         /* data-back="default" uses default styles defined in root themes */
 
-
         html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
         body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: var(--bg-grad); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; color: white; transition: background 0.5s; touch-action: none; box-sizing: border-box; }
 
@@ -227,9 +226,14 @@
             height: var(--piece-size);
             max-width: none;
             max-height: none;
-            aspect-ratio: auto; /* 交由動態的絕對寬高維持圓形 */
+            aspect-ratio: auto; 
             border-radius: 50% !important; 
             
+            /* === 新增修正區塊 === */
+            flex-shrink: 0;               /* 修正 1：防止受 flex 擠壓變形成橢圓，避免邊角圖案被切斷 */
+            background-clip: padding-box; /* 修正 2：限制背景圖案渲染到 border 內側，防止從半透明邊框滲出造成的視覺切割感 */
+            /* =================== */
+
             background: var(--piece-bg); border: 3px solid var(--piece-border); box-shadow: var(--piece-shadow); 
             display: flex; justify-content: center; align-items: center; 
             
@@ -517,8 +521,43 @@
         { name: '將', rank: 7, color: 'black', count: 1 }, { name: '士', rank: 6, color: 'black', count: 2 }, { name: '象', rank: 5, color: 'black', count: 2 }, { name: '車', rank: 4, color: 'black', count: 2 }, { name: '馬', rank: 3, color: 'black', count: 2 }, { name: '包', rank: 2, color: 'black', count: 2 }, { name: '卒', rank: 1, color: 'black', count: 5 }
     ];
 
+    /* -------------------------------------------------------------------------
+       進步空間實作 3: 加入置換表 (Transposition Table / Zobrist Hashing)
+       說明: 快取已評估過的盤面，大幅節省算力，讓 AI 可以推得更深。
+    ------------------------------------------------------------------------- */
+    const ZOBRIST = { table: [], turn: 0 };
+    const TT = new Map(); // Transposition Table
+    const EXACT = 0, LOWERBOUND = 1, UPPERBOUND = 2;
+
+    // 產生隨機數用於 Zobrist 雜湊 (32-bit integer)
+    for(let i=0; i<32; i++) {
+        ZOBRIST.table[i] = [];
+        for(let j=0; j<16; j++) ZOBRIST.table[i][j] = Math.floor(Math.random() * 0x7FFFFFFF); // 0=empty, 1~7=red, 8~14=black, 15=hidden
+    }
+    ZOBRIST.turn = Math.floor(Math.random() * 0x7FFFFFFF);
+
+    function getPieceCode(p) {
+        if (!p) return 0;
+        if (p.hidden) return 15;
+        let base = p.color === 'red' ? 0 : 7;
+        return base + p.rank;
+    }
+
+    function computeHash(b, turnColor) {
+        let h = 0;
+        for(let i=0; i<32; i++) {
+            if(b[i]) h ^= ZOBRIST.table[i][getPieceCode(b[i])];
+        }
+        if(turnColor === 'black') h ^= ZOBRIST.turn;
+        return h;
+    }
+
     self.onmessage = function(e) {
         const { board, aiColor, config, hiddenIndices } = e.data;
+        
+        // 定期清理置換表，避免記憶體溢出
+        if (TT.size > 300000) TT.clear(); 
+        
         const result = runAI(board, aiColor, config, hiddenIndices);
         self.postMessage(result);
     };
@@ -530,16 +569,26 @@
         const start = Date.now();
         let depth = 1;
         
+        /* 【防笨機制：回到上一層最優步數】
+           此處採用 Iterative Deepening (迭代加深搜索)。
+           如果某一層在搜索途中拋出 "TO" (Timeout 例外)，try-catch 會中斷迴圈。
+           此時 `bestM` 不會被不完整的搜索結果覆蓋，而是穩穩地保留「上一層」已經完整運算過的最優步，
+           完美符合「時間快到時，回到上一層最優步」的要求！
+        */
         try {
             while (depth <= config.depth) {
                 let m = abRoot(board, depth, aiColor, start, config.time, config, poolScore, hiddenIndices.length);
-                if (m) bestM = m; 
-                if (m && m.score > 20000) break;
-                if (Date.now() - start > config.time - 50) break;
+                if (m) bestM = m; // 只有當 abRoot 完整跑完沒拋出例外時，才更新 bestM
+                if (m && m.score > 20000) break; // 已經找到必勝步(吃王)，直接跳出
+                if (Date.now() - start > config.time - 50) break; // 逼近時間極限，不再推深
                 depth++;
             }
-        } catch(err) {}
+        } catch(err) {
+            // "TO" Timeout thrown. 
+            // 這裡捕捉超時，確保 bestM 依然是上一層的健康數據。
+        }
 
+        // 如果真的毫無步數可走，或者是弱智模式下的隨機性
         if (config.errorRate > 0 && Math.random() < config.errorRate) {
             let rnds = genMoves(aiColor, board);
             if (hiddenIndices.length) rnds.push({ type: 'flip', from: hiddenIndices[0] });
@@ -556,6 +605,21 @@
             if(rem > 0) val += (d.color===ac ? SCORES[d.rank] : -SCORES[d.rank]) * rem;
         });
         return val;
+    }
+
+    /* -------------------------------------------------------------------------
+       進步空間實作 1: 處理未知的機率 (引入 Expectimax 概念)
+       說明: 取得目前尚未翻開的棋子清單，用以計算期望值
+    ------------------------------------------------------------------------- */
+    function getHiddenPoolDetailed(b) {
+        let counts = {};
+        PIECES_DEF.forEach(d => counts[d.color + d.rank] = { ...d, remaining: d.count });
+        b.forEach(p => {
+            if (p && !p.hidden) {
+                counts[p.color + p.rank].remaining--;
+            }
+        });
+        return Object.values(counts).filter(x => x.remaining > 0);
     }
 
     function abRoot(b, d, c, st, lim, cfg, ps, hCnt) {
@@ -577,13 +641,16 @@
             let tryCnt = Math.min(5, cands.length);
             for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
 
+            // 基礎翻牌分數
             let baseFlip = cfg.expect ? (ps / hCnt) : 10;
             let currentEval = evalBd(c, b, true);
-            if(currentEval < -500) baseFlip += 150;
+            if(currentEval < -500) baseFlip += 150; // 落後時更傾向翻牌
 
             for(let k=0; k<tryCnt; k++) {
                 let idx = cands[k];
                 let score = baseFlip;
+                
+                // 初步危險迴避 (如果不做 Expectimax，至少做這個)
                 let neighbors = getNeighbors(idx);
                 neighbors.forEach(n => {
                     let np = b[n];
@@ -604,10 +671,38 @@
 
         for(let m of ms) {
             if(Date.now()-st > lim) throw "TO"; 
-            let v;
+            let v = 0;
             
             if(m.type==='flip') {
-                v = evalBd(c, b, cfg.enhanced) + m.score; 
+                /*
+                  【Expectimax 機率運算】
+                  當 cfg.expect 開啟且深度夠時，我們不依賴靜態估值，
+                  而是模擬翻開「剩下的每一種可能棋子」，並給予淺層(depth 1)搜索，
+                  最後按照機率(剩餘數量/總隱藏數)做加權平均期望值。
+                  這讓 AI 真正理解「這格翻開是好是壞」。
+                */
+                if (cfg.expect && d >= 2) {
+                    let pool = getHiddenPoolDetailed(b);
+                    let totalHidden = pool.reduce((sum, pDef) => sum + pDef.remaining, 0);
+                    let expectedValue = 0;
+                    
+                    if (totalHidden > 0) {
+                        for (let pDef of pool) {
+                            let prob = pDef.remaining / totalHidden;
+                            // 模擬翻開這顆棋子
+                            b[m.from] = { name: pDef.name, rank: pDef.rank, color: pDef.color, hidden: false };
+                            // 對手視角的淺層估值
+                            let simV = -ab(1, -beta, -alpha, c==='red'?'black':'red', st, lim, b, cfg);
+                            expectedValue += simV * prob;
+                        }
+                        b[m.from] = { hidden: true }; // 復原
+                        v = expectedValue;
+                    } else {
+                        v = evalBd(c, b, cfg.enhanced) + m.score; 
+                    }
+                } else {
+                    v = evalBd(c, b, cfg.enhanced) + m.score; 
+                }
             } else {
                 let cap = b[m.to];
                 b[m.to]=b[m.from]; b[m.from]=null;
@@ -628,30 +723,69 @@
         if(Date.now()-st > lim) throw "TO";
         if(d===0) return cfg.qs ? quiesce(alf, bet, c, b, cfg) : evalBd(c, b, cfg.enhanced);
 
+        // 【查詢置換表 TT】
+        let hash = computeHash(b, c);
+        if (TT.has(hash)) {
+            let entry = TT.get(hash);
+            if (entry.depth >= d) {
+                if (entry.flag === EXACT) return entry.score;
+                if (entry.flag === LOWERBOUND && entry.score >= bet) return entry.score;
+                if (entry.flag === UPPERBOUND && entry.score <= alf) return entry.score;
+            }
+        }
+
         let ms = genMoves(c, b);
         if(ms.length===0) return -30000; 
         ms.sort((x,y)=>y.score-x.score);
 
         let bestVal = -Infinity;
+        let origAlpha = alf;
+
         for(let m of ms) {
             let cap = b[m.to];
             b[m.to]=b[m.from]; b[m.from]=null;
             let v = -ab(d-1, -bet, -alf, c==='red'?'black':'red', st, lim, b, cfg);
             b[m.from]=b[m.to]; b[m.to]=cap;
+            
             if(v > bestVal) bestVal = v;
             alf = Math.max(alf, v);
             if(alf >= bet) break;
         }
+
+        // 【存入置換表 TT】
+        let flag = EXACT;
+        if (bestVal <= origAlpha) flag = UPPERBOUND;
+        else if (bestVal >= bet) flag = LOWERBOUND;
+        TT.set(hash, { depth: d, score: bestVal, flag: flag });
+
         return bestVal;
     }
 
+    /* -------------------------------------------------------------------------
+       進步空間實作 4: 靜止搜索 (Quiescence Search) 的盲點修正
+       說明: 解決 Horizon Effect，當大子(將、士、象)受威脅時，允許產生迴避步，避免被白吃。
+    ------------------------------------------------------------------------- */
     function quiesce(alf, bet, c, b, cfg) {
         let stand = evalBd(c, b, cfg.enhanced);
         if(stand >= bet) return bet;
         if(stand > alf) alf = stand;
 
-        let ms = genMoves(c, b).filter(m => b[m.to]); 
-        ms.sort((x,y)=>y.score-x.score);
+        let allMoves = genMoves(c, b);
+        // 1. 保留所有吃子動作
+        let captureMoves = allMoves.filter(m => b[m.to] !== null);
+        
+        // 2. 盲點修正：若局勢明顯落後 (stand < alf - 1000) 或重要棋子受威脅，
+        // 我們額外將「大牌 (rank >= 5) 的移動」也納入靜止搜索中，做為迴避步 (Evasion)
+        let evasionMoves = [];
+        if (stand < alf - 800) { 
+            evasionMoves = allMoves.filter(m => {
+                let p = b[m.from];
+                return p && p.rank >= 5 && b[m.to] === null;
+            });
+        }
+        
+        let ms = captureMoves.concat(evasionMoves);
+        ms.sort((x,y) => y.score - x.score);
 
         for(let m of ms) {
             let cap = b[m.to];
@@ -664,6 +798,10 @@
         return alf;
     }
 
+    /* -------------------------------------------------------------------------
+       進步空間實作 2: 強化局面評估函數 (Enhanced Evaluation Function)
+       說明: 除了原本的算子力，加入「牽制」、「保護」、「角落封鎖」等陣型判斷。
+    ------------------------------------------------------------------------- */
     function evalBd(c, b, enh) {
         let score = 0;
         let myP = [], opP = [];
@@ -675,6 +813,8 @@
                 if(p.color === c) { myP.push({p, i}); myLive++; } 
                 else { opP.push({p, i}); opLive++; }
                 let v = SCORES[p.rank];
+                
+                // 陣型加分：棋子佔據中央區塊較有優勢
                 if(enh) {
                     if((i%4)>=1 && (i%4)<=2 && Math.floor(i/4)>=2 && Math.floor(i/4)<=5) v += 10;
                 }
@@ -687,32 +827,51 @@
 
         if(!enh) return score;
 
+        // 炮的潛力
         myP.forEach(item => { if(item.p.rank === 2) score += scanCannonPotency(item.i, b, c); });
         opP.forEach(item => { if(item.p.rank === 2) score -= scanCannonPotency(item.i, b, item.p.color); });
 
+        // 機動力 (能走的步數)
         myP.forEach(item => { let moves = getMovesCnt(item.i, b, item.p); score += moves * 3; });
         opP.forEach(item => { let moves = getMovesCnt(item.i, b, item.p); score -= moves * 3; });
 
+        // 【新增防守價值與牽制判斷】
         let opHasKing = opP.some(x => x.p.rank === 7);
         let myHasKing = myP.some(x => x.p.rank === 7);
         
         if(myHasKing) {
             myP.filter(x => x.p.rank === 7).forEach(k => {
-                getNeighbors(k.i).forEach(nIdx => {
+                let nbs = getNeighbors(k.i);
+                // 檢查周圍有無危險的敵方小兵
+                nbs.forEach(nIdx => {
                     let nP = b[nIdx];
                     if(nP && !nP.hidden && nP.color !== c && nP.rank === 1) score -= 800; 
-                    if(nP && nP.hidden) score -= 50; 
+                    if(nP && nP.hidden) score -= 50; // 對未知的恐懼
                 });
+                
+                // 檢查角落封鎖 (如果將/帥在角落，且被包圍，極度危險)
+                if ([0, 3, 28, 31].includes(k.i)) {
+                    let blocked = nbs.every(nIdx => b[nIdx] !== null);
+                    if (blocked) score -= 150;
+                }
             });
         }
         if(opHasKing) {
             opP.filter(x => x.p.rank === 7).forEach(k => {
-                getNeighbors(k.i).forEach(nIdx => {
+                let nbs = getNeighbors(k.i);
+                nbs.forEach(nIdx => {
                     let nP = b[nIdx];
                     if(nP && !nP.hidden && nP.color === c && nP.rank === 1) score += 800;
                 });
+                
+                // 對手角落封鎖加分
+                if ([0, 3, 28, 31].includes(k.i)) {
+                    let blocked = nbs.every(nIdx => b[nIdx] !== null);
+                    if (blocked) score += 150;
+                }
             });
         }
+        
         return score;
     }
 
@@ -731,6 +890,7 @@
             }
             if (count === 1) val += 20; 
             if (count === 2 && target && !target.hidden && target.color !== color) {
+                // 炮鎖定了敵方目標，給予牽制加分
                 val += SCORES[target.rank] * 0.6;
             }
         });
@@ -792,7 +952,6 @@
         
         if(p1.rank===2) { 
             if(!p2) return d===1;
-            
             if(p2.hidden) return false; 
             if(x1!==x2 && y1!==y2) return false;
             let c=0, s=Math.min(f,t)+(y1===y2?1:4), e=Math.max(f,t), st=y1===y2?1:4;
@@ -810,7 +969,6 @@
 
     function getNeighbors(i) { const x=i&3, y=i>>2; let n=[]; if(x>0)n.push(i-1); if(x<3)n.push(i+1); if(y>0)n.push(i-4); if(y<7)n.push(i+4); return n; }
 </script>
-
 <script>
 // === Text & Language Data ===
 const TRANSLATIONS = {
@@ -1065,7 +1223,6 @@ let lastWinW = 0;
 function resizeBoard() { 
     const isMobileLandscape = window.matchMedia("(orientation: landscape)").matches && window.innerWidth < 1024;
 
-    // * 修正 1: 取得真實可用視窗尺寸 (去除網址列等干擾)
     let actualW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     let actualH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
@@ -1076,20 +1233,17 @@ function resizeBoard() {
 
     const h = document.getElementById('main-header').offsetHeight;
     
-    // * 修正 2: 依據螢幕類型設定不同的安全邊距 (桌機不需要大邊距，能恢復滿版大畫面)
     const isDesktop = winW >= 1024;
-    const safePaddingW = isDesktop ? 16 : 40; // 電腦版左右留白少，手機版給足40px防邊界切斷
-    const safePaddingH = isDesktop ? 16 : 50; // 電腦版上下留白少，手機版給足50px避開動態島與底橫條
+    const safePaddingW = isDesktop ? 16 : 40;
+    const safePaddingH = isDesktop ? 16 : 50;
     
     const availW = winW - safePaddingW; 
     const availH = winH - h - safePaddingH; 
     
-    // * 修正 3: 完美以 1:2 (4列 x 8行) 的比例算出棋盤精準的像素，決不超出版面
     let fw = availW; 
-    let fh = fw * 2; // 先以極限寬度換算高度
+    let fh = fw * 2;
     
     if (fh > availH) { 
-        // 如果高度超出了可用高度，則改以高度為極限反推寬度
         fh = availH; 
         fw = fh / 2; 
     } 
@@ -1099,8 +1253,6 @@ function resizeBoard() {
     bw.style.height = fh + "px"; 
     bw.style.fontSize = (fw / 4) + "px"; 
     
-    // * 修正 4: 動態計算每一顆棋子的「絕對像素大小 (px)」寫入 CSS 變數。
-    // 每格大小約為 fw / 4，棋子佔每格的 88%，這樣就能確保不管格子多怪異都不會切到棋子
     const cellSize = fw / 4;
     const exactPieceSize = cellSize * 0.88;
     document.documentElement.style.setProperty('--piece-size', exactPieceSize + 'px');
@@ -1132,7 +1284,6 @@ function render() {
             dragEl.innerText = bd[sel].name;
             dragEl.style.fontSize = (parseFloat(w.style.fontSize) * 0.65) + "px"; 
             
-            /* 修正: 讀取 JS 精確計算出來的絕對像素大小 */
             dragEl.style.width = "var(--piece-size)"; 
             dragEl.style.height = "var(--piece-size)";
             document.body.appendChild(dragEl);
@@ -1275,11 +1426,9 @@ function animateAiMove(f, t) {
     animEl.innerText = p.name;
     animEl.style.fontSize = (parseFloat(fontSize) * 0.65) + "px";
     
-    /* 修正: 使用 JS 精確計算的絕對尺寸 */
     animEl.style.width = "var(--piece-size)"; 
     animEl.style.height = "var(--piece-size)";
     
-    /* 動態讀取當前 CSS 計算好的 pieceSize 來調整動畫起迄偏移值 */
     const pSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--piece-size'));
     animEl.style.top = (startRect.top + startRect.height/2 - pSize/2) + "px";
     animEl.style.left = (startRect.left + startRect.width/2 - pSize/2) + "px";
@@ -1348,7 +1497,6 @@ function isValidMove(f, t, b=bd) {
 
 function checkWin() {
     const t = TRANSLATIONS[currentLang];
-    // Calculate pieces count
     const rCnt = bd.filter(p=>p && p.color==='red').length;
     const bCnt = bd.filter(p=>p && p.color==='black').length;
 
@@ -1360,8 +1508,6 @@ function checkWin() {
         if (isPVP) {
             endGame(winner === 'red' ? t.msg_red_win : t.msg_black_win);
         } else {
-            // PvE: Compare winner with player's color
-            // myColor is set when player flips the first piece
             if (winner === myColor) {
                 endGame(t.msg_win);
             } else {
@@ -1436,7 +1582,6 @@ function changeMode() { isPVP = document.getElementById('mode-sel').value === 'p
 
 function updateText() {
     const t = TRANSLATIONS[currentLang];
-    // Static IDs
     document.getElementById('txt-title').innerText = t.title;
     document.getElementById('btn-settings').innerText = t.btn_settings;
     document.getElementById('btn-undo').innerText = t.btn_undo;
@@ -1446,7 +1591,6 @@ function updateText() {
     document.getElementById('opt-pvp').innerText = t.opt_pvp;
     document.getElementById('lbl-theme').innerText = t.lbl_theme;
     
-    // Themes options
     document.getElementById('opt-t-classic').innerText = t.opt_t_classic;
     document.getElementById('opt-t-ink').innerText = t.opt_t_ink;
     document.getElementById('opt-t-dark').innerText = t.opt_t_dark;
@@ -1455,7 +1599,6 @@ function updateText() {
     document.getElementById('opt-t-gold').innerText = t.opt_t_gold;
     document.getElementById('opt-t-ocean').innerText = t.opt_t_ocean;
     document.getElementById('opt-t-royal').innerText = t.opt_t_royal;
-    // New Themes
     document.getElementById('opt-t-cyber').innerText = t.opt_t_cyber;
     document.getElementById('opt-t-sakura').innerText = t.opt_t_sakura;
     document.getElementById('opt-t-vintage').innerText = t.opt_t_vintage;
@@ -1473,7 +1616,6 @@ function updateText() {
     document.getElementById('lbl-music').innerText = t.lbl_music;
     document.getElementById('opt-mute').innerText = t.opt_mute;
     
-    // Music options (New logic: 01-07)
     document.getElementById('opt-m-01').innerText = t["opt_m_01"];
     document.getElementById('opt-m-02').innerText = t["opt_m_02"];
     document.getElementById('opt-m-03').innerText = t["opt_m_03"];
@@ -1489,20 +1631,17 @@ function updateText() {
     document.getElementById('btn-done').innerText = t.btn_done;
     document.getElementById('rules-content').innerHTML = t.rules_html;
     
-    // New Back Styles
     document.getElementById('lbl-back').innerText = t.lbl_back;
     document.getElementById('opt-b-default').innerText = t["opt-b-default"];
     
-    // Update all 30 options
     for(let i=1; i<=30; i++) {
         const key = "opt-b-" + i;
         if(document.getElementById(key)) document.getElementById(key).innerText = t[key];
     }
 
-    // Dynamic Labels handled by adj functions
     adjMusicVol();
     adjSfxVol();
-    updateUI(); // Refresh Status Bar
+    updateUI(); 
 }
 
 function changeLang() {
