@@ -17,7 +17,7 @@
             
             /* 統一邊框寬度，避免切換風格時跳動 */
             --border-width: 12px;
-            --border-style: solid; /* 修正1：這裡統一改為固定的 solid，避免瀏覽器在 50% 圓角上渲染 ridge/double 導致的半圓形破圖 Bug */
+            --border-style: solid; 
             --border-color: #5d4037;
             
             --safe-top: env(safe-area-inset-top, 0px); 
@@ -32,7 +32,6 @@
         }
 
         /* === 視覺風格定義 === */
-        /* 注意：為了維持外框的完美圓形，所有的 --border-style 都已經在 CSS 渲染層強制視為 solid */
         body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: rgba(93, 64, 55, 0.4); --border-color: #6d4c41; }
         body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --hole-bg: rgba(0,0,0,0.1); --line-color: rgba(66, 66, 66, 0.2); --border-color: #424242; }
         body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --hole-bg: rgba(0,77,64,0.3); --line-color: rgba(0, 77, 64, 0.3); --border-color: #00695c; }
@@ -48,7 +47,6 @@
         body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --hole-bg: #eee; --line-color: rgba(34, 34, 34, 0.1); --border-color: #222; }
         body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --hole-bg: #111; --line-color: rgba(119, 119, 119, 0.3); --border-color: #555; }
 
-        /* 修正3：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
         html, body { min-height: 100vh; width: 100%; overflow: auto; overscroll-behavior: none; }
         
         body { 
@@ -61,14 +59,22 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            /* 修正3：開啟 touch-action，讓捲動行為生效 */
             touch-action: auto; 
             box-sizing: border-box; 
         }
 
+        /* --- CSS頂部極光進度條 --- */
+        #scroll-progress-bar {
+            position: fixed; 
+            top: 0; left: 0; width: 0%; height: 4px; 
+            background: linear-gradient(90deg, #00f260, #0575e6); 
+            z-index: 99999; transition: width 0.15s ease-out; 
+            box-shadow: 0 0 15px rgba(5, 117, 230, 0.7); 
+            pointer-events: none; 
+        }
+
         /* === 頂部 UI 樣式 === */
         header { 
-            /* 修正3：讓頂部 UI 在畫面滾動時黏在上方 */
             position: sticky; top: 0; left: 0;
             width: 100%; height: auto; display: flex; flex-direction: column; 
             align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; 
@@ -81,62 +87,37 @@
         .header-top { display: flex; align-items: center; justify-content: center; gap: 15px; width: 95%; max-width: 600px; flex-wrap: wrap;}
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
         
-        /* 調整2：讓 status 成為橫向排列，移除會造成斷行的 width 和 justify-content 設定 */
         .status { color: #f1c40f; font-weight: bold; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; display: flex; align-items: center; gap: 15px; justify-content: center; width: auto; flex-direction: row;}
         
         .turn-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.5); vertical-align: middle; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .player-info { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #ddd; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; }
 
         .btn-group { display: flex; gap: 8px; align-items: center; margin-top: 5px;}
-        /* UI 穩定性修改：設定 min-width 確保英文切換時不跳動 */
         .btn { 
             background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
             color: #f0f0f0; padding: 5px 12px; border-radius: 20px; 
             cursor: pointer; font-size: 0.85rem; transition: all 0.2s; 
             white-space: nowrap; backdrop-filter: blur(4px); 
             box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            min-width: 80px; /* 強制最小寬度 */
-            text-align: center;
+            min-width: 80px; text-align: center;
         }
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
-        
-        /* 修正3：手動縮放按鈕樣式 */
         .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
         
-        /* 預設隱藏，加上 !important 確保權重 (桌機預設隱藏) */
         .mobile-only { display: none !important; } 
 
-        /* 當螢幕寬度小於 1000px，或是偵測到「觸控螢幕裝置」時，強制顯示縮放按鈕 */
         @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
             .mobile-only { display: inline-block !important; }
         }
 
         /* === 橫向模式 UI 適配 === */
-        body.is-landscape {
-            flex-direction: row; 
-            padding-left: var(--safe-left);
-            padding-right: var(--safe-right);
-            justify-content: center;
-        }
-        body.is-landscape header {
-            width: 160px; 
-            height: 100vh; 
-            padding: 0;
-            border-bottom: none;
-            border-right: 1px solid rgba(255,255,255,0.1);
-            justify-content: center; 
-            flex-direction: column;
-            gap: 20px;
-            background: rgba(0,0,0,0.4);
-        }
+        body.is-landscape { flex-direction: row; padding-left: var(--safe-left); padding-right: var(--safe-right); justify-content: center; }
+        body.is-landscape header { width: 160px; height: 100vh; padding: 0; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); justify-content: center; flex-direction: column; gap: 20px; background: rgba(0,0,0,0.4); }
         body.is-landscape .header-top { flex-direction: column; width: 100%; gap: 10px; margin: 0; }
         body.is-landscape h2 { white-space: normal; text-align: center; }
-        
-        /* 調整2：橫向模式下，也保持 UI 同列相鄰或適當置中排列 */
         body.is-landscape .status { font-size: 0.9rem; margin-bottom: 10px; text-align: center; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px;}
-        
         body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 15px; }
         body.is-landscape .btn { width: 85%; text-align: center; padding: 10px 0; }
 
@@ -144,7 +125,6 @@
         #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
         .set-row { margin-bottom: 12px; }
         .flex-split { display: flex; gap: 10px; justify-content: space-between; }
-        /* UI 穩定性修改：使用 flex: 1 1 0 確保欄位均分，不受文字長度影響 */
         .flex-split > div { flex: 1 1 0; display: flex; flex-direction: column; width: 0; }
         .vol-row > div { padding: 0 10px; } 
         label { font-size: 0.85rem; margin-bottom: 5px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -153,106 +133,78 @@
         input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; }
 
         /* === 遊戲容器與棋盤 === */
-        /* 修正3：加上 overflow: auto 允許縮放後捲動，並加上 touch-action: none 徹底防止瀏覽器原生手勢干擾此區塊 */
         #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; width: 100%; box-sizing: border-box; touch-action: none; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
-        /* 修正：簡約、扁平的「雙重外框」設計 */
         .board-wrap { 
             position: relative; 
             background: var(--board-bg);
-            
-            /* 1. 外層主邊框：將粗細調細為 6px，讓雙線比例更優雅 */
             border: 6px solid var(--border-color);
             border-radius: 50%; 
             aspect-ratio: 1 / 1; 
-            
-            /* 這裡統一透過 var(--board-size) 讓 JS 能動態一鍵控制所有尺寸 */
             width: var(--board-size); 
             height: var(--board-size);
             min-width: var(--board-size); 
             min-height: var(--board-size);
             max-width: var(--board-size); 
             max-height: var(--board-size);
-
-            /* 2. 巧用 box-shadow 畫出無縫的「間隔」與「內側細線」 */
-            box-shadow: 
-                /* 底部柔和投影，保持扁平輕盈感 */
-                0 15px 40px rgba(0,0,0,0.4),
-                /* 內層第 1 圈 (間隙)：寬度 4px，填入與盤面相同的底色 */
-                inset 0 0 0 4px var(--board-bg),
-                /* 內層第 2 圈 (內線)：推到 6px (4px間隙 + 2px細線)，填入邊框顏色 */
-                inset 0 0 0 6px var(--border-color);
-            
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4), inset 0 0 0 4px var(--board-bg), inset 0 0 0 6px var(--border-color);
             box-sizing: border-box; 
             flex-shrink: 0; 
-            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; /* 調整 transition 以防縮放時卡頓 */
+            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; 
             background-clip: padding-box;
-            
-            /* 修正3：確保放大超出螢幕時，利用 margin auto 使其能被正常捲動而不裁切左上角 */
             margin: auto; 
         }
 
         .board-inner { position: relative; width: 100%; height: 100%; }
-        
         svg.board-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         circle.hole { fill: var(--hole-bg); transition: fill 0.2s, stroke 0.3s; } 
         line.grid-line { stroke: var(--line-color); stroke-width: 2.5px; stroke-linecap: round; }
         
-        /* 互動層 */
         .piece { 
             position: absolute; margin: 0; 
-            /* 修正2：放大棋子尺寸 (由 4.8% 提升至 5.4%) */
             width: 5.4%; height: 5.4%; 
             transform: translate(-50%, -50%) scale(0.85); border-radius: 50%; 
             box-shadow: var(--piece-shadow); cursor: pointer; z-index: 10; 
             transition: top var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), left var(--anim-speed) cubic-bezier(0.25, 1, 0.5, 1), transform 0.1s; 
         }
         .piece.no-anim { transition: none !important; }
-
         .piece.selected { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 10px #fff; z-index: 100; }
         
         .piece.ghost { 
-            opacity: 0.5; 
-            pointer-events: none; 
-            z-index: 5; 
-            box-shadow: none; 
-            filter: grayscale(40%);
-            border: 2px dashed rgba(255, 255, 255, 0.6);
+            opacity: 0.5; pointer-events: none; z-index: 5; box-shadow: none; 
+            filter: grayscale(40%); border: 2px dashed rgba(255, 255, 255, 0.6);
             transform: translate(-50%, -50%) scale(0.8);
         }
         
         .piece.last-move::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 30%; height: 30%; background: #00e5ff; border-radius: 50%;
-            box-shadow: 0 0 4px #000;
+            width: 30%; height: 30%; background: #00e5ff; border-radius: 50%; box-shadow: 0 0 4px #000;
         }
 
         .piece.p1 { background: var(--p1-color); }
         .piece.p6 { background: var(--p6-color); }
-        /* 支援其他多色 ID */
         .piece.p2 { background: var(--p2-color); }
         .piece.p3 { background: var(--p3-color); }
         .piece.p4 { background: var(--p4-color); }
         .piece.p5 { background: var(--p5-color); }
 
         .hint {
-            position: absolute; 
-            /* 修正2：同步放大提示點尺寸 (由 5% 提升至 5.4%) */
-            width: 5.4%; height: 5.4%; 
+            position: absolute; width: 5.4%; height: 5.4%; 
             transform: translate(-50%, -50%); border-radius: 50%;
             background: var(--hint-color); z-index: 5; cursor: pointer;
             animation: pulse 1.5s infinite;
         }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
 
-        /* === 獲勝宣告樣式 === */
+        /* === 修正1：獲勝宣告樣式 (棋盤80%大，完美支援 RWD) === */
         #win-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
             pointer-events: none; opacity: 0; z-index: 1000; white-space: nowrap; 
-            font: 900 2.5em "Microsoft JhengHei", sans-serif; 
-            letter-spacing: 6px; color: #fff; -webkit-text-stroke: 1px #fff; 
-            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; 
+            /* 利用 vmin 單位，確保在所有裝置上都能完美滿版 (約佔據盤面 80%) */
+            font: 900 12vmin "Microsoft JhengHei", sans-serif; 
+            letter-spacing: 1vmin; color: #fff; -webkit-text-stroke: 0.5vmin #fff; 
+            text-shadow: 0 0 2vmin #0ff, 0 0 4vmin #0ff, 0 0 8vmin #0ff; 
         }
         #win-overlay.show { opacity: 1; animation: win 2.5s ease-in-out infinite, hue 4s linear infinite; }
         @keyframes win { 
@@ -269,6 +221,8 @@
     </style>
 </head>
 <body class="t-classic">
+
+<div id="scroll-progress-bar"></div>
 
 <header id="main-header">
     <div class="header-top">
@@ -375,13 +329,23 @@
     <div class="set-row flex-split" style="margin-top:12px; align-items: flex-end;">
         <div style="flex: 1;">
             <label id="lbl-color">玩家棋色</label>
-            <select id="color-sel" onchange="restart()">
+            <select id="color-sel" onchange="updatePlayerColor()">
             </select>
         </div>
-        <div style="flex: 1; padding-left: 10px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+        <div style="flex: 1;"></div>
+    </div>
+    
+    <div class="set-row flex-split" style="margin-top:10px; align-items: flex-end;">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
             <label style="cursor:pointer; display:flex; align-items:center;">
-                <input type="checkbox" id="anim-toggle" checked onchange="toggleAnim()">
-                <span id="lbl-anim" style="margin-left:8px; color:#fff;">移動動畫</span>
+                <input type="checkbox" id="hint-toggle" checked onchange="toggleHints()">
+                <span id="lbl-hint" style="margin-left:8px; color:#fff;">移動提示</span>
+            </label>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+            <label style="cursor:pointer; display:flex; align-items:center;">
+                <input type="checkbox" id="aiprog-toggle" checked onchange="toggleAiProgress()">
+                <span id="lbl-aiprog" style="margin-left:8px; color:#fff;">電腦思考進度</span>
             </label>
         </div>
     </div>
@@ -449,175 +413,319 @@ const PIECE_COLORS = [
     { id: "pink", name: "甜心粉", val: "radial-gradient(circle at 30% 30%, #ff80ab, #c51162)", enName: "Pink" }
 ];
 
-/* === Web Worker：AI 核心 (強化版 - 攻擊型) === */
+/* === Web Worker：MCTS + Heuristic 最強 AI 核心 === */
 const workerScript = `
-let ADJ = {}; let JUMP_ADJ = {};
-let coords = [];
+let ADJ = {}, JUMP_ADJ = {}, coords = [];
 
+/* ===============================
+   建圖
+=============================== */
 function buildGraph(c) {
     coords = c;
     ADJ = {}; JUMP_ADJ = {};
+
     for (let i = 0; i < coords.length; i++) {
         ADJ[i] = []; JUMP_ADJ[i] = [];
-        let c1 = coords[i];
+
         for (let j = 0; j < coords.length; j++) {
             if (i === j) continue;
-            let c2 = coords[j];
-            let dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2));
-            if (dist < 1.2) ADJ[i].push(j);
+            let d = Math.hypot(coords[i].x - coords[j].x, coords[i].y - coords[j].y);
+            if (d < 1.2) ADJ[i].push(j);
         }
     }
+
     for (let i = 0; i < coords.length; i++) {
         for (let mid of ADJ[i]) {
             let c1 = coords[i], cm = coords[mid];
-            let tx = cm.x + (cm.x - c1.x), ty = cm.y + (cm.y - c1.y);
+            let tx = cm.x + (cm.x - c1.x);
+            let ty = cm.y + (cm.y - c1.y);
+
             for (let k = 0; k < coords.length; k++) {
                 let ck = coords[k];
                 if (Math.abs(ck.x - tx) < 0.1 && Math.abs(ck.y - ty) < 0.1) {
-                    JUMP_ADJ[i].push({mid: mid, dest: k}); break;
+                    JUMP_ADJ[i].push({ mid, dest: k });
+                    break;
                 }
             }
         }
     }
 }
 
-function getAllPossibleMoves(board, startIdx) {
-    let visited = new Set();
-    let moves = new Set();
-    
-    // 1. 單步
-    for (let n of ADJ[startIdx]) {
-        if (board[n] === 0) moves.add(n);
-    }
+/* ===============================
+   取得走法（含跳躍次數計算）
+=============================== */
+function getMoves(board, player) {
+    let moves = [];
+    for (let i = 0; i < board.length; i++) {
+        if (board[i] !== player) continue;
+        let map = new Map();
 
-    // 2. 連跳
-    let jumpQueue = [startIdx];
-    let jumpVisited = new Set([startIdx]);
-    
-    while(jumpQueue.length > 0) {
-        let curr = jumpQueue.shift();
-        for(let jump of JUMP_ADJ[curr]) {
-            if (board[jump.mid] !== 0 && board[jump.dest] === 0 && !jumpVisited.has(jump.dest)) {
-                jumpVisited.add(jump.dest);
-                jumpQueue.push(jump.dest);
-                moves.add(jump.dest);
+        for (let n of ADJ[i]) {
+            if (board[n] === 0) map.set(n, 0);
+        }
+
+        let queue = [{ pos: i, jumps: 0 }];
+        let visited = new Map();
+        visited.set(i, 0);
+
+        while (queue.length) {
+            let { pos, jumps } = queue.shift();
+            for (let j of JUMP_ADJ[pos]) {
+                if (board[j.mid] !== 0 && board[j.dest] === 0) {
+                    let nj = jumps + 1;
+                    if (!visited.has(j.dest) || visited.get(j.dest) < nj) {
+                        visited.set(j.dest, nj);
+                        queue.push({ pos: j.dest, jumps: nj });
+                        map.set(j.dest, nj);
+                    }
+                }
             }
         }
+
+        for (let [to, jump] of map) {
+            moves.push({ from: i, to, jump });
+        }
     }
-    return Array.from(moves);
+    return moves;
 }
 
-// 計算歐幾里得距離
-function getDist(idx1, targetPoint) {
-    let c1 = coords[idx1];
-    return Math.sqrt(Math.pow(c1.x - targetPoint.x, 2) + Math.pow(c1.y - targetPoint.y, 2));
+function dist(i, target) {
+    if (typeof target === 'number') {
+        return Math.hypot(coords[i].x - coords[target].x, coords[i].y - coords[target].y);
+    }
+    return Math.hypot(coords[i].x - target.x, coords[i].y - target.y);
 }
 
-// 判斷座標是否在目標三角區域內 (簡單半徑判斷)
-function isInTargetZone(idx, targetPoint) {
-    return getDist(idx, targetPoint) < 4.5; // 約 4 格距離
-}
-
-function think(board, player, targetPoint, timeLimit) {
+/* ===============================
+   Heuristic 評估函數（引導 MCTS 走向）
+=============================== */
+function evaluate(board, player, target, targetIndices) {
     let myPieces = [];
-    for (let i = 0; i < board.length; i++) if (board[i] === player) myPieces.push(i);
-    
-    let bestMoves = [];
-    let bestScore = -Infinity;
-
-    // 找出離目標最遠的棋子 (落後者)，用於加分
-    let maxDist = -1;
-    let laggardIdx = -1;
-    for(let p of myPieces) {
-        let d = getDist(p, targetPoint);
-        if(d > maxDist) { maxDist = d; laggardIdx = p; }
+    for (let i = 0; i < board.length; i++) {
+        if (board[i] === player) myPieces.push(i);
     }
 
-    for (let from of myPieces) {
-        let moves = getAllPossibleMoves(board, from);
-        let distStart = getDist(from, targetPoint);
-        let isLaggard = (from === laggardIdx);
-        let startInZone = isInTargetZone(from, targetPoint);
+    let score = 0;
+    let sumDist = 0;
+    let maxDist = -Infinity;
+    let startZoneCount = 0;
 
-        for (let to of moves) {
-            let distEnd = getDist(to, targetPoint);
-            let moveDist = Math.sqrt(Math.pow(coords[from].x - coords[to].x, 2) + Math.pow(coords[from].y - coords[to].y, 2));
-            let endInZone = isInTargetZone(to, targetPoint);
-            
-            // === 核心評分邏輯 (攻擊型優化) ===
-            let score = 0;
-            let advancement = distStart - distEnd; // 正值代表靠近目標
-            
-            // 1. 基本推進分：前進距離 * 加權
-            // 讓電腦極度傾向於大幅度跨越 (跳躍)
-            score += advancement * 100;
+    for (let p of myPieces) {
+        let d = dist(p, target);
+        sumDist += d;
 
-            // 2. 懲罰後退
-            if (advancement < 0) {
-                // 如果已經在目標區，嚴禁後退離開
-                if (startInZone && !endInZone) {
-                    score -= 50000;
-                } else {
-                    // 一般後退，給予重罰，除非是為了搭橋
-                    score -= 500; 
-                }
-            }
+        if (d > maxDist && targetIndices && !targetIndices.includes(p)) {
+            maxDist = d;
+        }
+        
+        // 修正2：嚴格定義並加重原始區域的懲罰
+        if (d > 65) startZoneCount++;
 
-            // 3. 落後者獎勵 (搭橋戰術)
-            // 如果移動的是最後面的棋子，且有前進，給予額外加分
-            if (isLaggard && advancement > 0) {
-                score += 300; 
-            }
-
-            // 4. 跳躍獎勵
-            // 鼓勵長距離移動 (大於單步距離)
-            if (moveDist > 2.5) { 
-                score += 150; 
-                score += moveDist * 20; // 跳越遠越好
-            }
-
-            // 5. 目標區鎖定
-            // 如果這步棋進入了目標區，給予巨額獎勵
-            if (!startInZone && endInZone) {
-                score += 2000;
-            }
-            // 如果在目標區內移動，越深入越好
-            if (startInZone && endInZone && advancement > 0) {
-                score += 500;
-            }
-
-            // 6. 防止卡邊 (稍微傾向走中間)
-            let distToCenterStart = Math.abs(coords[from].x - 50);
-            let distToCenterEnd = Math.abs(coords[to].x - 50);
-            if (distToCenterEnd < distToCenterStart) {
-                score += 10;
-            }
-
-            // 7. 隨機擾動 (打破平局)
-            score += Math.random() * 5;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMoves = [{from, to}];
-            } else if (Math.abs(score - bestScore) < 0.1) {
-                bestMoves.push({from, to});
-            }
+        if (targetIndices && targetIndices.includes(p)) {
+            score += 100000; // 抵達終點給予破格獎勵
+            score -= Math.pow(d, 2) * 100; // 擠向最深處，讓出大門
+        } else {
+            score -= d * 20; // 距離終點越近越好
+            let center = Math.abs(coords[p].x - 50);
+            score -= center * 1;
         }
     }
+
+    score -= sumDist * 25;
     
-    if (bestMoves.length > 0) {
-        return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    // 修正2：給予孤兒極度嚴重的扣分，強迫 AI 回頭拉拔最後面的棋子
+    if (maxDist !== -Infinity) score -= Math.pow(maxDist, 2) * 5; 
+    
+    // 修正2：嚴重懲罰滯留原始區域，逼迫起步
+    score -= startZoneCount * 5000; 
+
+    let front = Math.min(...myPieces.map(p => dist(p, target)));
+    score -= front * 80; // 獎勵前線突破
+
+    let progress = 0;
+    for (let p of myPieces) {
+        progress += (100 - dist(p, target));
     }
-    return null;
+    score += progress * 30;
+
+    return score;
 }
 
+/* ===============================
+   MCTS Node
+=============================== */
+class Node {
+    constructor(board, parent, move, player) {
+        this.board = board;
+        this.parent = parent;
+        this.move = move;
+        this.player = player;
+
+        this.children = [];
+        this.visits = 0;
+        this.score = 0;
+        this.isExpanded = false;
+    }
+}
+
+/* ===============================
+   UCB1
+=============================== */
+function ucb1(node) {
+    if (node.visits === 0) return Infinity;
+    
+    let exploitation = node.score / node.visits;
+    let exploration = 20000 * Math.sqrt(Math.log(node.parent.visits) / node.visits); 
+    
+    // 修正2：如果是根節點的子節點，給予連跳強大的探索偏好，保證 AI 絕對優先考慮長連跳
+    let jumpBonus = (node.parent && node.parent.parent === null && node.move) ? (node.move.jump * 5000) : 0;
+    
+    return exploitation + exploration + jumpBonus;
+}
+
+/* ===============================
+   Selection
+=============================== */
+function select(node) {
+    while (node.isExpanded && node.children.length > 0) {
+        node = node.children.reduce((a, b) => ucb1(a) > ucb1(b) ? a : b);
+    }
+    return node;
+}
+
+/* ===============================
+   Expansion
+=============================== */
+function expand(node, player) {
+    let moves = getMoves(node.board, player);
+    node.isExpanded = true;
+    
+    if (moves.length === 0) return node;
+
+    // 修正2：嚴格防呆，絕對禁止純粹的無意義後退。除非是為了連跳搭橋，否則只允許前進
+    moves = moves.filter(m => {
+        let gain = dist(m.from, node.target) - dist(m.to, node.target);
+        return gain > -1.0 || m.jump >= 2; 
+    });
+
+    if (moves.length === 0) moves = getMoves(node.board, player);
+
+    for (let m of moves) {
+        let next = [...node.board];
+        next[m.to] = player;
+        next[m.from] = 0;
+        let child = new Node(next, node, m, player);
+        child.target = node.target; 
+        node.children.push(child);
+    }
+
+    return node.children[Math.floor(Math.random() * node.children.length)];
+}
+
+/* ===============================
+   Simulation（模擬探索）
+=============================== */
+function simulate(board, player, target, targetIndices) {
+    let current = [...board];
+
+    for (let i = 0; i < 15; i++) { 
+        let moves = getMoves(current, player);
+        if (moves.length === 0) break;
+
+        // 修正2：模擬時絕對優先選擇「跳躍次數多」、「前進距離遠」的走法
+        moves.sort((a, b) => {
+            if (b.jump !== a.jump) return b.jump - a.jump;
+            let gainA = dist(a.from, target) - dist(a.to, target);
+            let gainB = dist(b.from, target) - dist(b.to, target);
+            return gainB - gainA;
+        });
+
+        // 縮小隨機池，保證模擬品質
+        let pick = moves[Math.floor(Math.random() * Math.min(2, moves.length))];
+
+        current[pick.to] = player;
+        current[pick.from] = 0;
+    }
+
+    return evaluate(current, player, target, targetIndices);
+}
+
+/* ===============================
+   Backpropagation
+=============================== */
+function backprop(node, score) {
+    while (node) {
+        node.visits++;
+        node.score += score;
+        node = node.parent;
+    }
+}
+
+/* ===============================
+   MCTS 主流程
+=============================== */
+function mcts(rootBoard, player, target, targetIndices, timeLimit) {
+    let rootMoves = getMoves(rootBoard, player);
+    if (rootMoves.length === 0) return null;
+
+    // === 修正3：建立絕對安全的預設最佳解 (Fallback) ===
+    // 若倒數計時結束導致 MCTS 樹尚未收斂，強制回傳此最佳解，確保 AI 不會亂走
+    rootMoves.sort((a, b) => {
+        if (b.jump !== a.jump) return b.jump - a.jump; // 跳最多步的最優先
+        let gainA = dist(a.from, target) - dist(a.to, target);
+        let gainB = dist(b.from, target) - dist(b.to, target);
+        return gainB - gainA; // 前進最多的次優先
+    });
+    let fallbackMove = rootMoves[0];
+
+    let root = new Node(rootBoard, null, null, player);
+    root.target = target;
+    
+    let end = Date.now() + timeLimit - 100; // 保留緩衝防止超時
+
+    // 蒙地卡羅大迴圈
+    while (Date.now() < end) {
+        let node = select(root);
+
+        if (node.visits > 0 || node === root) {
+            let expandedNode = expand(node, player);
+            if(expandedNode) node = expandedNode;
+        }
+
+        let score = simulate(node.board, player, target, targetIndices);
+        backprop(node, score);
+    }
+
+    if (root.children.length === 0) return fallbackMove;
+
+    // 正常情況：選擇 MCTS 探勘最穩定的走法
+    let best = root.children.reduce((a, b) => a.visits > b.visits ? a : b);
+    let bestNodes = root.children.filter(c => c.visits === best.visits);
+    if (bestNodes.length > 1) {
+        best = bestNodes.reduce((a, b) => (a.score / a.visits) > (b.score / b.visits) ? a : b);
+    }
+
+    // 修正3：如果 MCTS 因為時間不夠而算出一個倒退的走法，無條件攔截，並回傳預設的貪婪最佳解
+    let bestGain = dist(best.move.from, target) - dist(best.move.to, target);
+    if (bestGain < 0 && fallbackMove.jump > 0) {
+        return fallbackMove;
+    }
+
+    return best.move || fallbackMove;
+}
+
+/* ===============================
+   Worker
+=============================== */
 self.onmessage = function(e) {
     const { type, data } = e.data;
-    if (type === 'init') { 
-        buildGraph(data.coords); 
-    } else if (type === 'think') {
-        const { board, player, target, timeLimit } = data;
-        const move = think(board, player, target, timeLimit);
+
+    if (type === 'init') {
+        buildGraph(data.coords);
+    }
+    if (type === 'think') {
+        const { board, player, target, targetIndices, timeLimit } = data;
+        let move = mcts(board, player, target, targetIndices, timeLimit || 1000);
         self.postMessage(move);
     }
 };
@@ -641,7 +749,14 @@ let lastMovedPiece = -1;
 let aiTimerInterval = null;
 let animEnabled = true;
 
-/* === 修正：縮放與平移狀態變數 === */
+// 修正1：遊戲鎖定狀態變數
+let gameEnded = false;
+
+let hintsEnabled = true;
+let aiProgEnabled = true;
+let aiMoveTimeout = null;
+let targetAiTime = 0;
+
 let currentZoom = 1.0; 
 let baseBoardSize = 0; 
 let isPanning = false;
@@ -649,26 +764,22 @@ let lastPanX = 0, lastPanY = 0;
 let panX = 0, panY = 0; 
 let hasMoved = false; 
 
-const ZONE_CONFIG = {
-    1: { id: 1, name: "Bottom", filter: c => c.r >= 5, center: {q:0, r:6} }, 
-    2: { id: 2, name: "BottomRight", filter: c => c.q >= 5, center: {q:6, r:0} },
-    3: { id: 3, name: "TopRight", filter: c => c.q+c.r <= -5, center: {q:0, r:-6} },
-};
-
+// 精準映射：各起點正對面的終點座標極角 (Target Point)
 const ZONES = {
-    1: { filter: c => c.r >= 5, opposite: 4, target: {q:0, r:-6} },      // 下
-    2: { filter: c => c.q >= 5, opposite: 5, target: {q:-6, r:0} },      // 右下
-    3: { filter: c => (c.q+c.r) <= -5, opposite: 6, target: {q:6, r:6} },// 右上
-    4: { filter: c => c.r <= -5, opposite: 1, target: {q:0, r:6} },      // 上
-    5: { filter: c => c.q <= -5, opposite: 2, target: {q:6, r:0} },      // 左上
-    6: { filter: c => (c.q+c.r) >= 5, opposite: 3, target: {q:-6, r:-6}} // 左下
+    1: { name: "Bottom",      filter: c => c.r >= 5,          opposite: 4, target: {q: 4, r: -8} },  
+    2: { name: "TopRight",    filter: c => c.q >= 5,          opposite: 5, target: {q: -8, r: 4} },  
+    3: { name: "TopLeft",     filter: c => (c.q+c.r) <= -5,   opposite: 6, target: {q: 4, r: 4} },   
+    4: { name: "Top",         filter: c => c.r <= -5,         opposite: 1, target: {q: -4, r: 8} },  
+    5: { name: "BottomLeft",  filter: c => c.q <= -5,         opposite: 2, target: {q: 8, r: -4} },  
+    6: { name: "BottomRight", filter: c => (c.q+c.r) >= 5,    opposite: 3, target: {q: -4, r: -4} }  
 };
 
 const TRANSLATIONS = {
     tw: { 
         title: "跳棋大師 2026", 
         thinking: "思考中...", yourTurn: "請走棋",
-        lblMode: "對戰模式", lblTheme: "視覺風格", lblDiff: "電腦難度", lblSide: "先後手設定", lblLang: "語言", lblMusic: "背景音樂", lblVolBgm: "音樂音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移動動畫",
+        lblMode: "對戰模式", lblTheme: "視覺風格", lblDiff: "電腦難度", lblSide: "先後手設定", lblLang: "語言", lblMusic: "背景音樂", lblVolBgm: "音樂音量", lblVolSfx: "音效音量", lblColor: "玩家棋色",
+        lblHint: "移動提示", lblAiProg: "電腦思考進度", 
         optMode1: "👤 單人 (vs AI)", optMode2: "👥 雙人 (1v1)", optMode3: "👪 三人 (混戰)",
         optDiffEasy: "簡單 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困難 (8s)",
         optSide1: "🔴 我方先手", optSide2: "⚫ 電腦先手",
@@ -682,7 +793,8 @@ const TRANSLATIONS = {
     cn: { 
         title: "跳棋大师 2026", 
         thinking: "思考中...", yourTurn: "请走棋",
-        lblMode: "对战模式", lblTheme: "视觉风格", lblDiff: "电脑难度", lblSide: "先后手设置", lblLang: "语言", lblMusic: "背景音乐", lblVolBgm: "音乐音量", lblVolSfx: "音效音量", lblColor: "玩家棋色", lblAnim: "移动动画",
+        lblMode: "对战模式", lblTheme: "视觉风格", lblDiff: "电脑难度", lblSide: "先后手设置", lblLang: "语言", lblMusic: "背景音乐", lblVolBgm: "音乐音量", lblVolSfx: "音效音量", lblColor: "玩家棋色",
+        lblHint: "移动提示", lblAiProg: "电脑思考进度", 
         optMode1: "👤 单人 (vs AI)", optMode2: "👥 双人 (1v1)", optMode3: "👪 三人 (混战)",
         optDiffEasy: "简单 (2s)", optDiffMed: "中等 (4s)", optDiffHard: "困难 (8s)",
         optSide1: "🔴 我方先手", optSide2: "⚫ 电脑先手",
@@ -696,7 +808,8 @@ const TRANSLATIONS = {
     en: { 
         title: "Checkers Master", 
         thinking: "Thinking...", yourTurn: "Your Turn",
-        lblMode: "Mode", lblTheme: "Theme", lblDiff: "Difficulty", lblSide: "First Move", lblLang: "Language", lblMusic: "Music", lblVolBgm: "BGM Volume", lblVolSfx: "SFX Volume", lblColor: "Player Color", lblAnim: "Animation",
+        lblMode: "Mode", lblTheme: "Theme", lblDiff: "Difficulty", lblSide: "First Move", lblLang: "Language", lblMusic: "Music", lblVolBgm: "BGM Volume", lblVolSfx: "SFX Volume", lblColor: "Player Color",
+        lblHint: "Move Hints", lblAiProg: "AI Progress", 
         optMode1: "👤 1 Player (vs AI)", optMode2: "👥 2 Players", optMode3: "👪 3 Players",
         optDiffEasy: "Easy (2s)", optDiffMed: "Medium (4s)", optDiffHard: "Hard (8s)",
         optSide1: "🔴 Me First", optSide2: "⚫ AI First",
@@ -711,25 +824,21 @@ const TRANSLATIONS = {
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-/* 修正3：新增縮放觸發函數 */
 function zoomBoard(direction) {
-    currentZoom += direction * 0.2; // 每次放大或縮小 20%
-    if (currentZoom < 1.0) currentZoom = 1.0; // 限制最小縮小至 100% 以防破圖
-    if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
+    currentZoom += direction * 0.2; 
+    if (currentZoom < 1.0) currentZoom = 1.0; 
+    if (currentZoom > 3.0) currentZoom = 3.0; 
     applyZoom();
 }
 
-/* 修正：根據目前的 currentZoom 倍率動態更新棋盤尺寸的 CSS 變數，並處理平移 */
 function applyZoom() {
     const wrap = document.getElementById('board-wrap');
     if(baseBoardSize > 0) {
         let finalSize = baseBoardSize * currentZoom;
         wrap.style.setProperty('--board-size', `${finalSize}px`);
         
-        // 同步處理平移，當縮放回預設大小時歸零
         if (currentZoom === 1.0) {
-            panX = 0;
-            panY = 0;
+            panX = 0; panY = 0;
             wrap.style.transform = `translate3d(0px, 0px, 0)`;
         } else {
             wrap.style.transform = `translate3d(${panX}px, ${panY}px, 0)`;
@@ -752,7 +861,6 @@ function initBoardGeometry() {
 }
 
 function addPoint(q, r) {
-    // 修正2：將佈局擴展係數由 3.3 提升至 3.8，讓棋格佔滿更多圓形空間，更貼近邊框
     const scale = 3.8; 
     const cx = 50, cy = 50;
     let x = cx + scale * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
@@ -797,16 +905,22 @@ function initWorker() {
     const blob = new Blob([workerScript], {type: 'application/javascript'});
     worker = new Worker(URL.createObjectURL(blob));
     worker.postMessage({ type: 'init', data: { coords: boardCoords } });
+    
     worker.onmessage = e => {
-        clearInterval(aiTimerInterval);
-        isAiThinking = false; 
-        
         const move = e.data;
-        if (move && move.from !== undefined && move.to !== undefined) {
-             makeMove(move.from, move.to);
-        } else {
-             forceRandomMove();
-        }
+        const delay = Math.max(0, targetAiTime - Date.now()); 
+
+        aiMoveTimeout = setTimeout(() => {
+            clearInterval(aiTimerInterval);
+            isAiThinking = false; 
+            document.getElementById('scroll-progress-bar').style.width = '0%'; 
+            
+            if (move && move.from !== undefined && move.to !== undefined) {
+                 makeMove(move.from, move.to);
+            } else {
+                 forceRandomMove();
+            }
+        }, delay);
     };
 }
 
@@ -834,7 +948,6 @@ function resizeBoard() {
     const wrap = document.getElementById('board-wrap');
     const header = document.getElementById('main-header');
     
-    /* 修正3：清除舊有的 margin/width，利用 CSS 的 margin auto 配合縮放 */
     wrap.style.width = wrap.style.height = wrap.style.marginTop = '';
     header.style.marginRight = '0';
     
@@ -849,7 +962,6 @@ function resizeBoard() {
         finalSize = Math.min(winW - 40, winH - header.offsetHeight - 40);
     }
     
-    /* 修正3：將計算出的基礎大小儲存，再套用 currentZoom 進行渲染 */
     baseBoardSize = Math.max(280, finalSize);
     applyZoom();
 }
@@ -867,7 +979,6 @@ function drawBoard() {
     }
     for(let i=0; i<boardCoords.length; i++) {
         let p = boardCoords[i];
-        // 修正2：將棋格的半徑從 1.5% 放大至 1.7% 以配合整體佈局放大
         html += `<circle id="hole-${i}" cx="${p.x}%" cy="${p.y}%" r="1.7%" class="hole" />`;
     }
     svg.innerHTML = html;
@@ -876,21 +987,24 @@ function drawBoard() {
 function setupPlayers() {
     const mode = document.getElementById('mode-sel').value;
     const side = parseInt(document.getElementById('side-sel').value);
-    const userColorIdx = parseInt(document.getElementById('color-sel').value);
     
-    const p1ColorObj = PIECE_COLORS[userColorIdx];
+    let colorIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let p1ColorIdx = colorIndices.splice(Math.floor(Math.random() * colorIndices.length), 1)[0];
+    let aiColorIdx = colorIndices[Math.floor(Math.random() * colorIndices.length)];
+
+    document.getElementById('color-sel').value = p1ColorIdx;
+
+    const p1ColorObj = PIECE_COLORS[p1ColorIdx];
+    const aiColorObj = PIECE_COLORS[aiColorIdx];
+    
     document.documentElement.style.setProperty('--p1-color', p1ColorObj.val);
-    
-    let availColors = PIECE_COLORS.filter((c, i) => i !== userColorIdx);
-    let aiColorObj = availColors[Math.floor(Math.random() * availColors.length)];
     document.documentElement.style.setProperty('--p6-color', aiColorObj.val);
     
     const ind = document.getElementById('player-indicator');
     ind.style.display = 'flex';
-    ind.innerHTML = `
-        <div class="player-info"><span class="turn-dot" style="background:${p1ColorObj.val.split(', ')[1]}"></span> 您</div>
-        <div class="player-info"><span class="turn-dot" style="background:${aiColorObj.val.split(', ')[1]}"></span> 電腦</div>
-    `;
+    
+    let p1CleanColor = p1ColorObj.val.split(', ')[1];
+    let aiCleanColor = aiColorObj.val.split(', ')[1];
 
     players = [];
 
@@ -908,18 +1022,17 @@ function setupPlayers() {
         if (side === 1) { 
             players.push(p1);
             players.push(ai);
+            ind.innerHTML = `
+                <div class="player-info"><span class="turn-dot" style="background:${p1CleanColor}"></span> 您</div>
+                <div class="player-info"><span class="turn-dot" style="background:${aiCleanColor}"></span> 電腦</div>
+            `;
         } else { 
             players.push(ai);
             players.push(p1);
-            
-            if (side === -1) {
-                document.documentElement.style.setProperty('--p1-color', aiColorObj.val);
-                document.documentElement.style.setProperty('--p6-color', p1ColorObj.val);
-                ind.innerHTML = `
-                    <div class="player-info"><span class="turn-dot" style="background:${aiColorObj.val.split(', ')[1]}"></span> 電腦</div>
-                    <div class="player-info"><span class="turn-dot" style="background:${p1ColorObj.val.split(', ')[1]}"></span> 您</div>
-                `;
-            }
+            ind.innerHTML = `
+                <div class="player-info"><span class="turn-dot" style="background:${aiCleanColor}"></span> 電腦</div>
+                <div class="player-info"><span class="turn-dot" style="background:${p1CleanColor}"></span> 您</div>
+            `;
         }
         document.getElementById('side-select-container').style.display = 'block';
 
@@ -938,36 +1051,71 @@ function setupPlayers() {
     }
 }
 
-// 調整1保留：新增函數以高亮各玩家的起始與目標區圓圈外框
+function updatePlayerColor() {
+    const userColorIdx = parseInt(document.getElementById('color-sel').value);
+    const p1ColorObj = PIECE_COLORS[userColorIdx];
+    document.documentElement.style.setProperty('--p1-color', p1ColorObj.val);
+    
+    let p1CleanColor = p1ColorObj.val.split(', ')[1];
+    
+    let currentAiColorVal = getComputedStyle(document.documentElement).getPropertyValue('--p6-color').trim();
+    let aiCleanColor = currentAiColorVal.split(', ')[1];
+    
+    if (p1ColorObj.val === currentAiColorVal) {
+        let availColors = PIECE_COLORS.filter((c, i) => i !== userColorIdx);
+        let newAiColorObj = availColors[Math.floor(Math.random() * availColors.length)];
+        document.documentElement.style.setProperty('--p6-color', newAiColorObj.val);
+        aiCleanColor = newAiColorObj.val.split(', ')[1];
+    }
+
+    let p1 = players.find(p => p.id === 1);
+    if (p1) p1.colorName = p1ColorObj.enName;
+    
+    const mode = document.getElementById('mode-sel').value;
+    const side = parseInt(document.getElementById('side-sel').value);
+    const ind = document.getElementById('player-indicator');
+    
+    if (ind && mode === "1") {
+        if (side === 1) { 
+            ind.innerHTML = `
+                <div class="player-info"><span class="turn-dot" style="background:${p1CleanColor}"></span> 您</div>
+                <div class="player-info"><span class="turn-dot" style="background:${aiCleanColor}"></span> 電腦</div>
+            `;
+        } else {
+            ind.innerHTML = `
+                <div class="player-info"><span class="turn-dot" style="background:${aiCleanColor}"></span> 電腦</div>
+                <div class="player-info"><span class="turn-dot" style="background:${p1CleanColor}"></span> 您</div>
+            `;
+        }
+    }
+
+    updateStatus();
+    updateZoneHighlights();
+}
+
 function updateZoneHighlights() {
-    // 1. 清除所有圓圈的舊外框設定
     const holes = document.querySelectorAll('.hole');
     holes.forEach(hole => {
         hole.style.stroke = '';
         hole.style.strokeWidth = '';
     });
 
-    // 2. 為每位玩家設定其專屬顏色的外框
     players.forEach(p => {
-        // 從 CSS 變數中獲取玩家顏色
         let colorVar = (p.id === 1) ? getComputedStyle(document.documentElement).getPropertyValue('--p1-color') 
                      : (p.id === 6) ? getComputedStyle(document.documentElement).getPropertyValue('--p6-color')
                      : getComputedStyle(document.documentElement).getPropertyValue(`--p${p.id}-color`);
                      
-        // 提取主要顏色 (例如從 radial-gradient 取出第一個 Hex 值)
         let cleanColor = colorVar.trim().replace('radial-gradient(circle at 30% 30%, ', '').replace(')', '').split(',')[0].trim();
         
-        // 設定目標區與起始區的篩選器
         let startZoneFilter = ZONES[p.startZone].filter;
         let targetZoneFilter = ZONES[ZONES[p.startZone].opposite].filter;
 
-        // 將符合條件的格子加上顏色的 stroke 外框
         boardCoords.forEach(c => {
             if (startZoneFilter(c) || targetZoneFilter(c)) {
                 let holeEl = document.getElementById(`hole-${c.idx}`);
                 if (holeEl) {
                     holeEl.style.stroke = cleanColor;
-                    holeEl.style.strokeWidth = "3px"; // 使提示的外框清晰可見
+                    holeEl.style.strokeWidth = "3px"; 
                 }
             }
         });
@@ -983,9 +1131,16 @@ function restart() {
     isAnimating = false;
     lastMovedPiece = -1;
     isAiThinking = false;
+    
+    // 修正1：解鎖遊戲狀態
+    gameEnded = false;
+    
     clearInterval(aiTimerInterval);
+    clearTimeout(aiMoveTimeout);
+    
     document.getElementById('ghosts-layer').innerHTML = '';
     document.getElementById('win-overlay').classList.remove('show');
+    document.getElementById('scroll-progress-bar').style.width = '0%'; 
     
     players.forEach(p => {
         let filterFunc = ZONES[p.startZone].filter;
@@ -995,7 +1150,7 @@ function restart() {
     
     currentPlayer = 0; 
     updateStatus();
-    updateZoneHighlights(); // 調整1保留：在此呼叫繪製區域提示的函數
+    updateZoneHighlights(); 
     renderPieces();
     
     setTimeout(checkAiTurn, 500);
@@ -1029,12 +1184,19 @@ function renderPieces() {
     
     const hintsLayer = document.getElementById('hints-layer');
     hintsLayer.innerHTML = '';
+    
     validMoves.forEach(idx => {
         const p = boardCoords[idx];
         const el = document.createElement('div');
         el.className = 'hint';
         el.style.left = `${p.x}%`;
         el.style.top = `${p.y}%`;
+        
+        if (!hintsEnabled) {
+            el.style.background = 'transparent';
+            el.style.animation = 'none';
+        }
+        
         el.onclick = (e) => { e.stopPropagation(); makeMove(selectedPiece, idx); };
         hintsLayer.appendChild(el);
     });
@@ -1081,7 +1243,8 @@ function calculateMoves(idx) {
 }
 
 function selectPiece(idx) {
-    if (isAnimating || isAiThinking) return;
+    // 修正1：遊戲結束時禁止操作
+    if (gameEnded || isAnimating || isAiThinking) return;
     if (selectedPiece === idx) { selectedPiece = -1; validMoves = []; } 
     else { selectedPiece = idx; validMoves = calculateMoves(idx); playSfx(300); }
     renderPieces();
@@ -1132,9 +1295,12 @@ function finalizeMove(from, to) {
     
     playSfx(500);
     checkWin();
-    currentPlayer = (currentPlayer + 1) % players.length;
     
-    updateStatus();
+    // 如果遊戲已經結束，就不必再換位思考了
+    if (!gameEnded) {
+        currentPlayer = (currentPlayer + 1) % players.length;
+        updateStatus();
+    }
     renderPieces();
 }
 
@@ -1150,6 +1316,8 @@ function checkWin() {
         let count = 0;
         targetIndices.forEach(idx => { if (boardState[idx] === p.id) count++; });
         if (count === 10) {
+            // 修正1：遊戲結束，啟動鎖定，阻止 AI 與玩家繼續走棋
+            gameEnded = true; 
             playWinSfx();
             
             let winText = "";
@@ -1168,12 +1336,15 @@ function checkWin() {
 
             document.getElementById('win-overlay').innerText = winText;
             document.getElementById('win-overlay').classList.add('show');
-            isAiThinking = true; 
+            isAiThinking = false; 
         }
     }
 }
 
 function checkAiTurn() {
+    // 修正1：遊戲結束不再讓 AI 動作
+    if (gameEnded) return;
+
     if (players[currentPlayer].type === 'ai') {
         isAiThinking = true;
         
@@ -1191,26 +1362,46 @@ function checkAiTurn() {
             timeLeft -= 100;
             if (timeLeft < 0) timeLeft = 0;
             updateStatus(`${t.thinking} ${(timeLeft/1000).toFixed(1)}s`);
-            if (timeLeft <= 0) clearInterval(aiTimerInterval);
+            
+            if (aiProgEnabled) {
+                const p = ((timeLimit - timeLeft) / timeLimit) * 100;
+                document.getElementById('scroll-progress-bar').style.width = p + '%';
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(aiTimerInterval);
+            }
         }, 100);
 
         let p = players[currentPlayer];
         let tCoord = p.target;
+        
         let targetPos = boardCoords.find(c => c.q === tCoord.q && c.r === tCoord.r);
         
         if (!targetPos) {
              targetPos = {x: 50, y: 50}; 
         }
         
+        let startZoneId = p.startZone;
+        let targetZoneId = ZONES[startZoneId].opposite;
+        let filterFunc = ZONES[targetZoneId].filter;
+        let targetIndices = boardCoords.filter(filterFunc).map(c => c.idx);
+        
+        targetAiTime = Date.now() + timeLimit; 
+        
         worker.postMessage({
             type: 'think',
-            data: { board: boardState, player: p.id, target: targetPos, timeLimit: timeLimit }
+            data: { board: boardState, player: p.id, target: targetPos, targetIndices: targetIndices, timeLimit: timeLimit }
         });
     }
 }
 
 function undo() {
     if (isAiThinking || isAnimating || historyStack.length === 0) return;
+    
+    // 修正1：悔棋時解鎖遊戲
+    gameEnded = false;
+
     let prev = historyStack.pop();
     if (document.getElementById('mode-sel').value === '1' && historyStack.length > 0) {
          prev = historyStack.pop(); 
@@ -1221,6 +1412,7 @@ function undo() {
     selectedPiece = -1;
     validMoves = [];
     document.getElementById('ghosts-layer').innerHTML = '';
+    document.getElementById('scroll-progress-bar').style.width = '0%'; 
     renderPieces();
     updateStatus();
     document.getElementById('win-overlay').classList.remove('show');
@@ -1269,7 +1461,9 @@ function changeLang() {
     document.getElementById('lbl-vol-bgm').childNodes[0].nodeValue = t.lblVolBgm;
     document.getElementById('lbl-vol-sfx').childNodes[0].nodeValue = t.lblVolSfx;
     document.getElementById('lbl-color').innerText = t.lblColor;
-    document.getElementById('lbl-anim').innerText = t.lblAnim;
+    
+    document.getElementById('lbl-hint').innerText = t.lblHint;
+    document.getElementById('lbl-aiprog').innerText = t.lblAiProg;
     
     const modeSel = document.getElementById('mode-sel');
     modeSel.options[0].text = t.optMode1;
@@ -1408,7 +1602,18 @@ function changeMusic() {
     if(val === 'none') { audio.pause(); audio.src = ""; } 
     else { audio.src = getMp3Path(val); audio.play().catch(()=>{}); } 
 }
-function toggleAnim() { animEnabled = document.getElementById('anim-toggle').checked; }
+
+function toggleHints() { 
+    hintsEnabled = document.getElementById('hint-toggle').checked;
+    renderPieces(); 
+}
+
+function toggleAiProgress() {
+    aiProgEnabled = document.getElementById('aiprog-toggle').checked;
+    if (!aiProgEnabled) {
+        document.getElementById('scroll-progress-bar').style.width = '0%';
+    }
+}
 
 function goHome() {
     try { if (window.parent && typeof window.parent.closeGame === 'function') window.parent.closeGame(); } catch (e) { console.error(e); }
@@ -1424,17 +1629,15 @@ document.onkeydown = function(e) {
 };
 console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
 
-// === 修正：完美版雙指縮放 (無段比例計算) + 單指平移 + 點擊修正 ===
 let initialPinchDistance = null;
 let startZoom = 1.0;
 
 const gameContainerEl = document.getElementById('game-container');
 
-// 1. 偵測手指放上螢幕
 gameContainerEl.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
         isPanning = false;
-        e.preventDefault(); // 雙指縮放時阻擋預設行為
+        e.preventDefault(); 
         initialPinchDistance = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
@@ -1442,18 +1645,16 @@ gameContainerEl.addEventListener('touchstart', (e) => {
         startZoom = currentZoom; 
     } else if (e.touches.length === 1) {
         isPanning = true;
-        hasMoved = false; // 剛碰到螢幕，重置移動狀態
-        // 這裡不加 e.preventDefault()，以免吃掉原生的點擊事件
+        hasMoved = false; 
         lastPanX = e.touches[0].clientX;
         lastPanY = e.touches[0].clientY;
     }
 }, { passive: false });
 
-// 2. 偵測手指滑動 (縮放 / 平移中)
 gameContainerEl.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && initialPinchDistance) {
         hasMoved = true;
-        e.preventDefault(); // 阻擋畫面原生滾動
+        e.preventDefault(); 
         
         let currentDistance = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
@@ -1463,7 +1664,6 @@ gameContainerEl.addEventListener('touchmove', (e) => {
         let scale = currentDistance / initialPinchDistance;
         currentZoom = startZoom * scale;
         
-        // 限制最小倍率為初始畫面大小 (1.0)，最大倍率 3.0
         if (currentZoom < 1.0) currentZoom = 1.0;
         if (currentZoom > 3.0) currentZoom = 3.0;
         
@@ -1475,10 +1675,9 @@ gameContainerEl.addEventListener('touchmove', (e) => {
         let moveX = currentX - lastPanX;
         let moveY = currentY - lastPanY;
         
-        // 容錯機制：如果手指移動超過 3px，才判定為「平移拖曳」
         if (Math.abs(moveX) > 3 || Math.abs(moveY) > 3) {
             hasMoved = true;
-            e.preventDefault(); // 確定是拖曳時阻擋預設行為
+            e.preventDefault(); 
             
             panX += moveX;
             panY += moveY;
@@ -1490,14 +1689,11 @@ gameContainerEl.addEventListener('touchmove', (e) => {
     }
 }, { passive: false });
 
-// 3. 手指離開螢幕，重置距離與狀態
 gameContainerEl.addEventListener('touchend', (e) => {
-    // 如果手指沒有拖曳過 (hasMoved 為 false)，代表玩家意圖是「點擊」
     if (!hasMoved && e.changedTouches.length === 1) {
         let target = e.target;
-        // 如果點擊到棋子(.piece) 或 提示點(.hint)，手動發送點擊事件
         if (target && (target.classList.contains('piece') || target.classList.contains('hint'))) {
-            e.preventDefault(); // 防止原生 tap 造成雙擊
+            e.preventDefault(); 
             target.click();
         }
     }
