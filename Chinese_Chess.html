@@ -488,8 +488,7 @@ function evalBd(bd, turn) {
 function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { 
     const startTime = Date.now(); 
     const safeTime = timeLimit * 0.95; 
-    let bestMove = null; 
-    let completedBestMove = null; // 【時間管理保護機制】儲存上一次完整算完的最佳步
+    let globalBestMove = null; // 全局最佳步
     let rootMoves = genMoves(bd, turn); 
     killerTable.fill(0); 
     
@@ -499,47 +498,48 @@ function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) {
 
     for (let d = 1; d <= actualMaxDepth; d++) { 
         let alpha = -INFINITY, beta = INFINITY; 
-        let currentBest = null; 
-        rootMoves = sortMoves(rootMoves, bd, turn, 0, bestMove); 
+        let currentDepthBest = null; // 當前這「一整層」的暫存最佳解
+        
+        // 將上一層驗證過的最優解優先排序
+        rootMoves = sortMoves(rootMoves, bd, turn, 0, globalBestMove); 
         let outOfTime = false;
 
         for (let m of rootMoves) { 
             make(bd, m); 
-            // 加入 isNullMove = false 參數
-            let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd), false); 
+            let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd)); 
             unmake(bd, m); 
             
             if (Date.now() - startTime > safeTime) {
-                outOfTime = true; // 時間到了，強制中斷此深度的計算
+                outOfTime = true; // 時間到，立刻中斷
                 break;
             }
+
             if (score > alpha) { 
                 alpha = score; 
-                currentBest = m; 
+                currentDepthBest = m; // 只在當前層級更新暫存
             } 
         } 
         
-        // 如果這層算到一半超時，直接放棄這層的結果，避免拿到半成品的蠢步
-        if (outOfTime) break; 
+        if (outOfTime) break; // 【關鍵】如果這層算到一半斷了，絕對不覆蓋 globalBestMove
 
-        if (currentBest) bestMove = currentBest; 
-        completedBestMove = bestMove; // 確認算完這一層，才將結果設為可用
+        // 只有在「完整算完這一整層」沒有超時的情況下，才正式確認這個最佳解
+        if (currentDepthBest) {
+            globalBestMove = currentDepthBest; 
+        }
 
         if (Date.now() - startTime > safeTime * 0.6) break; 
     } 
 
     if (level === 'easy' || level === 'medium' || level === 'hard') { 
-        // 將可靠的 completedBestMove 傳給隨機函數，作為防呆底線
-        return pickMoveWithProb(rootMoves, bd, turn, level, completedBestMove || rootMoves[0]); 
+        return pickMoveWithProb(rootMoves, bd, turn, level, globalBestMove || rootMoves[0]); 
     } 
-    // 若時間超時，安全地回退到上一層算完的完美結果
-    return completedBestMove || rootMoves[0]; 
+    return globalBestMove || rootMoves[0]; 
 }
 
 function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m.from === bestM.from && m.to === bestM.to) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
 
 // 4. Alpha-Beta 剪枝大集合 (NMP, PVS, LMR)
-function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, isNullMove) { 
+function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { 
     if ((ply & 1023) === 0 && Date.now() - startTime > limit) return alpha; 
 
     const ttEntry = tt[hash]; 
@@ -553,17 +553,10 @@ function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, is
     
     if (depth <= 0) return quiescence(bd, alpha, beta, turn); 
 
-    // --- 升級 A：空步剪枝 (Null Move Pruning, NMP) ---
-    // 假設我們直接放棄一回合交給對手走，如果評分依然能大於 beta (好過頭了)，
-    // 就代表當前局勢極度優勢，對手根本不會走入這條分支，直接大膽剪枝。
-    if (depth >= 3 && !isNullMove && ply > 0) {
-        let R = 2; // 深度縮減量
-        let nullScore = -alphaBeta(bd, depth - 1 - R, -beta, -beta + 1, -turn, ply + 1, startTime, limit, hash, true);
-        if (nullScore >= beta) return beta; // 成功觸發空步剪枝！
-    }
-
     let moves = genMoves(bd, turn); 
     if (moves.length === 0) return -MATE_VAL + ply; 
+    
+    // 優先搜尋 Hash Table 推薦的步法
     moves = sortMoves(moves, bd, turn, ply, ttBest); 
 
     let moveCount = 0; 
@@ -571,37 +564,27 @@ function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, is
     let bestM = null; 
 
     for (let m of moves) { 
-        let isCapture = (bd[m.to] !== 0); // 在下子前預先判斷是否為吃子步
+        let isCapture = (bd[m.to] !== 0);
         make(bd, m); 
         let newHash = computeHash(bd); 
         let score; 
 
-        // --- 升級 B & C：主要變例搜尋 (PVS) 與 後期著法縮減 (LMR) ---
+        // --- 保留穩定高效的 PVS (主要變例搜尋) ---
         if (moveCount === 0) { 
-            // 經過排序後，第一步最有可能是最佳步，所以用完整的窗口 (Full Window) 進行深搜
-            score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
+            // 第一步：完整視窗深搜
+            score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); 
         } else { 
-            // LMR (後期著法縮減) 判斷：
-            // 若深度足夠、不是前三佳步、且不是吃子步，通常是廢步，大膽降低計算深度來節省時間
-            let reduction = 0;
-            if (depth >= 3 && moveCount >= 3 && !isCapture) {
-                reduction = 1; 
-            }
-
-            // PVS (零窗口搜尋 Null Window Search)：
-            // 既然這不是第一步，我們假設它比較差，用極窄的視窗 (-alpha-1, -alpha) 快速證明它無法超越目前的最佳解
-            score = -alphaBeta(bd, depth - 1 - reduction, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
-
-            // 如果發現這步竟然比預期的好 (超越了 alpha)，代表排序失準或 LMR 誤判
-            // 必須用完整的窗口、原深度重新嚴格搜尋一次 (Research)
+            // 零視窗搜尋 (假設後面的步法較差)
+            score = -alphaBeta(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); 
+            // 如果發現並不差，重新用完整視窗搜
             if (score > alpha && score < beta) { 
-                score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash, false); 
+                score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); 
             } 
         } 
         unmake(bd, m); 
         moveCount++; 
 
-        if (Date.now() - startTime > limit) return alpha; // 超時保護
+        if (Date.now() - startTime > limit) return alpha; 
 
         if (score > alpha) { 
             alpha = score; 
@@ -614,7 +597,7 @@ function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, is
                 killerTable[ply * 2] = m.from * 100 + m.to; 
             } 
             tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; 
-            return beta; // Alpha-Beta Cutoff
+            return beta; 
         } 
     } 
 
@@ -624,7 +607,7 @@ function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash, is
         tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; 
     } 
     return alpha; 
-} 
+}
 
 function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; } 
 function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
