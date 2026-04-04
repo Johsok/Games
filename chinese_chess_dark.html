@@ -123,6 +123,20 @@
         /* 31. 預設 */
         /* data-back="default" uses default styles defined in root themes */
 
+        /* --- 修正：CSS頂部極光進度條 --- */
+        #scroll-progress-bar {
+            position: fixed; /* 固定在視窗最上方 */
+            top: 0;
+            left: 0;
+            width: 0%; /* 初始寬度為 0% */
+            height: 4px; /* 進度條的高度 */
+            background: linear-gradient(90deg, #00f260, #0575e6); /* 極光綠到藍的漸層 */
+            z-index: 99999; /* 確保它在所有元素的最上層 */
+            transition: width 0.15s ease-out; /* 讓寬度變化時看起來更平滑 */
+            box-shadow: 0 0 15px rgba(5, 117, 230, 0.7); /* 外發光效果 */
+            pointer-events: none; /* 確保進度條不會干擾滑鼠點擊網頁內容 */
+        }
+
         html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
         body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: var(--bg-grad); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; color: white; transition: background 0.5s; touch-action: none; box-sizing: border-box; }
 
@@ -340,6 +354,8 @@
 </head>
 <body class="t-classic" data-back="default">
 
+<div id="scroll-progress-bar"></div>
+
 <header id="main-header">
     <div class="header-top">
         <h2 id="txt-title">暗棋大師 2026</h2>
@@ -480,15 +496,22 @@
         </div>
     </div>
     
-    <div style="display: flex; gap: 8px; margin-bottom: 20px; align-items: center;">
-        <div class="set-item checkbox-wrap" style="flex: 3;">
-            <label for="ghost-check" id="lbl-ghost" style="font-size:0.75rem;">👻 提示</label>
+    <div class="set-grid-2" style="margin-bottom: 10px;">
+        <div class="set-item checkbox-wrap">
+            <label for="ghost-check" id="lbl-ghost" style="font-size:0.75rem;">👻 移動提示</label>
             <input type="checkbox" id="ghost-check" checked onchange="toggleGhost()" style="width:16px; height:16px; accent-color:#f1c40f;">
         </div>
-        <div class="set-item" style="flex: 3;">
+        <div class="set-item checkbox-wrap">
+            <label for="progress-check" id="lbl-progress" style="font-size:0.75rem;">⏳ 電腦思考進度</label>
+            <input type="checkbox" id="progress-check" checked onchange="toggleProgress()" style="width:16px; height:16px; accent-color:#00e5ff;">
+        </div>
+    </div>
+
+    <div class="set-grid-2" style="margin-bottom: 20px;">
+        <div class="set-item">
             <button class="toggle-btn" id="btn-rules" onclick="toggleRules()" style="font-size:0.8rem; padding:0;">📜 規則</button>
         </div>
-        <div class="set-item" style="flex: 4;">
+        <div class="set-item">
             <button class="toggle-btn" id="btn-home" onclick="goHome()" style="background:#c0392b; font-size:0.8rem; padding:0;">🏠 回首頁</button>
         </div>
     </div>
@@ -990,7 +1013,7 @@ const TRANSLATIONS = {
         "opt_m_01": "🎵 樂曲 01", "opt_m_02": "🎵 樂曲 02", "opt_m_03": "🎵 樂曲 03", "opt_m_04": "🎵 樂曲 04", "opt_m_05": "🎵 樂曲 05", "opt_m_06": "🎵 樂曲 06", "opt_m_07": "🎵 樂曲 07",
         lbl_lang: "語言 (Language)",
         lbl_vol_music: "音樂音量", lbl_vol_sfx: "音效音量",
-        lbl_ghost: "👻 提示", btn_rules: "📜 規則", btn_home: "🏠 回首頁", btn_done: "完成設定",
+        lbl_ghost: "👻 移動提示", lbl_progress: "⏳ 電腦思考進度", btn_rules: "📜 規則", btn_home: "🏠 回首頁", btn_done: "完成設定",
         
         // Dynamic Win Messages
         msg_win: "You Win", msg_lose: "You Lose",
@@ -1025,7 +1048,7 @@ const TRANSLATIONS = {
         "opt_m_01": "🎵 乐曲 01", "opt_m_02": "🎵 乐曲 02", "opt_m_03": "🎵 乐曲 03", "opt_m_04": "🎵 乐曲 04", "opt_m_05": "🎵 乐曲 05", "opt_m_06": "🎵 乐曲 06", "opt_m_07": "🎵 乐曲 07",
         lbl_lang: "语言 (Language)",
         lbl_vol_music: "音乐音量", lbl_vol_sfx: "音效音量",
-        lbl_ghost: "👻 提示", btn_rules: "📜 规则", btn_home: "🏠 回首页", btn_done: "完成设置",
+        lbl_ghost: "👻 移动提示", lbl_progress: "⏳ 电脑思考进度", btn_rules: "📜 规则", btn_home: "🏠 回首页", btn_done: "完成设置",
         
         msg_win: "恭喜胜利!", msg_lose: "可惜败北...",
         msg_red_win: "红方获胜!", msg_black_win: "黑方获胜!",
@@ -1058,7 +1081,7 @@ const TRANSLATIONS = {
         "opt_m_01": "🎵 Track 01", "opt_m_02": "🎵 Track 02", "opt_m_03": "🎵 Track 03", "opt_m_04": "🎵 Track 04", "opt_m_05": "🎵 Track 05", "opt_m_06": "🎵 Track 06", "opt_m_07": "🎵 Track 07",
         lbl_lang: "Language",
         lbl_vol_music: "Music Vol", lbl_vol_sfx: "SFX Vol",
-        lbl_ghost: "👻 Hints", btn_rules: "📜 Rules", btn_home: "🏠 Home", btn_done: "Done",
+        lbl_ghost: "👻 Move Hints", lbl_progress: "⏳ AI Progress", btn_rules: "📜 Rules", btn_home: "🏠 Home", btn_done: "Done",
         
         msg_win: "You Win!", msg_lose: "You Lose...",
         msg_red_win: "Red Wins!", msg_black_win: "Black Wins!",
@@ -1097,6 +1120,8 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let userInteracted = false;
 let bd = [], myColor = null, turn = 1, curTurnColor = null, sel = -1, lastMove = -1, historyStack = [], over = false, isPVP = false, isAiThinking = false;
 let showGhost = true;
+// === 新增：控制進度條顯示的變數 ===
+let showProgress = true;
 let ghostPos = -1;
 let ghostPiece = null;
 let currentLang = 'zh-TW';
@@ -1122,6 +1147,10 @@ function initWorker() {
     worker.onmessage = function(e) {
         setTimeout(() => {
             clearInterval(timerInterval);
+            
+            // === 新增：AI 計算完畢後重置並隱藏進度條 ===
+            document.getElementById('scroll-progress-bar').style.width = '0%';
+            
             isAiThinking = false;
             const bestM = e.data;
             const aiC = getTurnColor(), opC = aiC==='red'?'black':'red';
@@ -1269,6 +1298,10 @@ function restart() {
     if(dragEl) { dragEl.remove(); dragEl = null; }
     isPVP = document.getElementById('mode-sel').value === 'pvp';
     clearInterval(timerInterval);
+    
+    // === 新增：重新開始時重置進度條 ===
+    document.getElementById('scroll-progress-bar').style.width = '0%';
+    
     document.getElementById('win-overlay').classList.remove('show'); updateUI(); render();
 }
 
@@ -1538,10 +1571,15 @@ function aiRun() {
     let hid = []; for(let i=0; i<32; i++) if(aiBd[i] && aiBd[i].hidden) hid.push(i);
     let myP = aiBd.filter(p=>p && !p.hidden && p.color===aiColor);
 
+    // === 新增：綁定進度條 DOM 元素 ===
+    const progressBar = document.getElementById('scroll-progress-bar');
+
     if(myP.length === 0 && hid.length > 0) {
         setTimeout(() => {
             actionFlip(hid[Math.floor(Math.random() * hid.length)]);
             isAiThinking = false;
+            // === 新增：備用情況的進度條清零 ===
+            progressBar.style.width = '0%';
             updateUI(); 
         }, 800); 
         return;
@@ -1557,6 +1595,16 @@ function aiRun() {
         const elapsed = Date.now() - startTime;
         const remain = Math.max(0, (config.time - elapsed) / 1000).toFixed(1);
         msgEl.innerText = `${TRANSLATIONS[currentLang].pc_thinking} (${remain}s)`;
+
+        // === 新增：動態計算電腦思考進度並反應在極光進度條上 ===
+        if (showProgress) {
+            progressBar.style.display = 'block'; // 確保它是顯示狀態
+            let p = (elapsed / config.time) * 100;
+            if (p > 100) p = 100; // 上限為 100%
+            progressBar.style.width = p + '%';
+        } else {
+            progressBar.style.display = 'none'; // 隱藏特效
+        }
     };
     updateTimer();
     timerInterval = setInterval(updateTimer, 100); 
@@ -1571,6 +1619,10 @@ function undo() {
         bd=st.bd; turn=st.turn; myColor=st.myColor; curTurnColor=st.curTurnColor; lastMove=st.lastMove; over=st.over; sel=-1; 
         ghostPos = -1; ghostPiece = null;
         if(dragEl) { dragEl.remove(); dragEl = null; }
+        
+        // === 新增：悔棋時重置進度條 ===
+        document.getElementById('scroll-progress-bar').style.width = '0%';
+        
         document.getElementById('win-overlay').classList.remove('show'); updateUI(); render(); 
     }
 }
@@ -1626,6 +1678,10 @@ function updateText() {
 
     document.getElementById('lbl-lang').innerText = t.lbl_lang;
     document.getElementById('lbl-ghost').innerText = t.lbl_ghost;
+    
+    // === 新增：套用電腦思考進度的多語系文字 ===
+    document.getElementById('lbl-progress').innerText = t.lbl_progress;
+
     document.getElementById('btn-rules').innerText = t.btn_rules;
     document.getElementById('btn-home').innerText = t.btn_home;
     document.getElementById('btn-done').innerText = t.btn_done;
@@ -1680,6 +1736,17 @@ function changeMusic() {
 }
 
 function toggleGhost() { showGhost = document.getElementById('ghost-check').checked; render(); }
+
+// === 新增：切換電腦思考進度特效的顯示狀態 ===
+function toggleProgress() {
+    showProgress = document.getElementById('progress-check').checked;
+    const pb = document.getElementById('scroll-progress-bar');
+    if (!showProgress) {
+        pb.style.display = 'none'; // 隱藏特效
+    } else if (isAiThinking) {
+        pb.style.display = 'block'; // 若電腦正在思考，開啟則立即恢復顯示
+    }
+}
 
 function playSfx(f,t) { 
     if(audioCtx.state==='suspended') audioCtx.resume(); 
