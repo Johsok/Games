@@ -98,6 +98,56 @@
         body.is-landscape .status { font-size: 1rem; text-align: center; }
         body.is-landscape .btn-group { flex-direction: column; width: 100%; gap: 12px; }
         body.is-landscape .btn { width: 85%; text-align: center; padding: 10px 0; }
+        
+        /* 原有預設 (涵蓋桌上型)，但若是手機橫向模式，會被下方的獨立設定覆蓋 */
+        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
+
+        /* ===================================================
+           【新增/調整】手機橫向模式 (Landscape) RWD 佈局
+           將走棋記錄放在棋盤左邊
+           =================================================== */
+        body.is-landscape #game-container {
+            display: flex;
+            flex-direction: row; /* 水平排列 */
+            gap: 15px; /* 走棋紀錄與棋盤之間的間隔 */
+            padding-left: 10px;
+        }
+        body.is-landscape .board-wrap {
+            order: 2; /* 棋盤放在右邊 */
+            margin: auto 0;
+        }
+        body.is-landscape #move-log-panel {
+            position: relative; /* 取消絕對定位，跟隨 flex 排版 */
+            top: auto; left: auto; transform: none;
+            width: 25vw; max-width: 200px; /* 控制左側走棋面板的合理寬度 */
+            height: var(--board-size); /* 高度與棋盤對齊 */
+            order: 1; /* 走棋紀錄放在左邊 */
+            margin: auto 0;
+        }
+
+        /* ===================================================
+           【新增/調整】手機垂直模式 (Portrait) RWD 佈局
+           將棋盤最大化，且將走棋記錄區塊放置在棋盤正下方
+           =================================================== */
+        body.is-mobile-portrait #game-container {
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            justify-content: flex-start;
+            gap: 10px; /* 棋盤與走棋紀錄之間的間隔 */
+            padding-top: 5px;
+        }
+        body.is-mobile-portrait .board-wrap {
+            order: 1; /* 確保棋盤排在上面 */
+            margin: 0 auto;
+        }
+        body.is-mobile-portrait #move-log-panel {
+            position: relative; /* 取消絕對定位，跟隨 flex 排版 */
+            top: auto; left: auto; transform: none;
+            width: var(--board-size); /* 走棋紀錄寬度跟最大化後的棋盤一樣寬 */
+            height: 20vh; max-height: 150px; /* 在下方預留合理的高度即可 */
+            order: 2; /* 走棋紀錄放在下方 */
+            margin: 0 auto;
+        }
 
         /* === 設定面板樣式 === */
         #settings { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(30, 30, 30, 0.95); width: 340px; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); max-height: 90vh; overflow-y: auto; }
@@ -110,14 +160,13 @@
 
         /* === 遊戲容器與棋盤 === */
         #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
-        body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
         /* === 移動提示文字說明區塊 === */
         #move-log-panel {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            /* 利用棋盤寬度精準計算左側位置，確保棋盤整體視覺維持置中 */
+            /* 利用棋盤寬度精準計算左側位置，確保桌機版棋盤整體視覺維持置中 */
             left: calc(50% - (var(--board-size) / 2) - 27vmin);
             height: var(--board-size);
             width: 25vmin;
@@ -523,30 +572,53 @@ document.onkeydown = function(e) {
     if (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83)) return false;
 };
 
+// 【調整: RWD 辨識手機裝置垂直與橫向】
 function checkOrientation() { 
+    // 橫向判定：寬大於高，且高度限制通常屬於橫置手機
     const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
-    isLand ? document.body.classList.add('is-landscape') : document.body.classList.remove('is-landscape'); 
+    // 垂直判定：寬小於或等於768，且高大於寬 (典型手機直屏)
+    const isMobilePortrait = window.innerWidth <= 768 && window.innerHeight > window.innerWidth;
+
+    if (isLand) {
+        document.body.classList.add('is-landscape');
+        document.body.classList.remove('is-mobile-portrait');
+    } else if (isMobilePortrait) {
+        document.body.classList.add('is-mobile-portrait');
+        document.body.classList.remove('is-landscape');
+    } else {
+        // 桌上型電腦還原設定
+        document.body.classList.remove('is-landscape');
+        document.body.classList.remove('is-mobile-portrait');
+    }
     return isLand; 
 }
 
-// 動態計算棋盤大小，使其在可用範圍內最大化 (精準轉換為 vmin 單位)
+// 【調整: 動態計算棋盤大小，完美支援三種情境 (桌機、手機直向、手機橫向)】
 function resizeBoard() { 
     const isLand = checkOrientation();
+    const isMobilePortrait = document.body.classList.contains('is-mobile-portrait');
     const header = document.getElementById('main-header');
     const winW = window.innerWidth, winH = window.innerHeight; 
     let finalSizePx;
     
-    // 若文字提示面板開啟，則扣除其預留的寬度 (25vmin 面板 + 2vmin 間距) 以保持棋盤置中
     let showLog = document.getElementById('show-log-chk') ? document.getElementById('show-log-chk').checked : true;
     let currentVminPx = Math.min(winW, winH) / 100;
-    let logSpacePx = showLog ? (27 * currentVminPx) : 0;
     
-    if (isLand) {
-        // 橫式：扣除左側選單與雙邊的安全邊距 (保留雙邊空間以維持棋盤完全置中)
-        const headerW = 140, gap = winW * 0.02;
-        finalSizePx = Math.min(winW - headerW - gap - 20 - logSpacePx * 2, winH - 20);
+    if (isMobilePortrait) {
+        // 【手機垂直模式】
+        // 棋盤可最大化至螢幕寬度，下方空間留給走棋記錄 (最高150px)
+        let logSpaceYPx = showLog ? Math.min(winH * 0.20, 150) : 0;
+        // 可用高度 = 全高 - header高度 - log面板高度 - 佈局預留的間隔(約30px)
+        finalSizePx = Math.min(winW - 20, winH - header.offsetHeight - logSpaceYPx - 30);
+    } else if (isLand) {
+        // 【手機橫向模式】
+        // 左側為選單區(header=140px)，接著是走棋紀錄面板(最高200px)，然後才是棋盤
+        let logSpaceXPx = showLog ? Math.min(winW * 0.25, 200) : 0;
+        const headerW = 140, gap = 20; // flex 佈局的安全間隔
+        finalSizePx = Math.min(winW - headerW - logSpaceXPx - gap * 2, winH - 20);
     } else {
-        // 直式：扣除頂部標題列與雙邊安全邊距
+        // 【桌上型電腦模式】維持原版邏輯完全不變 (利用絕對定位來保持棋盤整體置中)
+        let logSpacePx = showLog ? (27 * currentVminPx) : 0;
         finalSizePx = Math.min(winW - 20 - logSpacePx * 2, winH - header.offsetHeight - 20);
     }
     
