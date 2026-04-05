@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#3a3a3a">
-    <title>大理石西洋棋 2026</title>
+    <title>西洋棋大師 2026</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <style>
         /* === 核心變數與配色定義 === */
         :root {
             --bg-grad: radial-gradient(circle at center, #3a3a3a, #1a1a1a);
+            
+            /* 棋盤預設變數 (會被樣式 class 覆蓋) */
+            --light-square-bg: linear-gradient(135deg, #e8e8e8 0%, #dcdcdc 100%);
+            --dark-square-bg: linear-gradient(135deg, #7a7a7a 0%, #606060 100%);
             --board-border: #333;
-            --dark-square: #6b6b6b;
-            --light-square: #dcdcdc;
+            
             --selected-border: #4a4aff;
             --move-dot: #00aa00;
             --capture-dot: #cc0000;
@@ -22,6 +25,13 @@
             /* 動態大小，會被 JS 的 resizeBoard 以 vmin 為單位自動覆蓋 */
             --board-size: 95vmin; 
         }
+
+        /* === 視覺風格定義 (5種主題) === */
+        body.theme-marble { --light-square-bg: linear-gradient(135deg, #e8e8e8 0%, #dcdcdc 100%); --dark-square-bg: linear-gradient(135deg, #7a7a7a 0%, #606060 100%); --board-border: #333; }
+        body.theme-wood { --light-square-bg: #f0d9b5; --dark-square-bg: #b58863; --board-border: #5c2a16; }
+        body.theme-green { --light-square-bg: #eeeed2; --dark-square-bg: #769656; --board-border: #4e6b36; }
+        body.theme-brown { --light-square-bg: #eecda3; --dark-square-bg: #b07e5c; --board-border: #754c29; }
+        body.theme-teal { --light-square-bg: #ffffe0; --dark-square-bg: #359886; --board-border: #1f6b5b; }
 
         html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
         
@@ -111,7 +121,7 @@
             border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7); 
             box-sizing: border-box; flex-shrink: 0; 
-            transition: transform 0.1s ease-out;
+            transition: transform 0.1s ease-out, border 0.3s, background 0.3s;
             display: grid;
             grid-template-columns: repeat(8, 1fr);
             grid-template-rows: repeat(8, 1fr);
@@ -125,10 +135,12 @@
             align-items: center;
             cursor: pointer;
             box-sizing: border-box;
+            transition: background 0.3s;
         }
 
-        .square.light { background: linear-gradient(135deg, #e8e8e8 0%, #dcdcdc 100%); }
-        .square.dark { background: linear-gradient(135deg, #7a7a7a 0%, #606060 100%); }
+        /* 根據主題變數套用方格背景 */
+        .square.light { background: var(--light-square-bg); }
+        .square.dark { background: var(--dark-square-bg); }
 
         /* 座標標示 */
         .square.rank-label::before { content: attr(data-rank); position: absolute; top: 2px; left: 2px; font-size: calc(var(--board-size)*0.015 + 6px); color: #fff; text-shadow: 1px 1px 0 #000; z-index: 5; font-weight: bold;}
@@ -172,7 +184,7 @@
 
 <header id="main-header">
     <div class="header-top">
-        <h2 id="app-title" data-i18n="title">大理石西洋棋 2026</h2>
+        <h2 id="app-title" data-i18n="title">西洋棋大師 2026</h2>
         <div class="status-container">
             <div class="status" id="status">您 (白方) 的回合</div>
             <div class="stats" id="thinking" style="opacity: 0;">🧠 電腦思考中...</div>
@@ -181,7 +193,7 @@
     <div class="btn-group">
         <button class="btn" onclick="toggleSet()" data-i18n="btnSet">⚙️ 設定</button>
         <button class="btn btn-blue" onclick="switchSides()" data-i18n="btnSwitch">🔄 換方</button>
-        <button class="btn btn-orange" onclick="undoMove()" data-i18n="btnUndo">↩️ 悔棋</button> 
+        <button class="btn btn-orange" onclick="undoMove()" data-i18n="btnUndo">↩️ 悔棋</button>
         <button class="btn btn-red" onclick="resetGame()" data-i18n="btnReset">🛑 重開</button>
     </div>
 </header>
@@ -206,7 +218,7 @@
         </div>
     </div>
 
-    <div class="set-row flex-split vol-row">
+    <div class="set-row flex-split">
         <div>
             <label><span data-i18n="bgm">背景音樂</span></label>
             <select id="music-sel" onchange="changeMusic()">
@@ -218,6 +230,17 @@
                 <option value="05">🎵 樂曲 05</option>
                 <option value="06">🎵 樂曲 06</option>
                 <option value="07">🎵 樂曲 07</option>
+            </select>
+        </div>
+        <div>
+            <label><span data-i18n="boardStyle">棋盤樣式</span></label>
+            <select id="style-sel" onchange="changeBoardStyle()">
+                <option value="random" selected data-i18n="styleRandom">🎲 隨機</option>
+                <option value="marble" data-i18n="styleMarble">🪨 大理石</option>
+                <option value="wood" data-i18n="styleWood">🪵 原木</option>
+                <option value="green" data-i18n="styleGreen">🌿 經典綠</option>
+                <option value="brown" data-i18n="styleBrown">🟫 淺褐</option>
+                <option value="teal" data-i18n="styleTeal">🌊 藍綠</option>
             </select>
         </div>
     </div>
@@ -286,59 +309,62 @@ const pieceImages = {
 };
 
 /* === 語言切換系統與規則字庫 === */
-// 重要修正：使用單引號包覆 src，解決 HTML 解析含有雙引號 SVG 時的破版問題
+// 修正：使用 encodeURI 處理 SVG 並用單引號包裹 src 以避免破版
 const langDict = {
     tw: { 
-        title: "大理石西洋棋 2026", btnSet: "⚙️ 設定", btnSwitch: "🔄 換方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重開",
+        title: "西洋棋大師 2026", btnSet: "⚙️ 設定", btnSwitch: "🔄 換方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重開",
         aiDiff: "AI 難度 (思考深度)", diffEasy: "🟩 簡單 (休閒)", diffNormal: "🟨 普通 (預設)", diffHard: "🟥 困難 (挑戰)",
         lang: "語言", bgm: "背景音樂", volBgm: "音樂音量", volSfx: "音效音量",
+        boardStyle: "棋盤樣式", styleRandom: "🎲 隨機", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 經典綠", styleBrown: "🟫 淺褐", styleTeal: "🌊 藍綠",
         moveHint: "移動提示", aiProgress: "電腦思考進度", btnRules: "📖 遊戲規則", btnHome: "🏠 回首頁", btnDone: "完成設定",
         rulesTitle: "西洋棋詳細規則", btnCloseRules: "關閉說明",
         turnW: "您 (白方) 的回合", turnB: "電腦的回合", check: "(將軍!)", mateW: "遊戲結束！您贏了！", mateB: "遊戲結束！您被將死了", draw: "遊戲和局。",
         thinking: "🧠 電腦思考中...", moving: "🧠 正在落子...",
         rulesList: `
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wp}'><div class="rule-text"><b>兵 (Pawn)：</b>第一步可前進一或兩格，之後僅能直走一格。吃子時必須向「斜前方」吃。走到底線時可「升變」為皇后、主教、騎士或城堡。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wr}'><div class="rule-text"><b>城堡 (Rook)：</b>可沿橫線或直線移動，不限格數，不能越過其他棋子（與國王進行「王車易位」時除外）。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wn}'><div class="rule-text"><b>騎士 (Knight)：</b>走「L」字型（直/橫走兩格後再轉一格）。是唯一可以「越過」其他棋子的兵種。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wb}'><div class="rule-text"><b>主教 (Bishop)：</b>只能沿斜線移動，不限格數，不能越過其他棋子。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wq}'><div class="rule-text"><b>皇后 (Queen)：</b>結合了城堡與主教的走法，可沿橫、直、斜線移動，格數不限，是威力最強的棋子。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wk}'><div class="rule-text"><b>國王 (King)：</b>周圍8個方向皆可移動1格。若受到敵方攻擊稱為「將軍」(Check)，必須立刻避開。若無法逃脫則被「將死」(Checkmate)，遊戲結束。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bp)}'><div class="rule-text"><b>兵 (Pawn)：</b>第一步可前進一或兩格，之後僅能直走一格。吃子時必須向「斜前方」吃。走到底線時可「升變」為皇后、主教、騎士或城堡。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.br)}'><div class="rule-text"><b>城堡 (Rook)：</b>可沿橫線或直線移動，不限格數，不能越過其他棋子（與國王進行「王車易位」時除外）。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bn)}'><div class="rule-text"><b>騎士 (Knight)：</b>走「L」字型（直/橫走兩格後再轉一格）。是唯一可以「越過」其他棋子的兵種。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bb)}'><div class="rule-text"><b>主教 (Bishop)：</b>只能沿斜線移動，不限格數，不能越過其他棋子。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bq)}'><div class="rule-text"><b>皇后 (Queen)：</b>結合了城堡與主教的走法，可沿橫、直、斜線移動，格數不限，是威力最強的棋子。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>國王 (King)：</b>周圍8個方向皆可移動1格。若受到敵方攻擊稱為「將軍」(Check)，必須立刻避開。若無法逃脫則被「將死」(Checkmate)，遊戲結束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系統已內建完美支援「王車易位」、「吃過路兵」及「兵的升變」等特殊規則。</div></div>
         `
     },
     cn: { 
-        title: "大理石国际象棋 2026", btnSet: "⚙️ 设置", btnSwitch: "🔄 换方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重开",
+        title: "国际象棋大师 2026", btnSet: "⚙️ 设置", btnSwitch: "🔄 换方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重开",
         aiDiff: "AI 难度 (思考深度)", diffEasy: "🟩 简单 (休闲)", diffNormal: "🟨 普通 (默认)", diffHard: "🟥 困难 (挑战)",
         lang: "语言", bgm: "背景音乐", volBgm: "音乐音量", volSfx: "音效音量",
+        boardStyle: "棋盘样式", styleRandom: "🎲 随机", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 经典绿", styleBrown: "🟫 浅褐", styleTeal: "🌊 蓝绿",
         moveHint: "移动提示", aiProgress: "电脑思考进度", btnRules: "📖 游戏规则", btnHome: "🏠 回首页", btnDone: "完成设置",
         rulesTitle: "国际象棋详细规则", btnCloseRules: "关闭说明",
         turnW: "您 (白方) 的回合", turnB: "电脑的回合", check: "(将军!)", mateW: "游戏结束！您赢了！", mateB: "游戏结束！您被将死了", draw: "游戏和局。",
         thinking: "🧠 电脑思考中...", moving: "🧠 正在落子...",
         rulesList: `
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wp}'><div class="rule-text"><b>兵 (Pawn)：</b>第一步可前进一或两格，之后仅能直走一格。吃子时必须向「斜前方」吃。走到底线时可「升变」为皇后、主教、骑士或城堡。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wr}'><div class="rule-text"><b>城堡 (Rook)：</b>可沿横线或直线移动，不限格数，不能越过其他棋子（与国王进行「王车易位」时除外）。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wn}'><div class="rule-text"><b>骑士 (Knight)：</b>走「L」字型（直/横走两格后再转一格）。是唯一可以「越过」其他棋子的兵种。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wb}'><div class="rule-text"><b>主教 (Bishop)：</b>只能沿斜线移动，不限格数，不能越过其他棋子。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wq}'><div class="rule-text"><b>皇后 (Queen)：</b>结合了城堡与主教的走法，可沿横、直、斜线移动，格数不限，是威力最强的棋子。</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wk}'><div class="rule-text"><b>国王 (King)：</b>周围8个方向皆可移动1格。若受到敌方攻击称为「将军」(Check)，必须立刻避开。若无法逃脱则被「将死」(Checkmate)，游戏结束。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bp)}'><div class="rule-text"><b>兵 (Pawn)：</b>第一步可前进一或两格，之后仅能直走一格。吃子时必须向「斜前方」吃。走到底线时可「升变」为皇后、主教、骑士或城堡。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.br)}'><div class="rule-text"><b>城堡 (Rook)：</b>可沿横线或直线移动，不限格数，不能越过其他棋子（与国王进行「王车易位」时除外）。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bn)}'><div class="rule-text"><b>骑士 (Knight)：</b>走「L」字型（直/横走两格后再转一格）。是唯一可以「越过」其他棋子的兵种。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bb)}'><div class="rule-text"><b>主教 (Bishop)：</b>只能沿斜线移动，不限格数，不能越过其他棋子。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bq)}'><div class="rule-text"><b>皇后 (Queen)：</b>结合了城堡与主教的走法，可沿横、直、斜线移动，格数不限，是威力最强的棋子。</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>国王 (King)：</b>周围8个方向皆可移动1格。若受到敌方攻击称为「将军」(Check)，必须立刻避开。若无法逃脱则被「将死」(Checkmate)，游戏结束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系统已内建完美支援「王车易位」、「吃过路兵」及「兵的升变」等特殊规则。</div></div>
         `
     },
     en: { 
-        title: "Marble Chess 2026", btnSet: "⚙️ Settings", btnSwitch: "🔄 Switch", btnUndo: "↩️ Undo", btnReset: "🛑 Restart",
+        title: "Chess Master 2026", btnSet: "⚙️ Settings", btnSwitch: "🔄 Switch", btnUndo: "↩️ Undo", btnReset: "🛑 Restart",
         aiDiff: "AI Difficulty", diffEasy: "🟩 Easy", diffNormal: "🟨 Normal", diffHard: "🟥 Hard",
         lang: "Language", bgm: "Music", volBgm: "Music Vol", volSfx: "SFX Vol",
+        boardStyle: "Board Style", styleRandom: "🎲 Random", styleMarble: "🪨 Marble", styleWood: "🪵 Wood", styleGreen: "🌿 Green", styleBrown: "🟫 Brown", styleTeal: "🌊 Teal",
         moveHint: "Move Hint", aiProgress: "AI Progress Bar", btnRules: "📖 Rules", btnHome: "🏠 Home", btnDone: "Done",
         rulesTitle: "Chess Rules Summary", btnCloseRules: "Close",
         turnW: "Your Turn (White)", turnB: "AI's Turn", check: "(Check!)", mateW: "Game Over! You Win!", mateB: "Game Over! Checkmated", draw: "Game Draw.",
         thinking: "🧠 AI Thinking...", moving: "🧠 AI Moving...",
         rulesList: `
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wp}'><div class="rule-text"><b>Pawn：</b>Moves forward 1 or 2 squares on its first move, then 1 square. Captures diagonally. Promotes to Queen, Bishop, Knight, or Rook.</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wr}'><div class="rule-text"><b>Rook：</b>Moves horizontally or vertically, any number of squares. Cannot jump over pieces (except Castling).</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wn}'><div class="rule-text"><b>Knight：</b>Moves in an 'L' shape. It is the only piece that can jump over other pieces.</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wb}'><div class="rule-text"><b>Bishop：</b>Moves diagonally, any number of squares. Cannot jump over other pieces.</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wq}'><div class="rule-text"><b>Queen：</b>Combines Rook and Bishop. Moves any direction, any number of squares. The most powerful piece.</div></div>
-            <div class="rule-item"><img class="rule-piece" src='${pieceImages.wk}'><div class="rule-text"><b>King：</b>Moves 1 square in any direction. Must escape if attacked ('Check'). If it cannot escape, it's 'Checkmate'.</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bp)}'><div class="rule-text"><b>Pawn：</b>Moves forward 1 or 2 squares on its first move, then 1 square. Captures diagonally. Promotes to Queen, Bishop, Knight, or Rook.</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.br)}'><div class="rule-text"><b>Rook：</b>Moves horizontally or vertically, any number of squares. Cannot jump over pieces (except Castling).</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bn)}'><div class="rule-text"><b>Knight：</b>Moves in an 'L' shape. It is the only piece that can jump over other pieces.</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.wb)}'><div class="rule-text"><b>Bishop：</b>Moves diagonally, any number of squares. Cannot jump over other pieces.</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.wq)}'><div class="rule-text"><b>Queen：</b>Combines Rook and Bishop. Moves any direction, any number of squares. The most powerful piece.</div></div>
+            <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>King：</b>Moves 1 square in any direction. Must escape if attacked ('Check'). If it cannot escape, it's 'Checkmate'.</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* Castling, En Passant, and Pawn Promotion are fully supported.</div></div>
         `
     }
@@ -348,6 +374,7 @@ let currentLang = 'tw';
 
 function changeLang() {
     currentLang = document.getElementById('lang-sel').value;
+    document.title = langDict[currentLang].title;
     document.getElementById('app-title').innerText = langDict[currentLang].title;
     document.getElementById('rules-list').innerHTML = langDict[currentLang].rulesList;
     
@@ -362,6 +389,17 @@ function changeLang() {
         if (aiCountdownFinished) thinkingEl.innerText = langDict[currentLang].moving;
         else thinkingEl.innerText = `${langDict[currentLang].thinking} ${aiSecondsLeft}s`;
     }
+}
+
+function changeBoardStyle() {
+    let sel = document.getElementById('style-sel').value;
+    if (sel === 'random') {
+        const styles = ['marble', 'wood', 'green', 'brown', 'teal'];
+        sel = styles[Math.floor(Math.random() * styles.length)];
+    }
+    // 移除所有主題 class 後加入新選擇的主題
+    document.body.classList.remove('theme-marble', 'theme-wood', 'theme-green', 'theme-brown', 'theme-teal');
+    document.body.classList.add(`theme-${sel}`);
 }
 
 /* === PWA 與防盜、視窗設定 === */
@@ -729,6 +767,7 @@ function undoMove() {
 
 function resetGame() {
     cancelAI();
+    changeBoardStyle();
     game.reset();
     selectedSquare = null;
     winOverlay.classList.remove('show');
@@ -864,7 +903,7 @@ function checkAndExecuteMove() {
 }
 
 // 系統初始化
-window.onload = () => { changeLang(); resizeBoard(); createBoard(); };
+window.onload = () => { changeBoardStyle(); changeLang(); resizeBoard(); createBoard(); };
 
 </script>
 </body>
