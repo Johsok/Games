@@ -197,7 +197,7 @@
         }
         
         .board-inner { position: relative; width: 100%; height: 100%; }
-        /* 修正2：加上 overflow: visible 讓位於邊緣(0% 或 100%) 的格線不會被裁切掉一半 */
+        /* overflow: visible 讓位於邊緣(0% 或 100%) 的格線不會被裁切掉一半 */
         svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.8; overflow: visible; }
         line { stroke: var(--line-color); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: square; }
         
@@ -317,6 +317,7 @@
         <div>
             <label id="lbl-theme">視覺風格</label>
             <select id="theme-sel" onchange="changeTheme()">
+                <option value="random" selected>🎲 隨機</option>
                 <option value="t-classic">💎 經典</option>
                 <option value="t-ink">🏔️ 水墨</option>
                 <option value="t-jade">📿 翡翠</option>
@@ -473,6 +474,7 @@
 
 <script>
 /* ================= WORKER SCRIPT (雙引擎智能無縫切換機制) ================= */
+/* ================= WORKER SCRIPT (雙引擎智能無縫切換機制) ================= */
 const workerScript = `
 let useXq = false;
 let game = null;
@@ -491,18 +493,23 @@ function initZobrist() { for(let i=0; i<90; i++) { zobristTable[i] = {}; [-7,-6,
 initZobrist();
 function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) h ^= zobristTable[i][bd[i]]; } return h; }
 
+// 【核心修正】：結合高效能節點計數器與優雅退出的全域標記
+let checkNodes = 0; 
+let timeOutFlag = false; 
+
 self.onmessage = function(e) { 
-    const { fen, bd, limit, turn, level } = e.data; 
+    const { fen, bd, limit, targetEndTime, turn, level } = e.data; 
     let best = null;
     
-    // 如果 xiangqi.js 成功載入，優先使用強大引擎
+    // 每次思考前重置標記與計數器
+    checkNodes = 0; 
+    timeOutFlag = false; 
+    
     if (useXq && fen) {
         game.load(fen);
-        best = getBestMoveIterativeXq(limit.depth, limit.time, turn, level); 
-    } 
-    // 自動切換到自製 Minimax 引擎 (防 Bug 失敗機制)
-    else {
-        best = getBestMoveIterativeNative(bd, limit.depth, limit.time, turn, level);
+        best = getBestMoveIterativeXq(limit.depth, targetEndTime, turn, level); 
+    } else {
+        best = getBestMoveIterativeNative(bd, limit.depth, targetEndTime, turn, level);
     }
     self.postMessage(best); 
 };
@@ -534,7 +541,7 @@ function evalBdXq(turn) {
     } return s * turn; 
 }
 
-function getBestMoveIterativeXq(maxDepth, timeLimit, turn, level) { 
+function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level) { 
     const startTime = Date.now(); let globalBestMove = null; 
     let rootMoves = game.moves({ verbose: true }); 
     let actualMaxDepth = maxDepth; 
@@ -552,14 +559,19 @@ function getBestMoveIterativeXq(maxDepth, timeLimit, turn, level) {
         } else { rootMoves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0)); }
 
         for (let m of rootMoves) { 
-            game.move(m); let score = -alphaBetaXq(d - 1, -beta, -alpha, -turn, 1, startTime, timeLimit); game.undo(); 
-            if (Date.now() - startTime >= timeLimit) { outOfTime = true; break; }
+            game.move(m); 
+            let score = -alphaBetaXq(d - 1, -beta, -alpha, -turn, 1, targetEndTime); 
+            game.undo(); 
+            
+            if (timeOutFlag || Date.now() >= targetEndTime) { outOfTime = true; timeOutFlag = true; break; }
             if (score > alpha) { alpha = score; currentDepthBest = m; } 
         } 
+        
         if (outOfTime) break; 
         if (currentDepthBest) globalBestMove = currentDepthBest; 
-        if (Date.now() - startTime > timeLimit * 0.5) break; 
+        if (Date.now() - startTime > (targetEndTime - startTime) * 0.5) break; 
     } 
+
     if (!globalBestMove && rootMoves.length > 0) globalBestMove = rootMoves[0];
     if (globalBestMove) {
         let fromIdx = (9 - parseInt(globalBestMove.from[1])) * 9 + (globalBestMove.from.charCodeAt(0) - 97);
@@ -568,28 +580,40 @@ function getBestMoveIterativeXq(maxDepth, timeLimit, turn, level) {
     } return null;
 }
 
-function alphaBetaXq(depth, alpha, beta, turn, ply, startTime, limit) { 
-    if ((ply & 15) === 0 && Date.now() - startTime >= limit) return alpha; 
+function alphaBetaXq(depth, alpha, beta, turn, ply, targetEndTime) { 
+    if (timeOutFlag) return alpha;
+    if (timeOutFlag || Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; }
+
     if (game.game_over()) { if (game.in_checkmate()) return -MATE_VAL + ply; return 0; }
-    if (depth <= 0) return quiescenceXq(alpha, beta, turn); 
+    if (depth <= 0) return quiescenceXq(alpha, beta, turn, targetEndTime);
     let moves = game.moves({ verbose: true }); 
     if (moves.length === 0) return -MATE_VAL + ply; 
     moves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
     for (let m of moves) { 
-        game.move(m); let score = -alphaBetaXq(depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit); game.undo(); 
-        if (Date.now() - startTime >= limit) return alpha; 
+        game.move(m); 
+        let score = -alphaBetaXq(depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime); 
+        game.undo(); 
+        
+        if (timeOutFlag) return alpha; 
         if (score > alpha) alpha = score; 
         if (alpha >= beta) return beta; 
     } return alpha; 
 }
 
-function quiescenceXq(alpha, beta, turn) { 
+function quiescenceXq(alpha, beta, turn, targetEndTime) { 
+    if (timeOutFlag) return alpha;
+    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
+
     let val = evalBdXq(turn); 
     if (val >= beta) return beta; if (val > alpha) alpha = val; 
     let moves = game.moves({ verbose: true }).filter(m => m.captured);
     moves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
     for (let m of moves) { 
-        game.move(m); let score = -quiescenceXq(-beta, -alpha, -turn); game.undo(); 
+        game.move(m); 
+        let score = -quiescenceXq(-beta, -alpha, -turn, targetEndTime); 
+        game.undo(); 
+        
+        if (timeOutFlag) return alpha; 
         if (score >= beta) return beta; if (score > alpha) alpha = score; 
     } return alpha; 
 }
@@ -612,7 +636,7 @@ function evalBdNat(bd, turn) {
     } return s * turn; 
 }
 
-function getBestMoveIterativeNative(bd, maxDepth, timeLimit, turn, level) { 
+function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level) { 
     const startTime = Date.now(); let globalBestMove = null; 
     let rootMoves = genMovesNat(bd, turn); killerTable.fill(0); 
     let actualMaxDepth = maxDepth; 
@@ -620,42 +644,49 @@ function getBestMoveIterativeNative(bd, maxDepth, timeLimit, turn, level) {
     if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); 
 
     for (let d = 1; d <= actualMaxDepth; d++) { 
-        let alpha = -INFINITY, beta = INFINITY, currentDepthBest = null; 
-        rootMoves = sortMovesNat(rootMoves, bd, turn, 0, globalBestMove); let outOfTime = false;
+        let alpha = -INFINITY, beta = INFINITY, currentDepthBest = null; let outOfTime = false;
+        rootMoves = sortMovesNat(rootMoves, bd, turn, 0, globalBestMove); 
         for (let m of rootMoves) { 
-            makeNat(bd, m); let score = -alphaBetaNat(bd, d - 1, -beta, -alpha, -turn, 1, startTime, timeLimit, computeHash(bd)); unmakeNat(bd, m); 
-            if (Date.now() - startTime >= timeLimit) { outOfTime = true; break; }
+            makeNat(bd, m); 
+            let score = -alphaBetaNat(bd, d - 1, -beta, -alpha, -turn, 1, targetEndTime, computeHash(bd)); 
+            unmakeNat(bd, m); 
+            
+            if (timeOutFlag || Date.now() >= targetEndTime) { outOfTime = true; timeOutFlag = true; break; }
             if (score > alpha) { alpha = score; currentDepthBest = m; } 
         } 
         if (outOfTime) break; 
         if (currentDepthBest) globalBestMove = currentDepthBest; 
-        if (Date.now() - startTime > timeLimit * 0.5) break; 
+        if (Date.now() - startTime > (targetEndTime - startTime) * 0.5) break; 
     } 
+    
     return globalBestMove || rootMoves[0]; 
 }
 
-function alphaBetaNat(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { 
-    if ((ply & 1023) === 0 && Date.now() - startTime >= limit) return alpha; 
+function alphaBetaNat(bd, depth, alpha, beta, turn, ply, targetEndTime, hash) { 
+    if (timeOutFlag) return alpha;
+    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
+
     const ttEntry = tt[hash]; let ttBest = null;
     if (ttEntry && ttEntry.depth >= depth) { 
         if (ttEntry.flag === 0) return ttEntry.val; 
         if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; 
         if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; ttBest = ttEntry.best;
     } 
-    if (depth <= 0) return quiescenceNat(bd, alpha, beta, turn); 
+    if (depth <= 0) return quiescenceNat(bd, alpha, beta, turn, targetEndTime);
     let moves = genMovesNat(bd, turn); if (moves.length === 0) return -MATE_VAL + ply; 
     moves = sortMovesNat(moves, bd, turn, ply, ttBest); 
     let moveCount = 0, originalAlpha = alpha, bestM = null; 
 
     for (let m of moves) { 
         let isCapture = (bd[m.to] !== 0); makeNat(bd, m); let newHash = computeHash(bd), score; 
-        if (moveCount === 0) { score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } 
+        if (moveCount === 0) { score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); } 
         else { 
-            score = -alphaBetaNat(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); 
-            if (score > alpha && score < beta) score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); 
+            score = -alphaBetaNat(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime, newHash); 
+            if (score > alpha && score < beta) score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); 
         } 
         unmakeNat(bd, m); moveCount++; 
-        if (Date.now() - startTime >= limit) return alpha; 
+        
+        if (timeOutFlag) return alpha; 
         if (score > alpha) { alpha = score; bestM = m; historyTable[m.from * 90 + m.to] += depth * depth; } 
         if (alpha >= beta) { 
             if (!isCapture) { killerTable[ply * 2 + 1] = killerTable[ply * 2]; killerTable[ply * 2] = m.from * 100 + m.to; } 
@@ -666,24 +697,90 @@ function alphaBetaNat(bd, depth, alpha, beta, turn, ply, startTime, limit, hash)
     return alpha; 
 }
 
-function quiescenceNat(bd, alpha, beta, turn) { 
+function quiescenceNat(bd, alpha, beta, turn, targetEndTime) { 
+    if (timeOutFlag) return alpha;
+    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
+
     let val = evalBdNat(bd, turn); 
     if (val >= beta) return beta; if (val > alpha) alpha = val; 
     let moves = genMovesNat(bd, turn, true); moves = sortMovesNat(moves, bd, turn, 0, null); 
-    for (let m of moves) { makeNat(bd, m); let score = -quiescenceNat(bd, -beta, -alpha, -turn); unmakeNat(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; 
-} 
+    for (let m of moves) { 
+        makeNat(bd, m); let score = -quiescenceNat(bd, -beta, -alpha, -turn, targetEndTime); unmakeNat(bd, m); 
+        if (timeOutFlag) return alpha; 
+        if (score >= beta) return beta; if (score > alpha) alpha = score; 
+    } return alpha; 
+}
 function makeNat(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
 function unmakeNat(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; } 
 function sortMovesNat(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS_NAT[Math.abs(bd[m.to])] * 10 - VALS_NAT[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); } 
 function genMovesNat(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgtsNat(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; } 
-function getTgtsNat(bd, i, type, color) { let x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { const dirs = [[0,1],[0,-1],[1,0],[-1,0]]; for(let k=0; k<dirs.length; k++){ let dx=dirs[k][0], dy=dirs[k][1], c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } } } else if(type===4) { const hDirs = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]]; for(let k=0; k<hDirs.length; k++){ let dx=hDirs[k][0], dy=hDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; for(let k=0; k<ds.length; k++){ let dx=ds[k][0], dy=ds[k][1], c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } } } return t; }
+
+function getTgtsNat(bd, i, type, color) { 
+    let x=i%9, y=Math.floor(i/9), t=[]; 
+    const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; 
+    const canLand = (idx) => bd[idx] * color <= 0; 
+    if(type===1) { 
+        let d=color===1?-1:1; 
+        if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); 
+        if((color===1&&y<5)||(color===-1&&y>4)){ 
+            if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); 
+            if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); 
+        } 
+    } else if(type===2||type===3) { 
+        const dirs = [[0,1],[0,-1],[1,0],[-1,0]]; 
+        for(let k=0; k<dirs.length; k++){ 
+            let dx=dirs[k][0], dy=dirs[k][1], c=x+dx, r=y+dy, j=false; 
+            while(inB(c,r)){ 
+                let idx=r*9+c; 
+                if(bd[idx]===0){ 
+                    if(!j) t.push(idx); 
+                } else { 
+                    if(type===3){ if(canLand(idx)) t.push(idx); break; } 
+                    if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } 
+                } 
+                c+=dx; r+=dy; 
+            } 
+        } 
+    } else if(type===4) { 
+        const hDirs = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]]; 
+        for(let k=0; k<hDirs.length; k++){ 
+            let dx=hDirs[k][0], dy=hDirs[k][1], c=x+dx, r=y+dy; 
+            if(inB(c,r)){ 
+                let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; 
+                if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); 
+            } 
+        } 
+    } else if(type===5) { 
+        const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; 
+        for(let k=0; k<eDirs.length; k++){ 
+            let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; 
+            if(inB(c,r)){ 
+                // 【修正】：將 return 改為 continue。
+                // 原本錯誤的 return 會導致整個 getTgtsNat 函數直接結束並回傳 undefined，
+                // 造成外部 genMovesNat 讀取 targets.length 時發生 TypeError，進而導致 Web Worker 崩潰，AI 在倒數後卡住無法走棋。
+                if(color===1 && r<5) continue; 
+                if(color===-1 && r>4) continue; 
+                let eyeC=x+dx/2, eyeR=y+dy/2; 
+                if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); 
+            } 
+        } 
+    } else if(type>=6) { 
+        let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; 
+        for(let k=0; k<ds.length; k++){ 
+            let dx=ds[k][0], dy=ds[k][1], c=x+dx, r=y+dy; 
+            if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ 
+                if(canLand(r*9+c)) t.push(r*9+c); 
+            } 
+        } 
+    } return t; 
+}
 `;
 
 /* 確保這組初始陣列一定要存在，做為終極安全防線 */
 const INIT_BD = [-3,-4,-5,-6,-7,-6,-5,-4,-3, 0,0,0,0,0,0,0,0,0, 0,-2,0,0,0,0,0,-2,0, -1,0,-1,0,-1,0,-1,0,-1, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 1,0,1,0,1,0,1,0,1, 0,2,0,0,0,0,0,2,0, 0,0,0,0,0,0,0,0,0, 3,4,5,6,7,6,5,4,3];
 const TXT = {1:"兵",2:"炮",3:"俥",4:"傌",5:"相",6:"仕",7:"帥","-1":"卒","-2":"包","-3":"車","-4":"馬","-5":"象","-6":"士","-7":"將"};
 
-/* 更新翻譯字典，加入 check (將軍!) 並更新視覺樣式翻譯 */
+/* 更新翻譯字典，加入 random (隨機) 並更新視覺樣式翻譯 */
 const TRANSLATIONS = {
     tw: {
         title: "象棋大師 2026",
@@ -727,7 +824,7 @@ const TRANSLATIONS = {
         rulesUlWin: `<li>將死：對手將軍且無法解救。</li><li>困斃：對手無子可走。</li><li>認輸：對手主動投降。</li>`,
         diffOpts: { easy: "簡單 (菜鳥)", medium: "中等 (正常)", hard: "困難 (高手)", expert: "專家 (職業)", master: "大師 (宗師)", god: "神 (不可戰勝)" },
         musicOpts: { none: "🔇 靜音", '01': "🎵 樂曲 01", '02': "🎵 樂曲 02", '03': "🎵 樂曲 03", '04': "🎵 樂曲 04", '05': "🎵 樂曲 05", '06': "🎵 樂曲 06", '07': "🎵 樂曲 07" },
-        themeOpts: { 't-classic': "💎 經典", 't-ink': "🏔️ 水墨", 't-jade': "📿 翡翠", 't-wood': "🪵 紅木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野獸", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-red-print': "🧧 紅紙", 't-black-print': "📄 白紙", 't-trad': "📜 傳統", 't-cyber': "🤖 賽博", 't-sketch': "✏️ 素描" },
+        themeOpts: { 'random': "🎲 隨機", 't-classic': "💎 經典", 't-ink': "🏔️ 水墨", 't-jade': "📿 翡翠", 't-wood': "🪵 紅木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野獸", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-red-print': "🧧 紅紙", 't-black-print': "📄 白紙", 't-trad': "📜 傳統", 't-cyber': "🤖 賽博", 't-sketch': "✏️ 素描" },
         sideOpts: { '1': "紅", '-1': "黑" } 
     },
     cn: {
@@ -772,7 +869,7 @@ const TRANSLATIONS = {
         rulesUlWin: `<li>将死：对手将军且无法解救。</li><li>困毙：对手无子可走。</li><li>认输：对手主动投降。</li>`,
         diffOpts: { easy: "简单 (菜鸟)", medium: "中等 (正常)", hard: "困难 (高手)", expert: "专家 (职业)", master: "大师 (宗师)", god: "神 (不可战胜)" },
         musicOpts: { none: "🔇 静音", '01': "🎵 乐曲 01", '02': "🎵 乐曲 02", '03': "🎵 乐曲 03", '04': "🎵 乐曲 04", '05': "🎵 乐曲 05", '06': "🎵 乐曲 06", '07': "🎵 乐曲 07" },
-        themeOpts: { 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-jade': "📿 翡翠", 't-wood': "🪵 红木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-red-print': "🧧 红纸", 't-black-print': "📄 白纸", 't-trad': "📜 传统", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
+        themeOpts: { 'random': "🎲 随机", 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-jade': "📿 翡翠", 't-wood': "🪵 红木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-red-print': "🧧 红纸", 't-black-print': "📄 白纸", 't-trad': "📜 传统", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
         sideOpts: { '1': "红", '-1': "黑" } 
     },
     en: {
@@ -817,7 +914,7 @@ const TRANSLATIONS = {
         rulesUlWin: `<li>Checkmate: The General is under attack and cannot escape.</li><li>Stalemate: The opponent has no legal moves.</li><li>Resign: The opponent surrenders.</li>`,
         diffOpts: { easy: "Easy (Novice)", medium: "Medium (Normal)", hard: "Hard (Advanced)", expert: "Expert (Pro)", master: "Master (Grandmaster)", god: "God (Unbeatable)" },
         musicOpts: { none: "🔇 Mute", '01': "🎵 Track 01", '02': "🎵 Track 02", '03': "🎵 Track 03", '04': "🎵 Track 04", '05': "🎵 Track 05", '06': "🎵 Track 06", '07': "🎵 Track 07" },
-        themeOpts: { 't-classic': "💎 Classic", 't-ink': "🏔️ Ink", 't-jade': "📿 Jade", 't-wood': "🪵 Wood", 't-gold': "👑 Gold", 't-ocean': "🌊 Ocean", 't-royal': "🏛️ Royal", 't-beast': "🦁 Beast", 't-playful': "🎈 Playful", 't-shan': "🖌️ Landscape", 't-red-print': "🧧 Red Print", 't-black-print': "📄 Black Print", 't-trad': "📜 Traditional", 't-cyber': "🤖 Cyber", 't-sketch': "✏️ Sketch" },
+        themeOpts: { 'random': "🎲 Random", 't-classic': "💎 Classic", 't-ink': "🏔️ Ink", 't-jade': "📿 Jade", 't-wood': "🪵 Wood", 't-gold': "👑 Gold", 't-ocean': "🌊 Ocean", 't-royal': "🏛️ Royal", 't-beast': "🦁 Beast", 't-playful': "🎈 Playful", 't-shan': "🖌️ Landscape", 't-red-print': "🧧 Red Print", 't-black-print': "📄 Black Print", 't-trad': "📜 Traditional", 't-cyber': "🤖 Cyber", 't-sketch': "✏️ Sketch" },
         sideOpts: { '1': "Red", '-1': "Black" } 
     }
 };
@@ -947,7 +1044,7 @@ function inCheckNative(b, color) {
     return false;
 }
 
-/* 修正1：允許手動點擊吃掉老將！取得所有合法步，並特別開放老將被吃的限制 */
+/* 允許手動點擊吃掉老將！取得所有合法步，並特別開放老將被吃的限制 */
 function getMoves(boardArr, i, color) { 
     let mvs = [];
     if (xqGame) {
@@ -1048,7 +1145,10 @@ function changeLang() {
 
     const diffSel = document.getElementById('diff-sel'); Array.from(diffSel.options).forEach(opt => { if(t.diffOpts[opt.value]) opt.text = t.diffOpts[opt.value]; });
     const musicSel = document.getElementById('music-sel'); Array.from(musicSel.options).forEach(opt => { if(t.musicOpts[opt.value]) opt.text = t.musicOpts[opt.value]; });
+    
+    // 切換語言時，只同步更改選單文字，不觸發重新載入或改變已隨機好的風格
     const themeSel = document.getElementById('theme-sel'); Array.from(themeSel.options).forEach(opt => { if(t.themeOpts[opt.value]) opt.text = t.themeOpts[opt.value]; });
+    
     const sideSel = document.getElementById('side-sel'); Array.from(sideSel.options).forEach(opt => { if(t.sideOpts[opt.value]) opt.text = t.sideOpts[opt.value]; });
 
     document.getElementById('rules-title').innerText = t.rulesTitle;
@@ -1155,6 +1255,9 @@ function startAiTimer(totalTime) {
         progressBar.style.opacity = 1;
         progressBar.style.width = '0%';
     }
+    
+    // 立即顯示一開始的時間
+    document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${(totalTime / 1000).toFixed(1)}s)`;
 
     aiTimer = setInterval(() => { 
         let elapsed = Date.now() - aiStartTime;
@@ -1182,16 +1285,46 @@ function stopAiTimer() {
     }
 }
 
+function applyTheme(themeValue) {
+    let themeToApply = themeValue;
+    // 當前台選擇了「隨機」時，從這5種樣式中隨機抽選
+    if (themeValue === 'random') {
+        const randomThemes = ['t-classic', 't-ink', 't-red-print', 't-black-print', 't-trad'];
+        themeToApply = randomThemes[Math.floor(Math.random() * randomThemes.length)];
+    }
+    document.body.className = themeToApply;
+    checkOrientation();
+}
+
+function changeTheme() { 
+    const val = document.getElementById('theme-sel').value;
+    applyTheme(val);
+}
+
 function restart() { 
+    // 在重開時，如果設定為隨機，則重新骰一次風格
+    const themeVal = document.getElementById('theme-sel').value;
+    applyTheme(themeVal);
+
     if (typeof Xiangqi !== 'undefined') {
         xqGame = new Xiangqi(); 
     }
+    
+    // 強制徹底重置底層盤面陣列，確保重開後絕對是最原始狀態
+    bd = [...INIT_BD]; 
     syncBd(); 
 
     turn = viewSide; 
     sel = -1; moves = []; over = false; historyStack = []; lastMoveIdx = -1; 
     lastMoveFrom = -1; lastMovePieceType = 0; 
     dragEl = null;
+    
+    // 強制終止舊的 Worker 思考，避免殘留的走步在重開後才回傳干擾新局
+    if (worker) {
+        worker.terminate();
+        initWorker();
+    }
+    
     isAiThinking = false; stopAiTimer(); 
     isPVP = document.getElementById('mode-sel').value === 'pvp'; 
     document.getElementById('win-overlay').classList.remove('show');
@@ -1442,14 +1575,26 @@ function makeMove(from, to) {
     let isKingCapture = (bd[to] === 7 || bd[to] === -7);
     let eat = false;
 
-    // 修正1：當玩家手動點擊吃掉對手將軍時，無視 xiangqi.js 的常規判定，直接結束比賽宣告勝利！
+    // 當玩家手動點擊吃掉對手將軍時，直接結束比賽宣告勝利！
     if (isKingCapture) {
         eat = true;
         bd[to] = bd[from];
         bd[from] = 0;
     } else if (xqGame) {
         let moveObj = xqGame.move({ from: fromSq, to: toSq });
-        if (!moveObj) { historyStack.pop(); return; }
+        if (!moveObj) { 
+        historyStack.pop(); 
+        console.warn("AI 嘗試了不合法步，強制走合法步防卡死");
+        let validMoves = xqGame.moves({verbose: true});
+        if (validMoves.length > 0) {
+            let fallback = validMoves[0];
+            eat = fallback.captured ? true : false;
+            xqGame.move(fallback);
+            syncBd();
+        } else {
+            return;
+        }
+    }
         eat = moveObj.captured ? true : false;
         syncBd(); 
     } else {
@@ -1486,7 +1631,7 @@ function makeMove(from, to) {
     
     turn = xqGame ? (xqGame.turn() === 'b' ? -1 : 1) : -turn; 
     
-    /* 修正1-附帶特效：判斷對方是否陷入將軍，並彈出「將軍 !」提示 */
+    /* 判斷對方是否陷入將軍，並彈出「將軍 !」提示 */
     let in_check_flag = xqGame ? xqGame.in_check() : inCheckNative(bd, turn);
     if (in_check_flag) {
         showCheckOverlay();
@@ -1505,7 +1650,11 @@ function makeMove(from, to) {
         startAiTimer(levelConfig.time); 
         
         let fenStr = xqGame ? xqGame.fen() : null;
-        setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, turn: turn, level: diffKey }), 50); 
+        
+        // 為了抵銷 setTimeout 的延遲，並在倒數 0 秒立刻中止思考，精準算出結束的時間戳
+        const targetEndTime = Date.now() + levelConfig.time;
+
+        setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, targetEndTime: targetEndTime, turn: turn, level: diffKey }), 50); 
     } else { 
         updateStatus(); 
         if (!xqGame) {
@@ -1521,7 +1670,6 @@ function playSfx(freq, type) { if(audioCtx.state === 'suspended') audioCtx.resum
 function playWinSfx() { if(audioCtx.state === 'suspended') audioCtx.resume(); const v = document.getElementById('sfx-vol').value/100; if(v <= 0.01) return; const notes = [523.25, 659.25, 783.99, 1046.50]; const now = audioCtx.currentTime; const loopDuration = 3.0; const noteSpeed = 0.12; const count = Math.ceil(loopDuration / noteSpeed); for (let i = 0; i < count; i++) { const freq = notes[i % notes.length]; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = "square"; osc.connect(g); g.connect(audioCtx.destination); const startTime = now + i * noteSpeed; osc.frequency.setValueAtTime(freq, startTime); g.gain.setValueAtTime(0, startTime); g.gain.linearRampToValueAtTime(v * 0.2, startTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, startTime + noteSpeed); osc.start(startTime); osc.stop(startTime + noteSpeed); } }
 function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
 function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
-function changeTheme() { document.body.className = document.getElementById('theme-sel').value; checkOrientation(); }
 function changeMode() { isPVP = document.getElementById('mode-sel').value === 'pvp'; restart(); }
 function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; updateVolLabels(); } 
 function adjSfx() { updateVolLabels(); }
