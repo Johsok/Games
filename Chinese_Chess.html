@@ -604,9 +604,23 @@ function quiescenceXq(alpha, beta, turn, targetEndTime) {
     if (timeOutFlag) return alpha;
     if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
 
-    let val = evalBdXq(turn); 
-    if (val >= beta) return beta; if (val > alpha) alpha = val; 
-    let moves = game.moves({ verbose: true }).filter(m => m.captured);
+    // 【核心修正】：若處於將軍狀態，必須展開全部合法步來逃脫，否則電腦會因只搜吃子步而「忽視將軍」
+    let inCheck = game.in_check();
+    
+    if (!inCheck) {
+        let val = evalBdXq(turn); 
+        if (val >= beta) return beta; 
+        if (val > alpha) alpha = val; 
+    }
+
+    // 若被將軍，則需考慮所有合法步（包含非吃子步）來保護老將
+    let moves = game.moves({ verbose: true });
+    if (inCheck) {
+        if (moves.length === 0) return -MATE_VAL; // 確實被將死
+    } else {
+        moves = moves.filter(m => m.captured); // 安全時僅看吃子步
+    }
+    
     moves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
     for (let m of moves) { 
         game.move(m); 
@@ -614,13 +628,14 @@ function quiescenceXq(alpha, beta, turn, targetEndTime) {
         game.undo(); 
         
         if (timeOutFlag) return alpha; 
-        if (score >= beta) return beta; if (score > alpha) alpha = score; 
+        if (score >= beta) return beta; 
+        if (score > alpha) alpha = score; 
     } return alpha; 
 }
 
 // ================== 原生 Native 引擎版 (防止棋子出不來的最後防線) ==================
 const PST_NAT = { 3: PST_XQ['r'], 4: PST_XQ['n'], 2: PST_XQ['c'], 1: PST_XQ['p'] };
-const VALS_NAT = { 1:100, 2:450, 3:900, 4:400, 5:200, 6:200, 7:100000 };
+const VALS_NAT = { 1:100, 2:450, 3:900, 4:400, 5:200, 6:200, 7:10000000 };
 
 function evalBdNat(bd, turn) { 
     let s = 0; 
@@ -673,7 +688,12 @@ function alphaBetaNat(bd, depth, alpha, beta, turn, ply, targetEndTime, hash) {
         if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; ttBest = ttEntry.best;
     } 
     if (depth <= 0) return quiescenceNat(bd, alpha, beta, turn, targetEndTime);
-    let moves = genMovesNat(bd, turn); if (moves.length === 0) return -MATE_VAL + ply; 
+    let moves = genMovesNat(bd, turn); 
+    if (moves.length === 0) {
+        // 【核心修正】：判斷是將死還是困斃
+        if (inCheckNatWorker(bd, turn)) return -MATE_VAL + ply;
+        return 0; // 困斃和局
+    } 
     moves = sortMovesNat(moves, bd, turn, ply, ttBest); 
     let moveCount = 0, originalAlpha = alpha, bestM = null; 
 
@@ -701,9 +721,20 @@ function quiescenceNat(bd, alpha, beta, turn, targetEndTime) {
     if (timeOutFlag) return alpha;
     if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
 
-    let val = evalBdNat(bd, turn); 
-    if (val >= beta) return beta; if (val > alpha) alpha = val; 
-    let moves = genMovesNat(bd, turn, true); moves = sortMovesNat(moves, bd, turn, 0, null); 
+    let inCheck = inCheckNatWorker(bd, turn);
+
+    // 【核心修正】：處於將軍狀態下不依賴靜態評估，避免「視而不見」
+    if (!inCheck) {
+        let val = evalBdNat(bd, turn); 
+        if (val >= beta) return beta; 
+        if (val > alpha) alpha = val; 
+    }
+
+    // 【核心修正】：處於將軍狀態時展開所有合法步（不限於吃子步）來尋找解法
+    let moves = genMovesNat(bd, turn, !inCheck); 
+    if (inCheck && moves.length === 0) return -MATE_VAL;
+
+    moves = sortMovesNat(moves, bd, turn, 0, null); 
     for (let m of moves) { 
         makeNat(bd, m); let score = -quiescenceNat(bd, -beta, -alpha, -turn, targetEndTime); unmakeNat(bd, m); 
         if (timeOutFlag) return alpha; 
@@ -713,7 +744,63 @@ function quiescenceNat(bd, alpha, beta, turn, targetEndTime) {
 function makeNat(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
 function unmakeNat(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; } 
 function sortMovesNat(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS_NAT[Math.abs(bd[m.to])] * 10 - VALS_NAT[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); } 
-function genMovesNat(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgtsNat(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; } 
+
+// 【核心修正】：新增專供 Web Worker 使用的將軍判斷，用來嚴格過濾非法步
+function inCheckNatWorker(b, color) {
+    let kIdx = b.indexOf(7 * color);
+    if (kIdx === -1) return true; // 老將不見了視為極度危險(非合法狀態)
+    for (let i=0; i<90; i++) {
+        if (b[i] * -color > 0) {
+            let tgts = getTgtsNat(b, i, Math.abs(b[i]), -color);
+            if (tgts.includes(kIdx)) return true;
+        }
+    }
+    return false;
+}
+
+function genMovesNat(bd, turn, onlyCaps=false) { 
+    let ms = []; 
+    for(let i=0; i<90; i++) { 
+        if(bd[i] * turn > 0) { 
+            let p = Math.abs(bd[i]); 
+            let targets = getTgtsNat(bd, i, p, turn); 
+            for(let j=0; j<targets.length; j++) { 
+                let to = targets[j]; 
+                if(onlyCaps && bd[to]===0) continue; 
+                ms.push({from:i, to:to}); 
+            } 
+        } 
+    } 
+    // 【核心修正】：嚴格過濾非法步，避免電腦走出導致自己被將軍的死棋
+    let legalMs = [];
+    for(let i=0; i<ms.length; i++) {
+        let m = ms[i];
+        let cap = bd[m.to];
+        bd[m.to] = bd[m.from];
+        bd[m.from] = 0;
+        
+        // 確保這步走完後，己方老將不會處於被對方攻擊的狀態
+        let safe = !inCheckNatWorker(bd, turn);
+        
+        // 確保不會發生將帥照面(飛將)的問題
+        if (safe) {
+            let k1 = bd.indexOf(7), k2 = bd.indexOf(-7);
+            if (k1 !== -1 && k2 !== -1 && k1 % 9 === k2 % 9) {
+                let minR = Math.min(k1, k2) + 9, maxR = Math.max(k1, k2), blocked = false;
+                for (let k = minR; k < maxR; k += 9) {
+                    if (bd[k] !== 0) { blocked = true; break; }
+                }
+                if (!blocked) safe = false;
+            }
+        }
+        
+        bd[m.from] = bd[m.to];
+        bd[m.to] = cap;
+        
+        if (safe) legalMs.push(m);
+    }
+    return legalMs; 
+} 
 
 function getTgtsNat(bd, i, type, color) { 
     let x=i%9, y=Math.floor(i/9), t=[]; 
@@ -756,8 +843,6 @@ function getTgtsNat(bd, i, type, color) {
             let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; 
             if(inB(c,r)){ 
                 // 【修正】：將 return 改為 continue。
-                // 原本錯誤的 return 會導致整個 getTgtsNat 函數直接結束並回傳 undefined，
-                // 造成外部 genMovesNat 讀取 targets.length 時發生 TypeError，進而導致 Web Worker 崩潰，AI 在倒數後卡住無法走棋。
                 if(color===1 && r<5) continue; 
                 if(color===-1 && r>4) continue; 
                 let eyeC=x+dx/2, eyeR=y+dy/2; 
@@ -1359,30 +1444,58 @@ function updateStatus() {
 }
 
 function undo() { 
-    if(over || isAiThinking || historyStack.length === 0) return; 
+    if(over || historyStack.length === 0) return; 
     
+    // 1. 強制中止 AI 思考與背景 Worker 進程 (解決幽靈進程卡死問題)
+    if (isAiThinking) {
+        isAiThinking = false; 
+        stopAiTimer(); 
+        if (worker) {
+            worker.terminate(); // 徹底殺掉還在背景運算的 Web Worker
+            initWorker();       // 重新建立一個乾淨的 Worker 備用，防止 AI 壞死
+        }
+    }
+    
+    // 2. 第一次退步 (先退回上一個狀態)
     let state = historyStack.pop(); 
     if (xqGame) xqGame.undo(); 
     else bd = state.bd; 
     
+    // 取得退這步之後，現在輪到誰走？
+    let currentTurn = xqGame ? (xqGame.turn() === 'b' ? -1 : 1) : state.turn;
+    
+    // 3. 如果是單人模式，且退完一步後發現「現在是電腦的回合」
+    // 代表我們必須再退一步，才能徹底把控制權還給玩家！ (解決連退兩步邏輯錯誤)
+    if(!isPVP && currentTurn !== viewSide && historyStack.length > 0) { 
+        state = historyStack.pop(); 
+        if (xqGame) xqGame.undo(); 
+        else bd = state.bd;
+        
+        // 再次更新當前回合
+        currentTurn = xqGame ? (xqGame.turn() === 'b' ? -1 : 1) : state.turn;
+    } 
+    
+    // 4. 恢復上一手的標記狀態
     lastMoveIdx = state.lastMoveIdx; 
     lastMoveFrom = state.lastMoveFrom; 
     lastMovePieceType = state.lastMovePieceType;
 
-    if(!isPVP && turn === -1 * viewSide && historyStack.length > 0) { 
-        state = historyStack.pop(); 
-        if (xqGame) xqGame.undo(); 
-        else bd = state.bd;
-
-        lastMoveIdx = state.lastMoveIdx; 
-        lastMoveFrom = state.lastMoveFrom; 
-        lastMovePieceType = state.lastMovePieceType;
-    } 
-    
     if (xqGame) syncBd();
-    turn = xqGame ? (xqGame.turn() === 'b' ? -1 : 1) : state.turn; 
-    sel = -1; moves = []; dragEl = null; 
-    updateStatus(); render(); 
+    
+    // 5. 確保全域回合變數與真實盤面完全同步
+    turn = currentTurn; 
+    
+    // 6. 清除玩家選取與特效狀態
+    sel = -1; 
+    moves = []; 
+    dragEl = null; 
+    
+    document.getElementById('win-overlay').classList.remove('show');
+    document.getElementById('check-overlay').classList.remove('show');
+    over = false; 
+
+    updateStatus(); 
+    render(); 
 }
 
 function drawGrid() {
