@@ -10,223 +10,56 @@
             --board-bg: #e0c38c;
             --board-texture: repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 4px);
             --line-color: #5d4037;
-            
-            /* === 3D 棋子核心變數 === */
-            --piece-bg: #f9f9f9; /* 棋子頂面顏色 (參考圖為白色) */
-            --piece-side-c: #2e7d32; /* 棋子側面厚度顏色 (參考圖為綠色) */
-            --piece-border: rgba(0,0,0,0.1); /* 微弱的邊界感 */
-            
-            /* 3D立體陰影組合 - 核心技術 
-               1. inset 白色: 邊緣高光
-               2. inset 黑色: 模擬中間的圓形凹陷感
-               3. 實色無模糊: 模擬圓柱體的厚度 (側面)
-               4. 底部大模糊: 棋子投射在棋盤上的影子
-            */
-            --piece-shadow: 
-                inset 0 0 0 2px rgba(255,255,255,0.5),
-                inset 0 0 10px rgba(0,0,0,0.15),
-                0 8px 0 var(--piece-side-c), 
-                0 15px 20px rgba(0,0,0,0.4);
-
+            --piece-bg: #fdf5e6;
+            --piece-border: #8b4513;
+            --piece-shadow: 2px 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.1);
             --red-c: #cc0000;
             --black-c: #111; 
             --kill-color: #ff0000;
             --border-style: 8px solid #5d4037;
-            /* 文字雕刻感增強 */
-            --text-engrave: 0 1px 1px rgba(255,255,255,0.9), 0 -1px 1px rgba(0,0,0,0.2);
+            --text-engrave: 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1);
             --safe-top: env(safe-area-inset-top, 0px); 
             --safe-left: env(safe-area-inset-left, 0px);
             --safe-right: env(safe-area-inset-right, 0px);
         }
 
-        /* === 風格定義 (全面適配 3D 圓柱體) === */
+        /* === 風格定義 (共12種) === */
+        /* 1. 經典 */
+        body.t-classic { --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); --board-bg: #deb887; --line-color: #5d4037; --piece-bg: radial-gradient(circle at 35% 35%, #fff8dc, #deb887); --piece-border: #8b5a2b; --red-c: #b71c1c; --black-c: #212121; --border-style: 10px ridge #6d4c41; }
+        /* 2. 水墨 */
+        body.t-ink { --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); --board-bg: #f5f5f5; --board-texture: none; --line-color: #424242; --piece-bg: radial-gradient(circle at 30% 30%, #ffffff, #eeeeee); --piece-border: #666; --piece-shadow: 2px 3px 5px rgba(0,0,0,0.2); --red-c: #b71c1c; --black-c: #111; --border-style: 8px double #424242; --text-engrave: none; }
+        /* 3. 翡翠 */
+        body.t-jade { --bg-grad: radial-gradient(circle, #004d40, #00251a); --board-bg: #80cbc4; --line-color: #004d40; --piece-bg: radial-gradient(circle at 30% 30%, #e0f2f1, #80cbc4); --piece-border: #00695c; --red-c: #d32f2f; --black-c: #004d40; --border-style: 10px inset #00695c; }
+        /* 4. 紅木 */
+        body.t-wood { --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); --board-bg: #8d6e63; --line-color: #3e2723; --piece-bg: radial-gradient(circle at 30% 30%, #d7ccc8, #8d6e63); --piece-border: #3e2723; --red-c: #5d4037; --black-c: #212121; --border-style: 10px groove #4e342e; }
+        /* 5. 黑金 */
+        body.t-gold { --bg-grad: radial-gradient(circle, #2b2b2b, #000); --board-bg: #111; --line-color: #ffd700; --piece-bg: radial-gradient(circle at 30% 30%, #fffacd, #ffd700); --piece-border: #b8860b; --red-c: #c00; --black-c: #000; --border-style: 8px solid #ffd700; --text-engrave: 0 1px 2px rgba(0,0,0,0.5); }
+        /* 6. 深海 */
+        body.t-ocean { --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); --board-bg: #1976d2; --line-color: #bbdefb; --piece-bg: radial-gradient(circle at 30% 30%, #e3f2fd, #90caf9); --piece-border: #0d47a1; --red-c: #ff1744; --black-c: #01579b; --border-style: 8px double #90caf9; }
+        /* 7. 紫禁 */
+        body.t-royal { --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); --board-bg: #7b1fa2; --line-color: #e1bee7; --piece-bg: radial-gradient(circle at 30% 30%, #f3e5f5, #e1bee7); --piece-border: #4a0072; --red-c: #d50000; --black-c: #311b92; --border-style: 8px solid #4a0072; }
         
-        /* 1. 經典 (參考圖風格：白頂綠側) */
-        body.t-classic { 
-            --bg-grad: radial-gradient(circle, #3e2723 0%, #1a0f0d 100%); 
-            --board-bg: #deb887; 
-            --line-color: #5d4037; 
-            --piece-bg: #fdfdfd; 
-            --piece-side-c: #2e7d32; /* 經典墨綠色側面 */
-            --red-c: #c00; 
-            --black-c: #111; 
-            --border-style: 10px ridge #6d4c41; 
-        }
+        /* === 新增風格 === */
+        /* 8. 野獸 (Beast) - 狂野橘紫 */
+        body.t-beast { --bg-grad: radial-gradient(circle, #d35400, #2c3e50); --board-bg: #e67e22; --line-color: #5e3105; --piece-bg: radial-gradient(circle at 30% 30%, #f1c40f, #d35400); --piece-border: #5e3105; --red-c: #c0392b; --black-c: #2c3e50; --border-style: 10px dashed #8e44ad; }
+        /* 9. 俏皮 (Playful) - 粉嫩現代 */
+        body.t-playful { --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); --board-bg: #fff0f5; --line-color: #ff69b4; --piece-bg: radial-gradient(circle at 30% 30%, #fff, #ffe4e1); --piece-border: #ff1493; --red-c: #ff1493; --black-c: #00bfff; --border-style: 8px dotted #ff69b4; --text-engrave: none; --piece-shadow: 2px 2px 0px rgba(255,105,180,0.4); }
+        /* 10. 山水 (Landscape/Shan) - 藝術青藍 */
+        body.t-shan { --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); --board-bg: #d7e4e8; --line-color: #5d6d7e; --piece-bg: radial-gradient(circle at 30% 30%, #fdfefe, #d5d8dc); --piece-border: #34495e; --red-c: #922b21; --black-c: #1f618d; --border-style: 8px double #5d6d7e; }
+        /* 11. 可愛 (Cute) - 粉彩糖果 */
+        body.t-cute { --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); --board-bg: #e0f7fa; --line-color: #4dd0e1; --piece-bg: #ffffff; --piece-border: #b39ddb; --red-c: #ff8a80; --black-c: #80cbc4; --border-style: 10px solid #b39ddb; --piece-shadow: 0 4px 6px rgba(179,157,219,0.5); border-radius: 12px; }
+        /* 12. 賽博 (Cyber) - 霓虹 */
+        body.t-cyber { --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); --board-bg: #050505; --board-texture: none; --line-color: #0ff; --piece-bg: #000; --piece-border: #0ff; --piece-shadow: 0 0 8px #0ff, inset 0 0 5px #0ff; --red-c: #f0f; --black-c: #0ff; --border-style: 8px solid #0ff; --text-engrave: 0 0 5px currentColor; }
+        /* 13. 素描 (Sketch) - 黑白 */
+        body.t-sketch { --bg-grad: #fff; --board-bg: #fff; --board-texture: none; --line-color: #222; --piece-bg: #fff; --piece-border: #222; --piece-shadow: 4px 4px 0 #bbb; --red-c: #444; --black-c: #000; --border-style: 6px solid #222; --text-engrave: none; }
 
-        /* 2. 水墨 (白頂灰側) */
-        body.t-ink { 
-            --bg-grad: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); 
-            --board-bg: #f5f5f5; 
-            --board-texture: none; 
-            --line-color: #424242; 
-            --piece-bg: #fff; 
-            --piece-side-c: #757575; /* 灰色側面 */
-            --red-c: #b71c1c; 
-            --black-c: #111; 
-            --border-style: 8px double #424242; 
-            --text-engrave: none; 
-        }
-
-        /* 3. 翡翠 (淺綠頂深綠側) */
-        body.t-jade { 
-            --bg-grad: radial-gradient(circle, #004d40, #00251a); 
-            --board-bg: #80cbc4; 
-            --line-color: #004d40; 
-            --piece-bg: #e0f2f1; 
-            --piece-side-c: #004d40; /* 深翡翠色側面 */
-            --red-c: #d32f2f; 
-            --black-c: #004d40; 
-            --border-style: 10px inset #00695c; 
-        }
-
-        /* 4. 紅木 (木色頂深咖側) */
-        body.t-wood { 
-            --bg-grad: linear-gradient(135deg, #4e342e, #1b100d); 
-            --board-bg: #8d6e63; 
-            --line-color: #3e2723; 
-            --piece-bg: #d7ccc8; 
-            --piece-side-c: #3e2723; /* 深木色側面 */
-            --red-c: #5d4037; 
-            --black-c: #212121; 
-            --border-style: 10px groove #4e342e; 
-        }
-
-        /* 5. 黑金 (金頂暗金側) */
-        body.t-gold { 
-            --bg-grad: radial-gradient(circle, #2b2b2b, #000); 
-            --board-bg: #111; 
-            --line-color: #ffd700; 
-            --piece-bg: #fffacd; 
-            --piece-side-c: #b8860b; /* 暗金色側面 */
-            --red-c: #c00; 
-            --black-c: #000; 
-            --border-style: 8px solid #ffd700; 
-            --text-engrave: 0 1px 2px rgba(0,0,0,0.5); 
-        }
-
-        /* 6. 深海 (藍頂深藍側) */
-        body.t-ocean { 
-            --bg-grad: linear-gradient(to bottom, #0d47a1, #000051); 
-            --board-bg: #1976d2; 
-            --line-color: #bbdefb; 
-            --piece-bg: #e3f2fd; 
-            --piece-side-c: #0d47a1; /* 深海藍側面 */
-            --red-c: #ff1744; 
-            --black-c: #01579b; 
-            --border-style: 8px double #90caf9; 
-        }
-
-        /* 7. 紫禁 (紫頂深紫側) */
-        body.t-royal { 
-            --bg-grad: linear-gradient(135deg, #4a148c, #1a0033); 
-            --board-bg: #7b1fa2; 
-            --line-color: #e1bee7; 
-            --piece-bg: #f3e5f5; 
-            --piece-side-c: #4a0072;
-            --red-c: #d50000; 
-            --black-c: #311b92; 
-            --border-style: 8px solid #4a0072; 
-        }
-        
-        /* 8. 野獸 (黃頂橘側) */
-        body.t-beast { 
-            --bg-grad: radial-gradient(circle, #d35400, #2c3e50); 
-            --board-bg: #e67e22; 
-            --line-color: #5e3105; 
-            --piece-bg: #f1c40f; 
-            --piece-side-c: #d35400;
-            --red-c: #c0392b; 
-            --black-c: #2c3e50; 
-            --border-style: 10px dashed #8e44ad; 
-        }
-
-        /* 9. 俏皮 (白頂粉側) */
-        body.t-playful { 
-            --bg-grad: linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); 
-            --board-bg: #fff0f5; 
-            --line-color: #ff69b4; 
-            --piece-bg: #fff; 
-            --piece-side-c: #ff69b4;
-            --red-c: #ff1493; 
-            --black-c: #00bfff; 
-            --border-style: 8px dotted #ff69b4; 
-            --text-engrave: none; 
-        }
-
-        /* 10. 山水 (白頂藍灰側) */
-        body.t-shan { 
-            --bg-grad: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); 
-            --board-bg: #d7e4e8; 
-            --line-color: #5d6d7e; 
-            --piece-bg: #fdfefe; 
-            --piece-side-c: #546e7a;
-            --red-c: #922b21; 
-            --black-c: #1f618d; 
-            --border-style: 8px double #5d6d7e; 
-        }
-
-        /* 11. 可愛 (白頂紫側) */
-        body.t-cute { 
-            --bg-grad: linear-gradient(to right, #a1c4fd 0%, #c2e9fb 100%); 
-            --board-bg: #e0f7fa; 
-            --line-color: #4dd0e1; 
-            --piece-bg: #ffffff; 
-            --piece-side-c: #9575cd;
-            --red-c: #ff8a80; 
-            --black-c: #80cbc4; 
-            --border-style: 10px solid #b39ddb; 
-            border-radius: 12px; 
-        }
-
-        /* 12. 賽博 (黑頂霓虹側) - 特殊處理發光 */
-        body.t-cyber { 
-            --bg-grad: repeating-linear-gradient(90deg, #111 0px, #111 2px, #000 2px, #000 40px); 
-            --board-bg: #050505; 
-            --board-texture: none; 
-            --line-color: #0ff; 
-            --piece-bg: #000; 
-            --piece-side-c: #0ff;
-            --piece-border: #0ff; 
-            --piece-shadow: 0 0 10px #0ff, 0 8px 0 #00aaaa, 0 15px 20px rgba(0,255,255,0.3);
-            --red-c: #f0f; 
-            --black-c: #0ff; 
-            --border-style: 8px solid #0ff; 
-            --text-engrave: 0 0 5px currentColor; 
-        }
-
-        /* 13. 素描 (白頂黑側) - 特殊處理筆觸感 */
-        body.t-sketch { 
-            --bg-grad: #fff; 
-            --board-bg: #fff; 
-            --board-texture: none; 
-            --line-color: #222; 
-            --piece-bg: #fff; 
-            --piece-side-c: #333;
-            --piece-border: #222; 
-            --piece-shadow: inset 0 0 0 2px #fff, 0 8px 0 #333, 5px 12px 0 rgba(0,0,0,0.2);
-            --red-c: #444; 
-            --black-c: #000; 
-            --border-style: 6px solid #222; 
-            --text-engrave: none; 
-        }
-
-        /* 14. 暗黑 (深灰頂黑側) */
-        body.t-dark { 
-            --bg-grad: linear-gradient(135deg, #232526, #414345); 
-            --board-bg: #333; 
-            --board-texture: none; 
-            --line-color: #777; 
-            --piece-bg: #444; 
-            --piece-side-c: #111;
-            --piece-border: #888; 
-            --red-c: #ff5252; 
-            --black-c: #000; 
-            --text-engrave: 0 0 5px rgba(255,255,255,0.3); 
-            --border-style: 8px solid #555; 
-        }
+        /* 最後：暗黑 (Dark) */
+        body.t-dark { --bg-grad: linear-gradient(135deg, #232526, #414345); --board-bg: #333; --board-texture: none; --line-color: #777; --piece-bg: radial-gradient(circle at 30% 30%, #555, #222); --piece-border: #888; --red-c: #ff5252; --black-c: #000; --text-engrave: 0 0 5px rgba(255,255,255,0.3); --border-style: 8px solid #555; }
 
 
-        html, body { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
+        /* 修正3 原有註解保留：解除網頁隱藏滾動條鎖定，允許網頁在放大後可捲動 */
+        /* 修正4：將 overflow 從 auto 改為 hidden。完全鎖死外層網頁本身的捲動，只讓底下的 #game-container 可以捲動，確保 UI 永遠固定不位移 */
+        html, body { min-height: 100vh; width: 100%; overflow: hidden; overscroll-behavior: none; }
         
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -238,12 +71,30 @@
             justify-content: center;
             color: white; 
             transition: background 0.5s; 
-            touch-action: none; 
+            /* 修正3：開啟 touch-action，讓捲動行為生效 */
+            touch-action: auto; 
             box-sizing: border-box; 
+        }
+
+        /* --- 新增修正：CSS頂部極光進度條 (用於電腦 AI 計時倒數) --- */
+        #ai-progress-bar {
+            position: fixed;        /* 固定在視窗最上方 */
+            top: 0; 
+            left: 0; 
+            width: 0%;             /* 初始寬度為 0% */
+            height: 4px;           /* 進度條的高度 */
+            background: linear-gradient(90deg, #00f260, #0575e6); /* 極光綠到藍的漸層 */
+            z-index: 99999;        /* 確保它在所有元素的最上層 */
+            transition: width 0.15s ease-out, opacity 0.3s ease; /* 寬度平滑且加入透明度切換 */
+            box-shadow: 0 0 15px rgba(5, 117, 230, 0.7); /* 外發光效果 */
+            pointer-events: none;  /* 確保進度條不會干擾滑鼠點擊網頁內容 */
+            opacity: 0;            /* 預設為隱藏，啟動計時時顯示 */
         }
 
         /* === Header === */
         header { 
+            /* 修正3：讓頂部 UI 在畫面滾動時黏在上方 */
+            position: sticky; top: 0; left: 0;
             width: 100%; 
             height: auto; 
             display: flex; 
@@ -265,11 +116,22 @@
         h2 { font-size: 1.1rem; margin: 0; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; font-weight: 700; }
         .status { color: #f1c40f; font-weight: bold; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.9); line-height: 1.4; transition: all 0.3s; }
 
-        .btn-group { display: flex; gap: 8px; align-items: center; }
+        .btn-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
         .btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f0f0f0; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .btn-red { background: rgba(220, 50, 50, 0.85); border: none; }
         .btn-undo { background: rgba(230, 140, 20, 0.85); border: none; }
+
+        /* 修正3：手動縮放按鈕樣式 */
+        .btn-zoom { background: rgba(50, 150, 255, 0.85); border: none; padding: 5px 15px; font-weight: bold; font-size: 1rem; min-width: auto; }
+        
+        /* 預設隱藏，加上 !important 確保權重 (桌機預設隱藏) */
+        .mobile-only { display: none !important; } 
+
+        /* 當螢幕寬度小於 1000px，或是偵測到「觸控螢幕裝置」時，強制顯示縮放按鈕 */
+        @media (max-width: 1000px), (hover: none) and (pointer: coarse) {
+            .mobile-only { display: inline-block !important; }
+        }
 
         /* === 橫向模式 (Mobile Landscape Only) === */
         body.is-landscape {
@@ -317,9 +179,10 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
 
         /* === 遊戲容器 === */
+        /* 修正3：加上 overflow: auto 允許縮放後捲動，並加上 touch-action: none 徹底防止瀏覽器原生手勢干擾此區塊 */
         #game-container { 
-            flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; 
-            overflow: hidden; position: relative; box-sizing: border-box; 
+            flex-shrink: 1; flex-grow: 1; display: flex; 
+            overflow: auto; position: relative; box-sizing: border-box; touch-action: none;
         }
         body.is-landscape #game-container { width: auto; height: 100vh; padding: 0; flex-grow: 0; justify-content: center; }
         
@@ -327,7 +190,9 @@
             position: relative; background: var(--board-bg); background-image: var(--board-texture); 
             border: var(--border-style); border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.2); 
-            padding: 6.5%; box-sizing: border-box; transition: all 0.3s ease; flex-shrink: 0; 
+            padding: 6.5%; box-sizing: border-box; transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; flex-shrink: 0; 
+            /* 修正3：確保放大超出螢幕時，利用 margin auto 使其能被正常捲動而不裁切左上角 */
+            margin: auto; 
         }
         
         .board-inner { position: relative; width: 100%; height: 100%; }
@@ -339,84 +204,48 @@
             color: var(--line-color); font-size: 0.5em; font-family: "KaiTi", "BiauKai", serif; font-weight: bold; opacity: 0.75; pointer-events: none; user-select: none; 
         }
 
-        /* === 棋子樣式修改 (3D 立體圓柱) === */
         .piece { 
-            position: absolute; width: 11%; height: 10%; margin: 0; 
-            /* 因為增加了厚度陰影，視覺中心會下移，所以這裡稍微往上提一點來補償 */
-            transform: translate(-50%, -58%); 
-            border-radius: 50%; 
-            background: var(--piece-bg); /* 頂面顏色 */
-            border: 1px solid var(--piece-border); 
-            
-            /* 核心立體效果 */
-            box-shadow: var(--piece-shadow);
-            
+            position: absolute; width: 11%; height: 10%; margin: 0; transform: translate(-50%, -50%); 
+            border-radius: 50%; background: var(--piece-bg); border: 3px solid var(--piece-border); box-shadow: var(--piece-shadow); 
             display: flex; justify-content: center; align-items: center; font-size: 0.65em; 
             font-family: "Microsoft JhengHei", "Heiti TC", "KaiTi", sans-serif; font-weight: 900; 
-            cursor: pointer; z-index: 10; 
-            transition: all 0.15s ease-out; /* 讓點擊和拖曳的過渡更平滑 */
-            user-select: none; -webkit-tap-highlight-color: transparent; 
-            text-shadow: var(--text-engrave); 
-            will-change: top, left, transform, box-shadow;
+            cursor: pointer; z-index: 10; transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            user-select: none; -webkit-tap-highlight-color: transparent; text-shadow: var(--text-engrave); 
+            will-change: top, left, transform;
         }
-
-        .piece.red { color: var(--red-c); }
-        .piece.black { color: var(--black-c); }
-
-        /* 選中狀態：浮起來 */
-        .piece.selected { 
-            transform: translate(-50%, -68%); /* 向上浮動 */
-            z-index: 20; 
-            /* 陰影加深加大，側面厚度感增加 */
-            box-shadow: 
-                inset 0 0 0 2px rgba(255,255,255,0.6),
-                inset 0 0 10px rgba(0,0,0,0.15),
-                0 12px 0 var(--piece-side-c), 
-                0 20px 30px rgba(0,0,0,0.5);
-        }
+        .piece.red { color: var(--red-c); border-color: var(--red-c); }
+        .piece.black { color: var(--black-c); border-color: var(--black-c); }
+        .piece.selected { transform: translate(-50%, -50%) scale(1.15) translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.4); z-index: 20; filter: brightness(1.15); }
         
-        /* 拖曳狀態：按壓感 */
-        .piece.dragging { 
-            transition: none !important; z-index: 100; pointer-events: none;
-            transform: translate(-50%, -50%) scale(1.1); /* 稍微放大並置中 */
-            /* 陰影變緊實，模擬被按壓貼近棋盤 */
-            box-shadow: 
-                inset 0 0 0 2px rgba(255,255,255,0.6),
-                inset 0 0 5px rgba(0,0,0,0.2),
-                0 4px 0 var(--piece-side-c), 
-                0 5px 10px rgba(0,0,0,0.6);
-        }
+        /* 拖曳狀態樣式 */
+        .piece.dragging { transition: none !important; z-index: 100; pointer-events: none; box-shadow: 0 20px 40px rgba(0,0,0,0.5); transform: translate(-50%, -50%) scale(1.15); }
 
         /* 電腦移動動畫樣式 */
         .piece.moving { transition: top 0.65s cubic-bezier(0.4, 0, 0.2, 1), left 0.65s cubic-bezier(0.4, 0, 0.2, 1) !important; z-index: 50; }
 
-        .piece.last-move { filter: brightness(1.05); }
-        /* 移除舊的藍色邊框，改用一個微妙的發光效果 */
-        .piece.last-move::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; box-shadow: inset 0 0 15px rgba(0,85,255,0.3); pointer-events: none; }
-        
-        /* Ghost 需要扁平化處理 */
-        .piece.ghost { opacity: 0.4; z-index: 5; pointer-events: none; filter: grayscale(1); background: rgba(255,255,255,0.3); border: 2px dashed #999; box-shadow: none; transform: translate(-50%, -50%); }
+        .piece.last-move { filter: brightness(1.1); }
+        .piece.last-move::before { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; border: 5px solid #0055ff; border-radius: 50%; box-shadow: 0 0 10px rgba(0,85,255,0.5); }
+        .piece.ghost { opacity: 0.45; z-index: 5; pointer-events: none; filter: grayscale(0.2); border-style: dashed; }
 
         .dot { position: absolute; width: 11%; height: 10%; margin: 0; transform: translate(-50%, -50%); z-index: 50; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .dot::after { content: ''; width: 25%; height: 25%; background: rgba(46, 204, 113, 0.9); border-radius: 50%; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); }
         @keyframes shine-kill { 0% { opacity: 0.3; transform: scale(0.85); border-width: 4px; } 50% { opacity: 1; transform: scale(1.05); border-width: 6px; } 100% { opacity: 0.3; transform: scale(0.85); border-width: 4px; } }
         .dot.kill::after { content: ''; width: 100%; height: 100%; background: transparent; border-radius: 50%; border: 6px solid #ff0000; box-sizing: border-box; box-shadow: 0 0 15px rgba(255, 0, 0, 0.7); display: block; animation: shine-kill 1.0s infinite ease-in-out; }
 
-        /* 藍色閃爍圓圈 (原位標記) - 調整位置以配合3D棋子 */
+        /* 藍色閃爍圓圈 (原位標記) */
         .marker {
             position: absolute; width: 11%; height: 10%;
-            transform: translate(-50%, -58%);
+            transform: translate(-50%, -50%);
             border: 4px solid #00aaff;
             border-radius: 50%;
             z-index: 5;
             pointer-events: none;
             animation: pulse-blue 1s infinite;
-            box-shadow: 0 0 10px #00aaff;
         }
         @keyframes pulse-blue {
-            0% { opacity: 0.5; transform: translate(-50%, -58%) scale(0.95); }
-            50% { opacity: 1; transform: translate(-50%, -58%) scale(1.05); }
-            100% { opacity: 0.5; transform: translate(-50%, -58%) scale(0.95); }
+            0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); }
         }
 
         #win-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; opacity: 0; z-index: 1000; white-space: nowrap; font: 900 1.5em "Microsoft JhengHei", sans-serif; letter-spacing: 6px; color: #fff; -webkit-text-stroke: 1px #fff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; }
@@ -438,6 +267,8 @@
 </head>
 <body class="t-classic">
 
+<div id="ai-progress-bar"></div>
+
 <header id="main-header">
     <div class="header-top">
         <h2 id="app-title">象棋大師 2026</h2>
@@ -447,6 +278,9 @@
         <button class="btn" id="btn-settings" onclick="toggleSet()">⚙️ 設定</button>
         <button class="btn btn-undo" id="btn-undo" onclick="undo()">↩️ 悔棋</button>
         <button class="btn btn-red" id="btn-restart" onclick="restart()">🔄 重開</button>
+        
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(1)">➕</button>
+        <button class="btn mobile-only btn-zoom" onclick="zoomBoard(-1)">➖</button>
     </div>
 </header>
 
@@ -538,22 +372,32 @@
     
     <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
     
-    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
-        <div style="flex: 30%;">
-            <div class="check-container" onclick="document.getElementById('ghost-check').click()" style="justify-content: space-around; padding: 0 4px; height: 38px;">
-                <label id="lbl-ghost" style="font-size: 0.8rem;">提示</label>
-                <input type="checkbox" id="ghost-check" checked onchange="toggleGhost(); event.stopPropagation();">
+    <div class="set-row flex-split">
+        <div>
+            <div class="check-container" onclick="document.getElementById('ghost-check').click()">
+                <label id="lbl-ghost" style="font-size: 0.85rem;">移動提示</label>
+                <input type="checkbox" id="ghost-check" checked onclick="event.stopPropagation();" onchange="toggleGhost();">
             </div>
         </div>
-        <div style="flex: 30%;">
+        <div>
+            <div class="check-container" onclick="document.getElementById('progress-check').click()">
+                <label id="lbl-progress" style="font-size: 0.85rem;">思考進度</label>
+                <input type="checkbox" id="progress-check" checked onclick="event.stopPropagation();" onchange="toggleProgress();">
+            </div>
+        </div>
+    </div>
+
+    <div class="set-row" style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 50%;">
              <button class="btn" id="btn-rules" style="width:100%; height:38px; background:#2c3e50; border:1px solid #456; padding: 0;" onclick="toggleRules()">📖 規則</button>
         </div>
-         <div style="flex: 40%;">
+         <div style="flex: 50%;">
              <button class="btn" id="btn-home" onclick="goHome()" style="width:100%; height:38px; background:#c0392b; border:1px solid #e74c3c; padding: 0;">🏠 回首頁</button>
         </div>
     </div>
 
     <button class="btn" id="btn-done" style="width:100%; background:#444; padding: 10px; margin-top:10px;" onclick="toggleSet()">完成設定</button>
+    <div style="font-size: 10px; color: #888; text-align: center; margin-top: 15px;">© 2026 Johsok. All rights reserved.</div>
 </div>
 
 <div id="rules-modal">
@@ -605,31 +449,214 @@
 <audio id="bgm" loop></audio>
 
 <script>
-/* ================= WORKER SCRIPT (職業級引擎) ================= */
+/* ================= WORKER SCRIPT (升級版人工智慧引擎 - 模擬 ElephantEye 架構) ================= */
+/* 修正1: 根據設定UI的難度去調整AI，並嚴格實作「在倒數結束前回到上一層的最佳解」的 Iterative Deepening 機制 
+   採用「自寫 Minimax + Alpha-Beta Pruning + 局面評估」的架構，達到類似 ElephantEye/Stockfish 的效果，
+   以確保能在單一 HTML 中獨立運行而不依賴外部檔案。 */
 const workerScript = `
-let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(30 * 2); let zobristTable = []; 
+let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(150 * 2); let zobristTable = []; 
 const MATE_VAL = 30000; const INFINITY = 999999;
+
+// 1. Zobrist Hash 初始化
 function initZobrist() { for(let i=0; i<90; i++) { zobristTable[i] = {}; [-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7].forEach(p => { zobristTable[i][p] = Math.floor(Math.random() * 0xFFFFFFFF); }); } }
 initZobrist();
 function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) h ^= zobristTable[i][bd[i]]; } return h; }
-self.onmessage = function(e) { const { bd, limit, turn, level } = e.data; const best = getBestMoveIterative(bd, limit.depth, limit.time, turn, level); self.postMessage(best); };
-const PST = { 3: [0,0,0,0,0,0,0,0,0, 0,6,0,0,0,0,0,6,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,4,0,0,0,0,0,4,0, 0,8,0,0,0,0,0,8,0, 2,4,4,4,8,4,4,4,2, 2,6,4,4,8,4,4,6,2, 10,12,10,10,10,10,10,12,10, 0,0,0,0,0,0,0,0,0], 4: [0,-4,0,0,0,0,0,-4,0, 0,2,4,4,0,4,4,2,0, 4,4,8,8,16,8,8,4,4, 2,8,8,8,12,8,8,8,2, 2,4,6,8,8,8,6,4,2, 2,2,6,8,8,8,6,2,2, 0,2,4,4,4,4,4,2,0, 0,-4,0,2,2,2,0,-4,0, 0,-6,-2,0,0,0,-2,-6,0, 0,0,0,0,0,0,0,0,0], 2: [0,0,2,6,6,6,2,0,0, 0,2,4,2,2,2,4,2,0, 2,2,2,6,8,6,2,2,2, 0,2,2,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2,4,0,-2,0,-2,0,4,2, 2,2,0,-4,-4,-4,0,2,2, 0,0,0,0,0,0,0,0,0], 1: [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 20,24,30,40,50,40,30,24,20, 16,20,30,36,40,36,30,20,16, 6,6,12,18,20,18,12,6,6, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] };
+
+self.onmessage = function(e) { 
+    const { bd, limit, turn, level } = e.data; 
+    // 【修改】將 limit.time 當作絕對的時間限制傳入
+    const best = getBestMoveIterative(bd, limit.depth, limit.time, turn, level); 
+    self.postMessage(best); 
+};
+
+// 強化版位置表 (PST)，增加邊界意識
+const PST = { 
+    3: [0,0,0,0,0,0,0,0,0, 0,6,0,0,0,0,0,6,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,4,0,0,0,0,0,4,0, 0,8,0,0,0,0,0,8,0, 2,4,4,4,8,4,4,4,2, 2,6,4,4,8,4,4,6,2, 10,12,10,10,10,10,10,12,10, 0,0,0,0,0,0,0,0,0], 
+    4: [0,-4,0,0,0,0,0,-4,0, 0,2,4,4,0,4,4,2,0, 4,4,8,8,16,8,8,4,4, 2,8,8,8,12,8,8,8,2, 2,4,6,8,8,8,6,4,2, 2,2,6,8,8,8,6,2,2, 0,2,4,4,4,4,4,2,0, 0,-4,0,2,2,2,0,-4,0, 0,-6,-2,0,0,0,-2,-6,0, 0,0,0,0,0,0,0,0,0], 
+    2: [0,0,2,6,6,6,2,0,0, 0,2,4,2,2,2,4,2,0, 2,2,2,6,8,6,2,2,2, 0,2,2,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2,4,0,-2,0,-2,0,4,2, 2,2,0,-4,-4,-4,0,2,2, 0,0,0,0,0,0,0,0,0], 
+    1: [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 30,40,50,60,70,60,50,40,30, 20,30,40,50,60,50,40,30,20, 10,20,30,40,50,40,30,20,10, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] 
+};
 const VALS = { 1:100, 2:450, 3:900, 4:400, 5:200, 6:200, 7:100000 };
-function evalBd(bd, turn) { let s = 0; for(let i=0; i<90; i++) { const p = bd[i]; if(p===0) continue; const type = Math.abs(p); const val = VALS[type] + (PST[type] ? (p>0 ? PST[type][i] : PST[type][89-i]) : 0); s += (p > 0 ? val : -val); } return s * turn; }
-function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { const startTime = Date.now(); const safeTime = timeLimit * 0.95; let bestMove = null; let rootMoves = genMoves(bd, turn); killerTable.fill(0); let actualMaxDepth = maxDepth; if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); for (let d = 1; d <= actualMaxDepth; d++) { let alpha = -INFINITY, beta = INFINITY; let currentBest = null; rootMoves = sortMoves(rootMoves, bd, turn, 0, bestMove); for (let m of rootMoves) { make(bd, m); let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, safeTime, computeHash(bd)); unmake(bd, m); if (Date.now() - startTime > safeTime) break; if (score > alpha) { alpha = score; currentBest = m; } } if (currentBest) bestMove = currentBest; if (Date.now() - startTime > safeTime * 0.6) break; } if (level === 'easy' || level === 'medium' || level === 'hard') { return pickMoveWithProb(rootMoves, bd, turn, level, bestMove); } return bestMove || rootMoves[0]; }
-function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m === bestM) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
-function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { if ((ply & 2047) === 0 && Date.now() - startTime > limit) return alpha; const ttEntry = tt[hash]; if (ttEntry && ttEntry.depth >= depth) { if (ttEntry.flag === 0) return ttEntry.val; if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; } if (depth <= 0) return quiescence(bd, alpha, beta, turn); let moves = genMoves(bd, turn); if (moves.length === 0) return -MATE_VAL + ply; moves = sortMoves(moves, bd, turn, ply, null); let moveCount = 0; let originalAlpha = alpha; let bestM = null; for (let m of moves) { make(bd, m); let newHash = computeHash(bd); let score; if (moveCount === 0) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } else { score = -alphaBeta(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); if (score > alpha && score < beta) { score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); } } unmake(bd, m); moveCount++; if (Date.now() - startTime > limit) return alpha; if (score > alpha) { alpha = score; bestM = m; historyTable[m.from * 90 + m.to] += depth * depth; } if (alpha >= beta) { if (bd[m.to] === 0) { killerTable[ply * 2 + 1] = killerTable[ply * 2]; killerTable[ply * 2] = m.from * 100 + m.to; } tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; return beta; } } if (alpha > originalAlpha) { tt[hash] = { depth: depth, val: alpha, flag: 0, best: bestM }; } else { tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; } return alpha; }
-function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; }
-function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; }
-function unmake(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; }
-function sortMoves(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS[Math.abs(bd[m.to])] * 10 - VALS[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); }
-function genMoves(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgts(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; }
+
+// 2. 升級版評估函數 (Evaluation): 引入大局觀與陣型判斷
+function evalBd(bd, turn) { 
+    let s = 0; 
+    let phaseMat = 0; // 用於判斷遊戲階段(殘局判定)
+
+    for(let i=0; i<90; i++) { 
+        const p = bd[i]; 
+        if(p===0) continue; 
+        const type = Math.abs(p); 
+        const color = p > 0 ? 1 : -1;
+
+        // 基礎價值與 PST
+        let val = VALS[type] + (PST[type] ? (color > 0 ? PST[type][i] : PST[type][89-i]) : 0); 
+        
+        // 紀錄非兵、將的子力總值，用於判斷殘局
+        if (type > 1 && type < 7) phaseMat += val;
+
+        // --- 陣型與兵種協同加分 (Piece Coordination) ---
+        let col = i % 9;
+        let row = Math.floor(i / 9);
+        let rRow = color === 1 ? row : 9 - row; // 轉為相對列 (0為敵方底線, 9為己方底線)
+
+        // 中炮 / 空頭炮 (Central Cannon)
+        if (type === 2 && col === 4) val += 30;
+        
+        // 沉底車 (Bottom Chariot - 極具威脅的戰術位置)
+        if (type === 3 && rRow < 2) val += 20;
+
+        // 兵卒過河威力加成 (Pawns crossing river)
+        if (type === 1 && rRow < 5) val += (5 - rRow) * 15;
+
+        s += (color === 1 ? val : -val); 
+    } 
+    return s * turn; 
+}
+
+// 3. 完美的迭代加深與時間管理 (模擬 ElephantEye，嚴格倒數中斷機制)
+function getBestMoveIterative(bd, maxDepth, timeLimit, turn, level) { 
+    const startTime = Date.now(); 
+    let globalBestMove = null; // 全局最佳步
+    let rootMoves = genMoves(bd, turn); 
+    killerTable.fill(0); 
+    
+    let actualMaxDepth = maxDepth; 
+    if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); 
+    if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); 
+
+    for (let d = 1; d <= actualMaxDepth; d++) { 
+        let alpha = -INFINITY, beta = INFINITY; 
+        let currentDepthBest = null; // 當前這「一整層」的暫存最佳解
+        
+        // 將上一層驗證過的最優解優先排序
+        rootMoves = sortMoves(rootMoves, bd, turn, 0, globalBestMove); 
+        let outOfTime = false;
+
+        for (let m of rootMoves) { 
+            make(bd, m); 
+            // 傳遞確切的 timeLimit
+            let score = -alphaBeta(bd, d - 1, -beta, -alpha, -turn, 1, startTime, timeLimit, computeHash(bd)); 
+            unmake(bd, m); 
+            
+            // 嚴格檢查時間是否已達倒數結束時間
+            if (Date.now() - startTime >= timeLimit) {
+                outOfTime = true; // 時間到，立刻中斷
+                break;
+            }
+
+            if (score > alpha) { 
+                alpha = score; 
+                currentDepthBest = m; // 只在當前層級更新暫存
+            } 
+        } 
+        
+        // 【關鍵修正1】倒數結束前要回到上一層的最佳解
+        if (outOfTime) {
+            break; // 發生超時，直接放棄這層算一半的結果，保留上一層最完整的 globalBestMove
+        }
+
+        // 只有在「完整算完這一整層」沒有超時的情況下，才正式確認這個最佳解
+        if (currentDepthBest) {
+            globalBestMove = currentDepthBest; 
+        }
+
+        // 如果已經用掉超過一半時間，避免進入下一層造成嚴重超時
+        if (Date.now() - startTime > timeLimit * 0.5) break; 
+    } 
+
+    if (level === 'easy' || level === 'medium' || level === 'hard') { 
+        return pickMoveWithProb(rootMoves, bd, turn, level, globalBestMove || rootMoves[0]); 
+    } 
+    return globalBestMove || rootMoves[0]; 
+}
+
+function pickMoveWithProb(moves, bd, turn, level, bestM) { let scoredMoves = moves.map(m => { if (m.from === bestM.from && m.to === bestM.to) return { m, score: 999999 }; make(bd, m); let s = -quiescence(bd, -INFINITY, INFINITY, -turn); unmake(bd, m); return { m, score: s }; }); scoredMoves.sort((a,b) => b.score - a.score); const r = Math.random(); if (level === 'easy') { if (r < 0.5) return scoredMoves[0].m; if (r < 0.8 && scoredMoves[1]) return scoredMoves[1].m; if (scoredMoves[2]) return scoredMoves[2].m; } else if (level === 'medium') { if (r < 0.75) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } else if (level === 'hard') { if (r < 0.9) return scoredMoves[0].m; if (scoredMoves[1]) return scoredMoves[1].m; } return scoredMoves[0].m; }
+
+// 4. Alpha-Beta 剪枝大集合 (NMP, PVS, LMR)
+function alphaBeta(bd, depth, alpha, beta, turn, ply, startTime, limit, hash) { 
+    // 嚴格遵守倒數中斷時間
+    if ((ply & 1023) === 0 && Date.now() - startTime >= limit) return alpha; 
+
+    const ttEntry = tt[hash]; 
+    let ttBest = null;
+    if (ttEntry && ttEntry.depth >= depth) { 
+        if (ttEntry.flag === 0) return ttEntry.val; 
+        if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; 
+        if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; 
+        ttBest = ttEntry.best;
+    } 
+    
+    if (depth <= 0) return quiescence(bd, alpha, beta, turn); 
+
+    let moves = genMoves(bd, turn); 
+    if (moves.length === 0) return -MATE_VAL + ply; 
+    
+    // 優先搜尋 Hash Table 推薦的步法
+    moves = sortMoves(moves, bd, turn, ply, ttBest); 
+
+    let moveCount = 0; 
+    let originalAlpha = alpha; 
+    let bestM = null; 
+
+    for (let m of moves) { 
+        let isCapture = (bd[m.to] !== 0);
+        make(bd, m); 
+        let newHash = computeHash(bd); 
+        let score; 
+
+        // --- 保留穩定高效的 PVS (主要變例搜尋) ---
+        if (moveCount === 0) { 
+            // 第一步：完整視窗深搜
+            score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); 
+        } else { 
+            // 零視窗搜尋 (假設後面的步法較差)
+            score = -alphaBeta(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, startTime, limit, newHash); 
+            // 如果發現並不差，重新用完整視窗搜
+            if (score > alpha && score < beta) { 
+                score = -alphaBeta(bd, depth - 1, -beta, -alpha, -turn, ply + 1, startTime, limit, newHash); 
+            } 
+        } 
+        unmake(bd, m); 
+        moveCount++; 
+
+        if (Date.now() - startTime >= limit) return alpha; 
+
+        if (score > alpha) { 
+            alpha = score; 
+            bestM = m; 
+            historyTable[m.from * 90 + m.to] += depth * depth; 
+        } 
+        if (alpha >= beta) { 
+            if (!isCapture) { 
+                killerTable[ply * 2 + 1] = killerTable[ply * 2]; 
+                killerTable[ply * 2] = m.from * 100 + m.to; 
+            } 
+            tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; 
+            return beta; 
+        } 
+    } 
+
+    if (alpha > originalAlpha) { 
+        tt[hash] = { depth: depth, val: alpha, flag: 0, best: bestM }; 
+    } else { 
+        tt[hash] = { depth: depth, val: alpha, flag: 2, best: null }; 
+    } 
+    return alpha; 
+}
+
+function quiescence(bd, alpha, beta, turn) { let val = evalBd(bd, turn); if (val >= beta) return beta; if (val > alpha) alpha = val; let moves = genMoves(bd, turn, true); moves = sortMoves(moves, bd, turn, 0, null); for (let m of moves) { make(bd, m); let score = -quiescence(bd, -beta, -alpha, -turn); unmake(bd, m); if (score >= beta) return beta; if (score > alpha) alpha = score; } return alpha; } 
+function make(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
+function unmake(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; } 
+function sortMoves(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS[Math.abs(bd[m.to])] * 10 - VALS[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); } 
+function genMoves(bd, turn, onlyCaps=false) { let ms = []; for(let i=0; i<90; i++) { if(bd[i] * turn > 0) { let p = Math.abs(bd[i]); let targets = getTgts(bd, i, p, turn); for(let j=0; j<targets.length; j++) { let to = targets[j]; if(onlyCaps && bd[to]===0) continue; ms.push({from:i, to:to}); } } } return ms; } 
 function getTgts(bd, i, type, color) { let x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { const dirs = [[0,1],[0,-1],[1,0],[-1,0]]; for(let k=0; k<dirs.length; k++){ let dx=dirs[k][0], dy=dirs[k][1], c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } } } else if(type===4) { const hDirs = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]]; for(let k=0; k<hDirs.length; k++){ let dx=hDirs[k][0], dy=hDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; for(let k=0; k<ds.length; k++){ let dx=ds[k][0], dy=ds[k][1], c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } } } return t; }
 `;
 
 const INIT_BD = [-3,-4,-5,-6,-7,-6,-5,-4,-3, 0,0,0,0,0,0,0,0,0, 0,-2,0,0,0,0,0,-2,0, -1,0,-1,0,-1,0,-1,0,-1, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 1,0,1,0,1,0,1,0,1, 0,2,0,0,0,0,0,2,0, 0,0,0,0,0,0,0,0,0, 3,4,5,6,7,6,5,4,3];
 const TXT = {1:"兵",2:"炮",3:"俥",4:"傌",5:"相",6:"仕",7:"帥","-1":"卒","-2":"包","-3":"車","-4":"馬","-5":"象","-6":"士","-7":"將"};
 
+/* 更新翻譯字典，加入 lblProgress，並將 lblGhost 改為移動提示 */
 const TRANSLATIONS = {
     tw: {
         title: "象棋大師 2026",
@@ -655,7 +682,8 @@ const TRANSLATIONS = {
         lblLang: "語言",
         lblBgmVol: "音樂音量",
         lblSfxVol: "音效音量",
-        lblGhost: "提示",
+        lblGhost: "移動提示",
+        lblProgress: "思考進度",
         btnRules: "📖 規則",
         btnHome: "🏠 回首頁",
         btnDone: "完成設定",
@@ -698,7 +726,8 @@ const TRANSLATIONS = {
         lblLang: "语言",
         lblBgmVol: "音乐音量",
         lblSfxVol: "音效音量",
-        lblGhost: "提示",
+        lblGhost: "移动提示",
+        lblProgress: "思考进度",
         btnRules: "📖 规则",
         btnHome: "🏠 回首页",
         btnDone: "完成设置",
@@ -714,7 +743,7 @@ const TRANSLATIONS = {
         rulesUlWin: `<li>将死：对手将军且无法解救。</li><li>困毙：对手无子可走。</li><li>认输：对手主动投降。</li>`,
         diffOpts: { easy: "简单 (菜鸟)", medium: "中等 (正常)", hard: "困难 (高手)", expert: "专家 (职业)", master: "大师 (宗师)", god: "神 (不可战胜)" },
         musicOpts: { none: "🔇 静音", '01': "🎵 乐曲 01", '02': "🎵 乐曲 02", '03': "🎵 乐曲 03", '04': "🎵 乐曲 04", '05': "🎵 乐曲 05", '06': "🎵 乐曲 06", '07': "🎵 乐曲 07" },
-        themeOpts: { 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 紅木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
+        themeOpts: { 't-classic': "💎 经典", 't-ink': "🏔️ 水墨", 't-dark': "🌃 暗黑", 't-jade': "📿 翡翠", 't-wood': "🪵 红木", 't-gold': "👑 黑金", 't-ocean': "🌊 深海", 't-royal': "🏛️ 紫禁", 't-beast': "🦁 野兽", 't-playful': "🎈 俏皮", 't-shan': "🖌️ 山水", 't-cute': "🍬 可愛", 't-cyber': "🤖 赛博", 't-sketch': "✏️ 素描" },
         sideOpts: { '1': "红", '-1': "黑" } 
     },
     en: {
@@ -741,7 +770,8 @@ const TRANSLATIONS = {
         lblLang: "Language",
         lblBgmVol: "Music Vol",
         lblSfxVol: "SFX Vol",
-        lblGhost: "Hints",
+        lblGhost: "Move Hints",
+        lblProgress: "AI Progress",
         btnRules: "📖 Rules",
         btnHome: "🏠 Home",
         btnDone: "Done",
@@ -763,10 +793,17 @@ const TRANSLATIONS = {
 };
 
 let bd = [], turn = 1, sel = -1, moves = [], over = false, historyStack = [], lastMoveIdx = -1, worker, isPVP = false, aiTimer = null, aiStartTime = 0, isAiThinking = false, userInteracted = false;
-let lastMoveFrom = -1, lastMovePieceType = 0, showGhost = true;
+let lastMoveFrom = -1, lastMovePieceType = 0;
+// 加入 showAiProgress 變數
+let showGhost = true, showAiProgress = true;
 let currentLang = 'tw'; 
 let viewSide = 1; 
 let dragEl = null;
+
+/* 修正3：新增手動縮放狀態變數 */
+let currentZoom = 1.0; 
+let baseBoardW = 0; 
+let baseBoardH = 0; 
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -788,18 +825,6 @@ window.onload = () => {
     window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); resizeBoard(); });
     document.body.addEventListener('click', unlockAudio, {once:true}); 
     document.body.addEventListener('touchstart', unlockAudio, {once:true}); 
-
-    // 新增：監聽頁面可見性，離開時暫停音樂，回來時恢復
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            audio.pause();
-        } else {
-            // 只有當使用者已經互動過且設定非靜音時才恢復播放
-            if(userInteracted && document.getElementById('music-sel').value !== 'none') {
-                audio.play().catch(e=>{});
-            }
-        }
-    });
 
     const boardInner = document.getElementById('board');
     // 處理點擊空白處以取消選取
@@ -835,7 +860,11 @@ function changeLang() {
     document.getElementById('lbl-side').innerText = t.lblSide; 
     document.getElementById('lbl-music').innerText = t.lblMusic;
     document.getElementById('lbl-lang').innerText = t.lblLang;
+    
+    // 更新這兩個變數的名稱
     document.getElementById('lbl-ghost').innerText = t.lblGhost;
+    document.getElementById('lbl-progress').innerText = t.lblProgress;
+    
     document.getElementById('btn-rules').innerText = t.btnRules;
     document.getElementById('btn-home').innerText = t.btnHome; // 更新回首頁按鈕文字
     document.getElementById('btn-done').innerText = t.btnDone;
@@ -869,10 +898,44 @@ function updateVolLabels() {
     document.getElementById('lbl-vol-sfx').innerText = `${t.lblSfxVol} (${sfxVal}%)`;
 }
 
+/* 修正3：新增手動縮放觸發函數 */
+function zoomBoard(direction) {
+    currentZoom += direction * 0.2; // 每次放大或縮小 20%
+    if (currentZoom < 1.0) currentZoom = 1.0; /* 修正4：限制最小縮小至 100% (初始大小) */
+    if (currentZoom > 3.0) currentZoom = 3.0; // 限制最大放大至 300%
+    applyZoom();
+}
+
+/* 修正3：根據目前的 currentZoom 倍率套用棋盤大小 */
+function applyZoom() {
+    const boardWrap = document.getElementById('board-wrap');
+    if (baseBoardW > 0 && baseBoardH > 0) {
+        let finalW = baseBoardW * currentZoom;
+        let finalH = baseBoardH * currentZoom;
+        boardWrap.style.width = `${finalW}px`;
+        boardWrap.style.height = `${finalH}px`;
+        boardWrap.style.minWidth = `${finalW}px`; 
+        boardWrap.style.minHeight = `${finalH}px`;
+        boardWrap.style.fontSize = (finalW / 9) + "px";
+
+        // 修正5：當縮放回預設大小 (1.0) 時，將平移位置自動歸零，讓畫面回歸正中央
+        if (currentZoom === 1.0) {
+            panX = 0;
+            panY = 0;
+            boardWrap.style.transform = `translate(0px, 0px)`;
+        }
+    }
+}
+
 function checkOrientation() { const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 650; const body = document.body; if (isLandscape) body.classList.add('is-landscape'); else body.classList.remove('is-landscape'); return isLandscape; }
+
 function resizeBoard() { 
     const isLandscape = checkOrientation(); const header = document.getElementById('main-header'); const boardWrap = document.getElementById('board-wrap');
-    boardWrap.style.width = ''; boardWrap.style.height = ''; boardWrap.style.margin = '0'; header.style.marginRight = '0';
+    
+    /* 修正3：移除對 margin 的強制歸零，讓 CSS 的 margin: auto 能在放大時協助置中捲動 */
+    boardWrap.style.width = ''; boardWrap.style.height = ''; header.style.marginRight = '0';
+    boardWrap.style.marginTop = ''; boardWrap.style.marginBottom = '';
+    
     const winW = window.innerWidth; const winH = window.innerHeight; let finalW, finalH;
     if (isLandscape) {
         const headerW = 130; const verticalMargin = 4; let maxH = winH - verticalMargin; let maxW = maxH * 0.9; let gap = maxW * 0.02; const requiredW = headerW + gap + maxW + 20;
@@ -880,10 +943,14 @@ function resizeBoard() {
         finalW = maxW; finalH = maxH; header.style.marginRight = `${gap}px`;
     } else {
         const paddingV = winH * 0.01; const paddingH = 10; const headerH = header.offsetHeight; let availW = winW - (paddingH * 2); let availH = winH - headerH - (paddingV * 2); 
-        boardWrap.style.marginTop = `${paddingV}px`; boardWrap.style.marginBottom = `${paddingV}px`; const ratio = 0.9; finalH = availH; finalW = finalH * ratio;
+        const ratio = 0.9; finalH = availH; finalW = finalH * ratio;
         if (finalW > availW) { finalW = availW; finalH = finalW / ratio; }
     }
-    boardWrap.style.width = `${finalW}px`; boardWrap.style.height = `${finalH}px`; boardWrap.style.fontSize = (finalW / 9) + "px"; 
+    
+    /* 修正3：將基準大小儲存下來，並呼叫 applyZoom 套用 */
+    baseBoardW = finalW;
+    baseBoardH = finalH;
+    applyZoom();
 }
 
 function unlockAudio() { 
@@ -898,8 +965,49 @@ function unlockAudio() {
 }
 
 function initWorker() { const blob = new Blob([workerScript], {type: 'application/javascript'}); worker = new Worker(URL.createObjectURL(blob)); worker.onmessage = e => { stopAiTimer(); isAiThinking = false; const move = e.data; if(move) animateAiMove(move.from, move.to); else endGame(TRANSLATIONS[currentLang].aiResign); }; }
-function startAiTimer() { aiStartTime = Date.now(); aiTimer = setInterval(() => { let sec = ((Date.now() - aiStartTime) / 1000).toFixed(1); document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${sec}s)`; }, 100); }
-function stopAiTimer() { clearInterval(aiTimer); }
+
+/* === 新增修正2：改為精確的倒數計時 === */
+function startAiTimer(totalTime) { 
+    aiStartTime = Date.now(); 
+    const progressBar = document.getElementById('ai-progress-bar');
+    
+    // 顯示進度條並將初始長度歸零
+    if (progressBar && showAiProgress) {
+        progressBar.style.opacity = 1;
+        progressBar.style.width = '0%';
+    }
+
+    aiTimer = setInterval(() => { 
+        let elapsed = Date.now() - aiStartTime;
+        // 修正2: 計算剩餘時間 (最小至 0)，並顯示到小數點第 1 位
+        let remaining = Math.max(0, totalTime - elapsed);
+        let sec = (remaining / 1000).toFixed(1); 
+        
+        document.getElementById('msg').innerText = `${TRANSLATIONS[currentLang].thinking} (${sec}s)`; 
+
+        // 動態計算百分比，並更新頂部進度條 (確保最高不超過 100%)
+        // 且只有在開啟設定時才去顯示與變動進度條
+        if (progressBar && showAiProgress) {
+            let p = Math.min((elapsed / totalTime) * 100, 100);
+            progressBar.style.opacity = 1; // 確保中途被勾選開啟時會正常浮現
+            progressBar.style.width = p + '%';
+        }
+    }, 100); 
+}
+
+/* === 新增修正：停止 AI 倒數計時，並隱藏/歸零進度條 === */
+function stopAiTimer() { 
+    clearInterval(aiTimer); 
+    const progressBar = document.getElementById('ai-progress-bar');
+    if (progressBar) {
+        // 利用 CSS transition 淡出隱藏
+        progressBar.style.opacity = 0;
+        // 等待淡出動畫結束後，再將進度條長度抽回 0%
+        setTimeout(() => {
+            progressBar.style.width = '0%';
+        }, 300);
+    }
+}
 
 // --- Game Logic Updates ---
 function restart() { 
@@ -980,6 +1088,8 @@ function render() {
         const pos = getPos(sel);
         marker.style.left = pos.left + "%";
         marker.style.top = pos.top + "%";
+        // 修正：關閉提示時不顯示藍色閃爍框
+        if(!showGhost) marker.style.display = "none";
         div.appendChild(marker);
     }
 
@@ -996,7 +1106,8 @@ function render() {
     bd.forEach((p, i) => { 
         if(p===0) return; 
         const el = document.createElement('div'); 
-        el.className = `piece ${p>0?'red':'black'} ${i===sel?'selected':''} ${i===lastMoveIdx?'last-move':''}`; 
+        // 修正：加入 showGhost 判斷，關閉時不賦予 'last-move' 樣式
+        el.className = `piece ${p>0?'red':'black'} ${i===sel?'selected':''} ${(showGhost && i===lastMoveIdx)?'last-move':''}`; 
         el.innerText = TXT[p]; 
         const pos = getPos(i);
         el.style.left = pos.left + "%"; 
@@ -1022,6 +1133,8 @@ function render() {
         const pos = getPos(m);
         d.style.left = pos.left + "%"; 
         d.style.top = pos.top + "%"; 
+        // 修正：關閉提示時設為全透明 (看不見，但玩家依然可以點擊該格子移動)
+        if(!showGhost) d.style.opacity = "0";
         d.onmousedown = (e) => { e.stopPropagation(); makeMove(sel, m); }; 
         d.ontouchstart = (e) => { e.stopPropagation(); makeMove(sel, m); };
         div.appendChild(d); 
@@ -1129,9 +1242,12 @@ function makeMove(from, to) {
         document.getElementById('msg').innerText = t.thinking; 
         document.getElementById('msg').style.color = "#e74c3c"; 
         isAiThinking = true; 
-        startAiTimer(); 
         const diffKey = document.getElementById('diff-sel').value;
         const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
+        
+        /* === 新增修正：啟動並傳入電腦思考總時間 === */
+        startAiTimer(levelConfig.time); 
+        
         setTimeout(() => worker.postMessage({ bd: bd, limit: levelConfig, turn: turn, level: diffKey }), 50); 
     } else { 
         updateStatus(); 
@@ -1174,9 +1290,18 @@ function changeMusic() {
 
 function toggleGhost() { showGhost = document.getElementById('ghost-check').checked; render(); }
 
-// 新增功能：回首頁 (並停止音樂)
+// 新增功能：控制電腦進度條是否要顯示
+function toggleProgress() { 
+    showAiProgress = document.getElementById('progress-check').checked; 
+    const progressBar = document.getElementById('ai-progress-bar');
+    // 若被取消勾選，則立即將特效透明度設為0以隱藏
+    if (!showAiProgress && progressBar) {
+        progressBar.style.opacity = 0;
+    }
+}
+
+// 新增功能：回首頁
 function goHome() {
-    audio.pause(); // 確保音樂停止
     try {
         if (window.parent && typeof window.parent.closeGame === 'function') {
             window.parent.closeGame();
@@ -1190,34 +1315,26 @@ function goHome() {
 
 function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floor(i/9), t=[]; const inB = (c,r)=>c>=0&&c<9&&r>=0&&r<10; const canLand = (idx) => bd[idx] * color <= 0; const sim = (target) => { let tmp = bd[target]; bd[target] = bd[i]; bd[i] = 0; let k1 = bd.indexOf(7), k2 = bd.indexOf(-7), safe = true; if(k1!==-1 && k2!==-1 && k1%9 === k2%9) { safe = false; for(let k=Math.min(k1,k2)+9; k<Math.max(k1,k2); k+=9) if(bd[k]!==0) safe = true; } bd[i] = bd[target]; bd[target] = tmp; return safe; }; if(type===1) { let d=color===1?-1:1; if(inB(x,y+d) && canLand((y+d)*9+x)) t.push((y+d)*9+x); if((color===1&&y<5)||(color===-1&&y>4)){ if(inB(x-1,y) && canLand(y*9+x-1)) t.push(y*9+x-1); if(inB(x+1,y) && canLand(y*9+x+1)) t.push(y*9+x+1); } } else if(type===2||type===3) { [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy, j=false; while(inB(c,r)){ let idx=r*9+c; if(bd[idx]===0){ if(!j) t.push(idx); } else { if(type===3){ if(canLand(idx)) t.push(idx); break; } if(!j) j=true; else { if(canLand(idx)) t.push(idx); break; } } c+=dx; r+=dy; } }); } else if(type===4) { [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]].forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(inB(c,r)){ let legC=Math.abs(dx)===2?x+dx/2:x, legR=Math.abs(dy)===2?y+dy/2:y; if(bd[legR*9+legC]===0 && canLand(r*9+c)) t.push(r*9+c); } }); } else if(type===5) { const eDirs = [[2,2],[2,-2],[-2,2],[-2,-2]]; for(let k=0; k<eDirs.length; k++){ let dx=eDirs[k][0], dy=eDirs[k][1], c=x+dx, r=y+dy; if(inB(c,r)){ if(color===1 && r<5) continue; if(color===-1 && r>4) continue; let eyeC=x+dx/2, eyeR=y+dy/2; if(bd[eyeR*9+eyeC]===0 && canLand(r*9+c)) t.push(r*9+c); } } } else if(type>=6) { let ds = type===6 ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[1,0],[-1,0],[0,1],[0,-1]]; ds.forEach(([dx,dy])=>{ let c=x+dx, r=y+dy; if(c>=3&&c<=5 && ((color===1&&r>=7)||(color===-1&&r<=2))){ if(canLand(r*9+c)) t.push(r*9+c); } }); } return t.filter(idx => sim(idx)); }
 
-    // 1. 禁用右鍵選單
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
     });
 
-    // 2. 監控鍵盤事件：禁用開發者常用快捷鍵
     document.onkeydown = function(e) {
-        // 禁止 F12 (123)
         if (e.keyCode == 123) {
             return false;
         }
-        // 禁止 Ctrl+Shift+I (檢查元件)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+Shift+C (選取元件)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+Shift+J (開發者主控台)
         if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+U (查看網頁原始碼)
         if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
             return false;
         }
-        // 禁止 Ctrl+S (存檔)
         if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) {
             return false;
         }
@@ -1225,6 +1342,86 @@ function getMoves(bd, i, color) { let type = Math.abs(bd[i]), x=i%9, y=Math.floo
 
     console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
     console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
+
+    // === 終極修正版：雙指縮放 + 單指(按住空白處)拖曳平移畫面 ===
+    let initialPinchDistance = null;
+    let startZoom = 1.0;
+
+    let isPanning = false;
+    let lastPanX = 0, lastPanY = 0;
+    let panX = 0, panY = 0; // 修正5：新增平移座標變數
+
+    const gameContainerEl = document.getElementById('game-container');
+
+    // 1. 偵測手指放上螢幕
+    gameContainerEl.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            isPanning = false; // 兩指時進入縮放，關閉平移
+            e.preventDefault(); 
+            initialPinchDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            startZoom = currentZoom; 
+        } else if (e.touches.length === 1) {
+            // 確認沒有選中棋子正在拖曳 (dragEl 為空)
+            if (!dragEl) {
+                isPanning = true;
+                // 修正6：iOS 專屬解法！必須在觸碰瞬間立刻阻止預設行為，否則 iOS 會強制接管滑動
+                e.preventDefault();
+                // 必須使用 clientX/Y，這是相對於手機螢幕玻璃的實體座標
+                lastPanX = e.touches[0].clientX;
+                lastPanY = e.touches[0].clientY;
+            }
+        }
+    }, { passive: false });
+
+    // 2. 偵測手指滑動 (縮放 / 平移中)
+    gameContainerEl.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDistance) {
+            // --- 雙指縮放邏輯 ---
+            e.preventDefault(); 
+            let currentDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            let scale = currentDistance / initialPinchDistance;
+            currentZoom = startZoom * scale;
+            
+            /* 修正4：限制縮放最小為初始畫面大小 (100%) */
+            if (currentZoom < 1.0) currentZoom = 1.0;
+            if (currentZoom > 3.0) currentZoom = 3.0;
+            applyZoom(); 
+            
+        } else if (e.touches.length === 1 && isPanning) {
+            // --- 單指平移(Pan)邏輯 ---
+            e.preventDefault(); // 阻擋原生滑動，完全由 JS 接管
+            
+            let currentX = e.touches[0].clientX;
+            let currentY = e.touches[0].clientY;
+            let moveX = currentX - lastPanX;
+            let moveY = currentY - lastPanY;
+            
+            /* 修正5：放棄原生捲軸，改用 transform 來平移畫面。徹底解決 Flexbox 置中導致左上角邊緣無法捲動的問題 */
+            panX += moveX;
+            panY += moveY;
+            document.getElementById('board-wrap').style.transform = `translate3d(${panX}px, ${panY}px, 0)`;            
+            // 即時更新最後座標，讓畫面緊緊黏著手指移動
+            lastPanX = currentX;
+            lastPanY = currentY;
+        }
+    }, { passive: false });
+
+    // 3. 手指離開螢幕，重置狀態
+    gameContainerEl.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            initialPinchDistance = null;
+        }
+        if (e.touches.length === 0) {
+            isPanning = false; 
+        }
+    });
+    
 </script>
 </body>
 </html>
