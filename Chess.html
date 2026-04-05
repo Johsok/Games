@@ -112,6 +112,62 @@
         #game-container { flex-shrink: 1; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
         body.is-landscape #game-container { width: auto; height: 100vh; flex-grow: 0; }
         
+        /* === 移動提示文字說明區塊 === */
+        #move-log-panel {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            /* 利用棋盤寬度精準計算左側位置，確保棋盤整體視覺維持置中 */
+            left: calc(50% - (var(--board-size) / 2) - 27vmin);
+            height: var(--board-size);
+            width: 25vmin;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            box-sizing: border-box;
+            padding: 1.5vmin;
+            color: #ddd;
+            font-size: 2.2vmin;
+            z-index: 50;
+            display: block; /* 由 JS 依據設定控制開關 */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+        /* 自訂 webkit 捲軸樣式，更融入 UI */
+        #move-log-panel::-webkit-scrollbar { width: 4px; }
+        #move-log-panel::-webkit-scrollbar-track { background: transparent; }
+        #move-log-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+        /* === 走棋記錄懸浮提示框 (Tooltip) === */
+        #log-tooltip {
+            position: fixed; /* 使用 fixed 確保不會被父元素 overflow 給裁切 */
+            width: 340px;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px;
+            color: #eee;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), inset 0 2px 5px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            pointer-events: none; /* 防止干擾滑鼠事件 */
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: none;
+        }
+        #log-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .tip-title { color: #f1c40f; font-weight: bold; margin-bottom: 10px; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px;}
+        .tip-item { margin-bottom: 8px; text-align: justify;}
+        .tip-item b { color: #4dd0e1; }
+
         .board-wrap { 
             position: relative; 
             width: var(--board-size);
@@ -146,7 +202,7 @@
         .square.rank-label::before { content: attr(data-rank); position: absolute; top: 2px; left: 2px; font-size: calc(var(--board-size)*0.015 + 6px); color: #fff; text-shadow: 1px 1px 0 #000; z-index: 5; font-weight: bold;}
         .square.file-label::after { content: attr(data-file); position: absolute; bottom: 2px; right: 2px; font-size: calc(var(--board-size)*0.015 + 6px); color: #fff; text-shadow: 1px 1px 0 #000; z-index: 5; font-weight: bold;}
 
-        /* 狀態高亮 */
+        /* === 狀態高亮與最後一步視覺提示 === */
         .square.selected { border: 3px solid var(--selected-border); background-color: rgba(74, 74, 255, 0.4); }
         
         .square.highlight-move::before, .square.highlight-capture::before {
@@ -154,6 +210,27 @@
         }
         .square.highlight-move::before { width: 30%; height: 30%; background-color: var(--move-dot); border: 2px solid #aaffaa; }
         .square.highlight-capture::before { width: 50%; height: 50%; background-color: transparent; border: 4px solid var(--capture-dot); box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+
+        /* 最後一步的目標位置：加厚2倍藍色外框，並增加內外白色薄框提高顯著程度 */
+        .square.last-move-to {
+            border: 6px solid #00aaff;
+            box-shadow: 0 0 0 2px #fff, inset 0 0 0 2px #fff;
+            box-sizing: border-box;
+            z-index: 15; /* 確保外框邊界不被旁邊格子遮擋 */
+        }
+        /* 最後一步的起始位置：透明半虛影背景 + 加厚2倍虛線外框 */
+        .square.last-move-from {
+            border: 4px dashed rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.1);
+            box-sizing: border-box;
+            z-index: 14;
+        }
+        /* 在原步保留的透明虛影棋子 */
+        .ghost-piece {
+            opacity: 0.4;
+            position: absolute;
+            z-index: 5;
+        }
 
         /* 棋子 */
         .piece { width: 85%; height: 85%; z-index: 10; pointer-events: none; filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); transition: transform 0.2s; }
@@ -256,14 +333,18 @@
         </div>
     </div>
     
-    <div class="set-row flex-split" style="align-items: center; margin-top: 15px; margin-bottom: 15px;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #aaa; width: 50%;">
-            <input type="checkbox" id="show-hint-chk" checked onchange="toggleHint()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
-            <span data-i18n="moveHint">移動提示</span>
+    <div class="set-row flex-split" style="align-items: center; margin-top: 15px; margin-bottom: 15px; gap: 5px;">
+        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: #aaa; flex: 1; justify-content: center;">
+            <input type="checkbox" id="show-hint-chk" checked onchange="toggleHint()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+            <span data-i18n="moveHint" style="font-size: 0.8rem; white-space: nowrap;">移動提示</span>
         </label>
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #aaa; width: 50%;">
-            <input type="checkbox" id="show-progress-chk" checked onchange="toggleProgress()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
-            <span data-i18n="aiProgress">電腦思考進度</span>
+        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: #aaa; flex: 1; justify-content: center;">
+            <input type="checkbox" id="show-progress-chk" checked onchange="toggleProgress()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+            <span data-i18n="aiProgress" style="font-size: 0.8rem; white-space: nowrap;">電腦思考</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: #aaa; flex: 1; justify-content: center;">
+            <input type="checkbox" id="show-log-chk" checked onchange="toggleLog()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+            <span data-i18n="moveLog" style="font-size: 0.8rem; white-space: nowrap;">提示文字</span>
         </label>
     </div>
     
@@ -284,7 +365,16 @@
     </div>
 </div>
 
+<div id="log-tooltip">
+    <div class="tip-title">走棋記錄規則：</div>
+    <div class="tip-item"><b>2 個字元（純目的地）：</b>例如 d5、e4、g4。當「兵 (Pawn)」移動時，不需要寫出棋子代號，只寫目的地座標。</div>
+    <div class="tip-item"><b>3 個字元（棋子代號 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大寫字母代表棋子（N=騎士, Q=皇后, R=城堡, B=主教, K=國王），後面接目的地。</div>
+    <div class="tip-item"><b>包含 x（吃子）：</b>例如 fxg5（f線的兵吃掉g5的子）、Nxe4（騎士吃掉e4的子）。x 代表 Capture（吃子）。</div>
+    <div class="tip-item"><b>包含 +（將軍）：</b>例如 Rxe4+。這代表城堡吃掉e4的子，並且對敵方國王造成「將軍 (Check)」。</div>
+</div>
+
 <div id="game-container">
+    <div id="move-log-panel"></div>
     <div class="board-wrap" id="board"></div>
     <div id="win-overlay"></div>
 </div>
@@ -292,7 +382,7 @@
 <audio id="bgm" loop></audio>
 
 <script>
-/* === 高品質 SVG 棋子圖片庫 (必須放在最上方以供字典讀取) === */
+/* === 高品質 SVG 棋子圖片庫 === */
 const pieceImages = {
     wk: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="%23000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke-linejoin="miter"/><path d="M22.5 25s4.5-7.5 5.8-10.5c.8-2.5-.5-2.5-1.5-2.5-1.5 0-2.5 1.5-2.5 1.5s-1-1.5-2.5-1.5c-1 0-2.3 0-1.5 2.5C21.6 17.5 22.5 25 22.5 25" fill="%23fff" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10.5 5 10.5v7" fill="%23fff"/><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></svg>',
     wq: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="%23000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM16 8.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM33 8.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0z" fill="%23fff"/><path d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-14V25L7 14l2 12zM9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.56.5 1.5 15 1.5 21 0 .5 0 2-1 5-2.5 0 0 0-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-21.5-1.5-27 0z" fill="%23fff" stroke-linecap="butt"/><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0" fill="none"/></g></svg>',
@@ -309,14 +399,14 @@ const pieceImages = {
 };
 
 /* === 語言切換系統與規則字庫 === */
-// 修正：使用 encodeURI 處理 SVG 並用單引號包裹 src 以避免破版
 const langDict = {
     tw: { 
         title: "西洋棋大師 2026", btnSet: "⚙️ 設定", btnSwitch: "🔄 換方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重開",
         aiDiff: "AI 難度 (思考深度)", diffEasy: "🟩 簡單 (休閒)", diffNormal: "🟨 普通 (預設)", diffHard: "🟥 困難 (挑戰)",
         lang: "語言", bgm: "背景音樂", volBgm: "音樂音量", volSfx: "音效音量",
         boardStyle: "棋盤樣式", styleRandom: "🎲 隨機", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 經典綠", styleBrown: "🟫 淺褐", styleTeal: "🌊 藍綠",
-        moveHint: "移動提示", aiProgress: "電腦思考進度", btnRules: "📖 遊戲規則", btnHome: "🏠 回首頁", btnDone: "完成設定",
+        moveHint: "移動提示", aiProgress: "電腦思考", moveLog: "提示文字", moveLogTitle: "走 棋 記 錄",
+        btnRules: "📖 遊戲規則", btnHome: "🏠 回首頁", btnDone: "完成設定",
         rulesTitle: "西洋棋詳細規則", btnCloseRules: "關閉說明",
         turnW: "您 (白方) 的回合", turnB: "電腦的回合", check: "(將軍!)", mateW: "遊戲結束！您贏了！", mateB: "遊戲結束！您被將死了", draw: "遊戲和局。",
         thinking: "🧠 電腦思考中...", moving: "🧠 正在落子...",
@@ -328,14 +418,22 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bq)}'><div class="rule-text"><b>皇后 (Queen)：</b>結合了城堡與主教的走法，可沿橫、直、斜線移動，格數不限，是威力最強的棋子。</div></div>
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>國王 (King)：</b>周圍8個方向皆可移動1格。若受到敵方攻擊稱為「將軍」(Check)，必須立刻避開。若無法逃脫則被「將死」(Checkmate)，遊戲結束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系統已內建完美支援「王車易位」、「吃過路兵」及「兵的升變」等特殊規則。</div></div>
+             `,
+        logTip: `
+            <div class="tip-title">走棋記錄規則：</div>
+            <div class="tip-item"><b>2 個字元（純目的地）：</b>例如 d5、e4、g4。當「兵 (Pawn)」移動時，不需要寫出棋子代號，只寫目的地座標。</div>
+            <div class="tip-item"><b>3 個字元（棋子代號 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大寫字母代表棋子（N=騎士, Q=皇后, R=城堡, B=主教, K=國王），後面接目的地。</div>
+            <div class="tip-item"><b>包含 x（吃子）：</b>例如 fxg5（f線的兵吃掉g5的子）、Nxe4（騎士吃掉e4的子）。x 代表 Capture（吃子）。</div>
+            <div class="tip-item"><b>包含 +（將軍）：</b>例如 Rxe4+。這代表城堡吃掉e4的子，並且對敵方國王造成「將軍 (Check)」。</div>
         `
     },
     cn: { 
-        title: "国际象棋大师 2026", btnSet: "⚙️ 设置", btnSwitch: "🔄 换方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重开",
+        title: "象棋大师 2026", btnSet: "⚙️ 设置", btnSwitch: "🔄 换方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重开",
         aiDiff: "AI 难度 (思考深度)", diffEasy: "🟩 简单 (休闲)", diffNormal: "🟨 普通 (默认)", diffHard: "🟥 困难 (挑战)",
         lang: "语言", bgm: "背景音乐", volBgm: "音乐音量", volSfx: "音效音量",
         boardStyle: "棋盘样式", styleRandom: "🎲 随机", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 经典绿", styleBrown: "🟫 浅褐", styleTeal: "🌊 蓝绿",
-        moveHint: "移动提示", aiProgress: "电脑思考进度", btnRules: "📖 游戏规则", btnHome: "🏠 回首页", btnDone: "完成设置",
+        moveHint: "移动提示", aiProgress: "电脑思考", moveLog: "提示文字", moveLogTitle: "走 棋 记 录",
+        btnRules: "📖 游戏规则", btnHome: "🏠 回首页", btnDone: "完成设置",
         rulesTitle: "国际象棋详细规则", btnCloseRules: "关闭说明",
         turnW: "您 (白方) 的回合", turnB: "电脑的回合", check: "(将军!)", mateW: "游戏结束！您赢了！", mateB: "游戏结束！您被将死了", draw: "游戏和局。",
         thinking: "🧠 电脑思考中...", moving: "🧠 正在落子...",
@@ -347,6 +445,13 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bq)}'><div class="rule-text"><b>皇后 (Queen)：</b>结合了城堡与主教的走法，可沿横、直、斜线移动，格数不限，是威力最强的棋子。</div></div>
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>国王 (King)：</b>周围8个方向皆可移动1格。若受到敌方攻击称为「将军」(Check)，必须立刻避开。若无法逃脱则被「将死」(Checkmate)，游戏结束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系统已内建完美支援「王车易位」、「吃过路兵」及「兵的升变」等特殊规则。</div></div>
+        `,
+        logTip: `
+            <div class="tip-title">走棋记录规则：</div>
+            <div class="tip-item"><b>2 个字符（纯目的地）：</b>例如 d5、e4、g4。当「兵 (Pawn)」移动时，不需要写出棋子代号，只写目的地坐标。</div>
+            <div class="tip-item"><b>3 个字符（棋子代号 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大写字母代表棋子（N=骑士, Q=皇后, R=城堡, B=主教, K=国王），后面接目的地。</div>
+            <div class="tip-item"><b>包含 x（吃子）：</b>例如 fxg5（f线的兵吃掉g5的子）、Nxe4（骑士吃掉e4的子）。x 代表 Capture（吃子）。</div>
+            <div class="tip-item"><b>包含 +（将军）：</b>例如 Rxe4+。这代表城堡吃掉e4的子，并且对敌方国王造成「将军 (Check)」。</div>
         `
     },
     en: { 
@@ -354,7 +459,8 @@ const langDict = {
         aiDiff: "AI Difficulty", diffEasy: "🟩 Easy", diffNormal: "🟨 Normal", diffHard: "🟥 Hard",
         lang: "Language", bgm: "Music", volBgm: "Music Vol", volSfx: "SFX Vol",
         boardStyle: "Board Style", styleRandom: "🎲 Random", styleMarble: "🪨 Marble", styleWood: "🪵 Wood", styleGreen: "🌿 Green", styleBrown: "🟫 Brown", styleTeal: "🌊 Teal",
-        moveHint: "Move Hint", aiProgress: "AI Progress Bar", btnRules: "📖 Rules", btnHome: "🏠 Home", btnDone: "Done",
+        moveHint: "Move Hint", aiProgress: "AI Progress", moveLog: "Text Hint", moveLogTitle: "Move Log",
+        btnRules: "📖 Rules", btnHome: "🏠 Home", btnDone: "Done",
         rulesTitle: "Chess Rules Summary", btnCloseRules: "Close",
         turnW: "Your Turn (White)", turnB: "AI's Turn", check: "(Check!)", mateW: "Game Over! You Win!", mateB: "Game Over! Checkmated", draw: "Game Draw.",
         thinking: "🧠 AI Thinking...", moving: "🧠 AI Moving...",
@@ -366,6 +472,13 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.wq)}'><div class="rule-text"><b>Queen：</b>Combines Rook and Bishop. Moves any direction, any number of squares. The most powerful piece.</div></div>
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>King：</b>Moves 1 square in any direction. Must escape if attacked ('Check'). If it cannot escape, it's 'Checkmate'.</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* Castling, En Passant, and Pawn Promotion are fully supported.</div></div>
+        `,
+        logTip: `
+            <div class="tip-title">Move Log Rules:</div>
+            <div class="tip-item"><b>2 Chars (Destination only):</b> e.g., d5, e4, g4. When a Pawn moves, its letter is omitted; only the destination is noted.</div>
+            <div class="tip-item"><b>3 Chars (Piece + Destination):</b> e.g., Nf3, Qd6, Rg1. Uppercase letter indicates the piece (N=Knight, Q=Queen, R=Rook, B=Bishop, K=King).</div>
+            <div class="tip-item"><b>Contains x (Capture):</b> e.g., fxg5 (f-pawn captures on g5), Nxe4 (Knight captures on e4). 'x' means Capture.</div>
+            <div class="tip-item"><b>Contains + (Check):</b> e.g., Rxe4+. The Rook captures on e4 and puts the enemy King in Check.</div>
         `
     }
 };
@@ -377,12 +490,13 @@ function changeLang() {
     document.title = langDict[currentLang].title;
     document.getElementById('app-title').innerText = langDict[currentLang].title;
     document.getElementById('rules-list').innerHTML = langDict[currentLang].rulesList;
-    
+    document.getElementById('log-tooltip').innerHTML = langDict[currentLang].logTip;
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (langDict[currentLang][key]) el.innerText = langDict[currentLang][key];
     });
     updateStatus();
+    updateMoveLog(); // 語系切換時同時更新面板語言
     
     // 如果正在思考，也更新對應文字
     if (thinkingEl.style.opacity === '1') {
@@ -397,7 +511,6 @@ function changeBoardStyle() {
         const styles = ['marble', 'wood', 'green', 'brown', 'teal'];
         sel = styles[Math.floor(Math.random() * styles.length)];
     }
-    // 移除所有主題 class 後加入新選擇的主題
     document.body.classList.remove('theme-marble', 'theme-wood', 'theme-green', 'theme-brown', 'theme-teal');
     document.body.classList.add(`theme-${sel}`);
 }
@@ -409,8 +522,6 @@ document.onkeydown = function(e) {
     if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 67 || e.keyCode == 74)) return false;
     if (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83)) return false;
 };
-console.log("%c系統安全監控中", "color: red; font-size: 30px; font-weight: bold;");
-console.log("%c未經授權禁止查看程式碼！", "color: gray; font-size: 20px;");
 
 function checkOrientation() { 
     const isLand = window.innerWidth > window.innerHeight && window.innerHeight < 650; 
@@ -425,17 +536,19 @@ function resizeBoard() {
     const winW = window.innerWidth, winH = window.innerHeight; 
     let finalSizePx;
     
-    if (isLand) {
-        // 橫式：扣除左側選單與安全邊距
-        const headerW = 140, gap = winW * 0.02;
-        finalSizePx = Math.min(winW - headerW - gap - 20, winH - 20);
-    } else {
-        // 直式：扣除頂部標題列與安全邊距
-        finalSizePx = Math.min(winW - 20, winH - header.offsetHeight - 20);
-    }
-    
-    // 計算出目前的 1 vmin 相當於多少像素
+    // 若文字提示面板開啟，則扣除其預留的寬度 (25vmin 面板 + 2vmin 間距) 以保持棋盤置中
+    let showLog = document.getElementById('show-log-chk') ? document.getElementById('show-log-chk').checked : true;
     let currentVminPx = Math.min(winW, winH) / 100;
+    let logSpacePx = showLog ? (27 * currentVminPx) : 0;
+    
+    if (isLand) {
+        // 橫式：扣除左側選單與雙邊的安全邊距 (保留雙邊空間以維持棋盤完全置中)
+        const headerW = 140, gap = winW * 0.02;
+        finalSizePx = Math.min(winW - headerW - gap - 20 - logSpacePx * 2, winH - 20);
+    } else {
+        // 直式：扣除頂部標題列與雙邊安全邊距
+        finalSizePx = Math.min(winW - 20 - logSpacePx * 2, winH - header.offsetHeight - 20);
+    }
     
     // 將計算出的像素大小轉換為 vmin，並賦予給 CSS 變數
     let sizeInVmin = finalSizePx / currentVminPx;
@@ -449,10 +562,7 @@ window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
 let userInteracted = false;
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function getMp3Path(val) {
-    if (val === 'none') return "";
-    return `https://johsok.github.io/Games/MP3/${val}.mp3`;
-}
+function getMp3Path(val) { return val === 'none' ? "" : `https://johsok.github.io/Games/MP3/${val}.mp3`; }
 
 function unlockAudio() {
     userInteracted = true;
@@ -495,6 +605,7 @@ function playSfx(freq, type) {
 /* === UI 與設定控制 === */
 let showMoveHints = true;
 let showAIProgress = true;
+let showMoveLog = true;
 
 function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
 function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
@@ -506,38 +617,59 @@ function changeMusic() {
     if(val === 'none') { audio.pause(); audio.src = ""; } 
     else { const newPath = getMp3Path(val); if (audio.src !== newPath) { audio.src = newPath; audio.load(); audio.play().catch(e => {}); } } 
 }
-function goHome() {
-    try { if (window.parent && typeof window.parent.closeGame === 'function') { window.parent.closeGame(); } } catch (e) {}
-}
+function goHome() { try { if (window.parent && typeof window.parent.closeGame === 'function') { window.parent.closeGame(); } } catch (e) {} }
 
 function toggleHint() {
     showMoveHints = document.getElementById('show-hint-chk').checked;
-    updateBoard(); // 立即套用或移除紅綠點
+    updateBoard(); // 立即套用或移除視覺提示與紅綠點
 }
 function toggleProgress() {
     showAIProgress = document.getElementById('show-progress-chk').checked;
     const bar = document.getElementById('scroll-progress-bar');
-    if (!showAIProgress) {
-        bar.style.opacity = '0';
-    } else if (aiCountdownInterval && !aiCountdownFinished) {
-        bar.style.opacity = '1';
-    }
+    if (!showAIProgress) { bar.style.opacity = '0'; } 
+    else if (aiCountdownInterval && !aiCountdownFinished) { bar.style.opacity = '1'; }
+}
+function toggleLog() {
+    showMoveLog = document.getElementById('show-log-chk').checked;
+    document.getElementById('move-log-panel').style.display = showMoveLog ? 'block' : 'none';
+    if (showMoveLog) updateMoveLog();
+    resizeBoard(); // 重新計算空間以維持棋盤完美置中
 }
 
-/* === 縮放與平移系統 (完美移植，支援 RWD) === */
-let currentZoom = 1.0; 
-let isPanning = false;
-let lastPanX = 0, lastPanY = 0;
-let panX = 0, panY = 0; 
-let hasMoved = false; 
-let initialPinchDistance = null;
-let startZoom = 1.0;
+/* === 走棋記錄懸浮提示框控制邏輯 === */
+function showLogTip(e) {
+    const tip = document.getElementById('log-tooltip');
+    tip.style.display = 'block';
+    setTimeout(() => tip.classList.add('show'), 10);
+    moveLogTip(e);
+}
+function moveLogTip(e) {
+    const tip = document.getElementById('log-tooltip');
+    let x = e.clientX + 15;
+    let y = e.clientY + 15;
+    const rect = tip.getBoundingClientRect();
+    
+    // 邊界防護：避免超出畫面右側與下方
+    if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - 15;
+    if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 15;
+    
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+}
+function hideLogTip() {
+    const tip = document.getElementById('log-tooltip');
+    tip.classList.remove('show');
+    setTimeout(() => { if (!tip.classList.contains('show')) tip.style.display = 'none'; }, 300);
+}
+
+/* === 縮放與平移系統 (支援 RWD) === */
+let currentZoom = 1.0, isPanning = false, lastPanX = 0, lastPanY = 0, panX = 0, panY = 0, hasMoved = false, initialPinchDistance = null, startZoom = 1.0;
 const gameContainerEl = document.getElementById('game-container');
 const boardWrap = document.getElementById('board');
 
 function applyZoom() {
     if (currentZoom === 1.0) { panX = 0; panY = 0; }
-    // 使用 transform 來進行畫面的平移與縮放，這不會影響 CSS 的 vmin 排版基準
+    // 使用 transform 進行畫面平移與縮放
     boardWrap.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 }
 
@@ -594,10 +726,7 @@ let selectedSquare = null;
 let playerColor = 'w';
 let aiDepth = 3; 
 
-function changeDifficulty() {
-    aiDepth = parseInt(document.getElementById('diff-sel').value);
-    resetGame();
-}
+function changeDifficulty() { aiDepth = parseInt(document.getElementById('diff-sel').value); resetGame(); }
 
 function createBoard() {
     boardEl.innerHTML = '';
@@ -625,9 +754,52 @@ function createBoard() {
     updateBoard();
 }
 
+// === 更新左側文字提示紀錄 (最新步數置頂、橘色粗體顯示) ===
+function updateMoveLog() {
+    const logPanel = document.getElementById('move-log-panel');
+    if (!logPanel || !showMoveLog) return;
+    
+    const history = game.history({ verbose: true });
+    let titleStr = langDict[currentLang].moveLogTitle || "走 棋 記 錄";
+    
+    // 加入 position: sticky 以及懸浮事件 (onmouseenter / onmouseleave) 來觸發 Tooltip
+    let html = `<div style="text-align:center; font-weight:bold; margin-bottom: 1.5vmin; color: #f1c40f; border-bottom: 1px solid #555; padding-bottom: 0.8vmin; position: sticky; top: 0; background: rgba(0,0,0,0.8); z-index: 10; cursor: help;" onmouseenter="showLogTip(event)" onmouseleave="hideLogTip()" onmousemove="moveLogTip(event)">${titleStr}</div>`;
+    
+    let rows = [];
+    const totalMoves = history.length;
+
+    for (let i = 0; i < totalMoves; i += 2) {
+        const turnNum = Math.floor(i / 2) + 1;
+        const wMove = history[i].san;
+        const bMove = history[i+1] ? history[i+1].san : '';
+
+        // 判斷此步是否為整局最新的一步
+        const isWLatest = (i === totalMoves - 1);
+        const isBLatest = (i + 1 === totalMoves - 1);
+
+        // 最新步套用橘色粗體
+        const wStyle = isWLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
+        const bStyle = isBLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
+
+        rows.push(`<div style="display:flex; margin-bottom: 1vmin; padding: 0.5vmin 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="width: 25%; color: #aaa;">${turnNum}.</div>
+                    <div style="width: 37.5%; ${wStyle}">${wMove}</div>
+                    <div style="width: 37.5%; ${bStyle}">${bMove}</div>
+                 </div>`);
+    }
+
+    // 將陣列反轉，讓最新的紀錄推到最上方 (最接近標題)
+    rows.reverse();
+    html += rows.join('');
+    
+    logPanel.innerHTML = html;
+    logPanel.scrollTop = 0; // 自動捲到最上方
+}
+
 function updateBoard() {
     document.querySelectorAll('.square').forEach(sq => {
-        sq.innerHTML = ''; sq.classList.remove('selected', 'highlight-move', 'highlight-capture');
+        sq.innerHTML = ''; 
+        sq.classList.remove('selected', 'highlight-move', 'highlight-capture', 'last-move-to', 'last-move-from');
     });
 
     const boardData = game.board(), files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -649,7 +821,6 @@ function updateBoard() {
 
     if (selectedSquare) {
         document.querySelector(`[data-square="${selectedSquare}"]`).classList.add('selected');
-        // 若移動提示勾選開啟，才繪製綠紅點
         if (showMoveHints) {
             game.moves({ square: selectedSquare, verbose: true }).forEach(move => {
                 const targetSq = document.querySelector(`[data-square="${move.to}"]`);
@@ -658,7 +829,30 @@ function updateBoard() {
             });
         }
     }
+    
+    // 如果「移動提示」有開啟，則繪製最後一步的視覺提示特效
+    if (showMoveHints) {
+        const history = game.history({ verbose: true });
+        if (history.length > 0) {
+            const lastMove = history[history.length - 1];
+            const fromSq = document.querySelector(`[data-square="${lastMove.from}"]`);
+            const toSq = document.querySelector(`[data-square="${lastMove.to}"]`);
+
+            if (toSq) toSq.classList.add('last-move-to');
+            if (fromSq) {
+                fromSq.classList.add('last-move-from');
+                // 渲染出原始棋子的透明虛影
+                const pieceCode = lastMove.color + lastMove.piece;
+                const ghostImg = document.createElement('img');
+                ghostImg.src = pieceImages[pieceCode];
+                ghostImg.className = 'piece ghost-piece';
+                fromSq.appendChild(ghostImg);
+            }
+        }
+    }
+    
     updateStatus();
+    updateMoveLog(); // 繪製完畢後更新側邊文字面板
 }
 
 function handleSquareClick(squareId) {
@@ -680,9 +874,7 @@ function handleSquareClick(squareId) {
         playSfx(0, isCapture ? 'capture' : 'move');
         updateBoard();
         
-        if (!game.game_over()) {
-            startAISequence(); 
-        }
+        if (!game.game_over()) { startAISequence(); }
     } else {
         selectedSquare = (piece && piece.color === playerColor) ? squareId : null;
         updateBoard();
@@ -712,71 +904,39 @@ function showWin(msg, color) {
 
 // === 狀態取消助手函數 (中斷電腦思考) ===
 function cancelAI() {
-    if (aiCountdownInterval) {
-        clearInterval(aiCountdownInterval);
-        aiCountdownInterval = null;
-    }
-    if (aiProgressAnim) {
-        cancelAnimationFrame(aiProgressAnim);
-        aiProgressAnim = null;
-    }
+    if (aiCountdownInterval) { clearInterval(aiCountdownInterval); aiCountdownInterval = null; }
+    if (aiProgressAnim) { cancelAnimationFrame(aiProgressAnim); aiProgressAnim = null; }
     const bar = document.getElementById('scroll-progress-bar');
-    bar.style.opacity = '0';
-    bar.style.width = '0%';
-    thinkingEl.style.opacity = '0';
-    aiBestMove = null;
+    bar.style.opacity = '0'; bar.style.width = '0%';
+    thinkingEl.style.opacity = '0'; aiBestMove = null;
 }
 
 // === 換方與悔棋邏輯 ===
 function switchSides() {
-    cancelAI(); // 停止電腦思考
-    playerColor = playerColor === 'w' ? 'b' : 'w'; // 切換視角
-    
-    createBoard(); // 重新渲染翻轉後的棋盤
-    updateStatus();
-
-    // 如果切換後輪到對手 (AI)，則觸發 AI 下棋
-    if (game.turn() !== playerColor && !game.game_over()) {
-        startAISequence();
-    }
+    cancelAI(); playerColor = playerColor === 'w' ? 'b' : 'w';
+    createBoard(); updateStatus();
+    if (game.turn() !== playerColor && !game.game_over()) { startAISequence(); }
 }
 
 function undoMove() {
-    cancelAI(); // 停止電腦思考
+    cancelAI(); 
     const history = game.history();
-    if (history.length === 0) return; // 無棋可悔
+    if (history.length === 0) return; 
     
-    if (game.turn() !== playerColor) {
-        // 電腦正在思考 (剛輪到電腦)，玩家想悔棋 -> 撤銷 1 步 (玩家剛下的那步)
-        game.undo();
-    } else {
-        // 輪到玩家下棋，玩家想悔棋 -> 撤銷 2 步 (電腦的一步 + 玩家的一步)
-        if (history.length >= 2) {
-            game.undo();
-            game.undo();
-        } else {
-            game.undo(); // 只有1步時 (例如玩家自己對弈或剛換方)
-        }
+    if (game.turn() !== playerColor) { game.undo(); } 
+    else {
+        if (history.length >= 2) { game.undo(); game.undo(); } 
+        else { game.undo(); }
     }
-    
     selectedSquare = null;
     winOverlay.classList.remove('show');
-    createBoard(); // 重新繪製棋盤以確保狀態正確
-    updateStatus();
+    createBoard(); updateStatus();
 }
 
 function resetGame() {
-    cancelAI();
-    changeBoardStyle();
-    game.reset();
-    selectedSquare = null;
+    cancelAI(); changeBoardStyle(); game.reset(); selectedSquare = null;
     winOverlay.classList.remove('show');
-    if (playerColor === 'b') {
-        createBoard(); 
-        startAISequence(); 
-    } else {
-        createBoard();
-    }
+    if (playerColor === 'b') { createBoard(); startAISequence(); } else { createBoard(); }
 }
 
 /* ==========================================
@@ -790,27 +950,20 @@ let aiCountdownInterval = null;
 let aiSecondsLeft = 3;
 let aiProgressAnim = null;
 
-// 使用 Blob 技術載入 Stockfish，完美避開 Web Worker 跨網域 (CORS) 的限制
 fetch('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js')
     .then(response => response.text())
     .then(text => {
         const blob = new Blob([text], { type: 'application/javascript' });
         engine = new Worker(URL.createObjectURL(blob));
-        
-        // 監聽 Stockfish 引擎回傳的訊息
         engine.onmessage = function(event) {
             const line = event.data;
             if (line && line.startsWith('bestmove')) {
                 const match = line.match(/^bestmove\s+([a-h][1-8][a-h][1-8][qrbn]?)/);
-                if (match) {
-                    aiBestMove = match[1];
-                    checkAndExecuteMove();
-                }
+                if (match) { aiBestMove = match[1]; checkAndExecuteMove(); }
             }
         };
         engine.postMessage('uci');
-    })
-    .catch(err => console.error('無法載入 Stockfish 引擎', err));
+    }).catch(err => console.error('無法載入 Stockfish 引擎', err));
 
 function getStockfishLevel() {
     if (aiDepth == 2) return { skill: 0, depth: 5, time: 1000 };
@@ -824,11 +977,7 @@ function updateAIProgressAnimation(startTime, totalDuration) {
     const elapsed = performance.now() - startTime;
     let p = Math.min((elapsed / totalDuration) * 100, 100);
     
-    // 如果玩家開啟進度條，才顯示並變更寬度
-    if (showAIProgress) {
-        document.getElementById('scroll-progress-bar').style.width = p + '%';
-    }
-
+    if (showAIProgress) { document.getElementById('scroll-progress-bar').style.width = p + '%'; }
     if (elapsed < totalDuration && !aiCountdownFinished && thinkingEl.style.opacity === '1') {
         aiProgressAnim = requestAnimationFrame(() => updateAIProgressAnimation(startTime, totalDuration));
     }
@@ -836,20 +985,15 @@ function updateAIProgressAnimation(startTime, totalDuration) {
 
 function startAISequence() {
     thinkingEl.style.opacity = '1';
-    aiSecondsLeft = 3; 
-    aiBestMove = null;
-    aiCountdownFinished = false;
-    
+    aiSecondsLeft = 3; aiBestMove = null; aiCountdownFinished = false;
     thinkingEl.innerText = `${langDict[currentLang].thinking} ${aiSecondsLeft}s`;
     
-    // 啟動頂部極光進度條特效
     if (aiProgressAnim) cancelAnimationFrame(aiProgressAnim);
     const bar = document.getElementById('scroll-progress-bar');
     bar.style.width = '0%';
     if (showAIProgress) bar.style.opacity = '1';
     aiProgressAnim = requestAnimationFrame(() => updateAIProgressAnimation(performance.now(), 3000));
     
-    // 啟動數字倒數 3 秒
     if (aiCountdownInterval) clearInterval(aiCountdownInterval);
     aiCountdownInterval = setInterval(() => {
         aiSecondsLeft--;
@@ -863,7 +1007,6 @@ function startAISequence() {
         }
     }, 1000);
 
-    // 命令 Stockfish 思考
     if (engine) {
         const config = getStockfishLevel();
         engine.postMessage(`setoption name Skill Level value ${config.skill}`);
@@ -882,7 +1025,6 @@ function checkAndExecuteMove() {
     if (aiCountdownFinished && aiBestMove) {
         thinkingEl.style.opacity = '0';
         
-        // 隱藏並重置極光進度條
         const bar = document.getElementById('scroll-progress-bar');
         bar.style.opacity = '0';
         setTimeout(() => { bar.style.width = '0%'; }, 300);
@@ -903,7 +1045,7 @@ function checkAndExecuteMove() {
 }
 
 // 系統初始化
-window.onload = () => { changeBoardStyle(); changeLang(); resizeBoard(); createBoard(); };
+window.onload = () => { toggleLog(); changeBoardStyle(); changeLang(); resizeBoard(); createBoard(); };
 
 </script>
 </body>
