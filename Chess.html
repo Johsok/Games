@@ -278,6 +278,20 @@
             box-sizing: border-box;
             z-index: 14;
         }
+
+        /* === 新增：被將軍時的國王紅光閃爍特效 === */
+        @keyframes checkPulse {
+            0% { background-color: rgba(255, 0, 0, 0.4); box-shadow: inset 0 0 15px rgba(255, 0, 0, 0.8); }
+            50% { background-color: rgba(255, 0, 0, 0.7); box-shadow: inset 0 0 30px rgba(255, 0, 0, 1), 0 0 15px rgba(255, 0, 0, 0.9); }
+            100% { background-color: rgba(255, 0, 0, 0.4); box-shadow: inset 0 0 15px rgba(255, 0, 0, 0.8); }
+        }
+        .square.in-check {
+            animation: checkPulse 1s infinite;
+            border: 2px solid #ff0000;
+            box-sizing: border-box;
+            z-index: 18;
+        }
+
         /* 在原步保留的透明虛影棋子 */
         .ghost-piece {
             opacity: 0.4;
@@ -295,6 +309,57 @@
             pointer-events: none; opacity: 0; z-index: 1000; font-weight: 900; background: rgba(0,0,0,0.7); backdrop-filter: blur(3px); transition: opacity 0.5s;
         }
         #win-overlay.show { opacity: 1; pointer-events: auto; }
+
+        /* === 調整：中央大字閃爍提示 (包含 Check! 與 Checkmate!!! 特效) === */
+        #check-flash {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: calc(var(--board-size) * 0.18); font-weight: 900; 
+            color: #ff0000; /* 鮮豔紅色 */
+            /* 厚實的白色外框與黑底陰影 */
+            text-shadow: -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 20px rgba(0,0,0,0.8);
+            pointer-events: none; opacity: 0; z-index: 1500;
+            white-space: nowrap;
+        }
+        
+        /* 普通將軍：顯示2秒並淡出 */
+        #check-flash.show-check {
+            animation: checkPop 2s ease-out forwards;
+        }
+        
+        /* 將死：大幅跳動3下(集中在前2秒)，總共顯示3秒 */
+        #check-flash.show-checkmate {
+            animation: checkmateBounce 3s ease-in-out forwards;
+        }
+
+        @keyframes checkPop {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            10%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            20%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+
+        /* 3秒動畫：跳動3次集中在0~66% (2秒)內完成，最後停留並淡出 */
+        @keyframes checkmateBounce {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            5%   { opacity: 1; transform: translate(-50%, -50%) scale(1.5); } /* 出現 */
+            
+            /* 第 1 下跳動 */
+            15%  { transform: translate(-50%, calc(-50% - 40px)) scale(1.5); }
+            25%  { transform: translate(-50%, -50%) scale(1.5); }
+            
+            /* 第 2 下跳動 */
+            35%  { transform: translate(-50%, calc(-50% - 40px)) scale(1.5); }
+            45%  { transform: translate(-50%, -50%) scale(1.5); }
+            
+            /* 第 3 下跳動 */
+            55%  { transform: translate(-50%, calc(-50% - 40px)) scale(1.5); }
+            66%  { transform: translate(-50%, -50%) scale(1.5); } /* 2秒時結束跳動 */
+
+            /* 停留並於最後淡出 (3秒時結束) */
+            90%  { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+        }
 
         /* === 規則說明視窗排版優化 === */
         #rules-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
@@ -430,6 +495,7 @@
     <div id="move-log-panel"></div>
     <div class="board-wrap" id="board"></div>
     <div id="win-overlay"></div>
+    <div id="check-flash"></div>
 </div>
 
 <audio id="bgm" loop></audio>
@@ -452,7 +518,6 @@ const pieceImages = {
 };
 
 /* === 語言切換系統與規則字庫 === */
-// 在語系中新增 logHeaderRound、logHeaderPlayer、logHeaderComputer 三個欄位名稱
 const langDict = {
     tw: { 
         title: "西洋棋大師 2026", btnSet: "⚙️ 設定", btnSwitch: "🔄 換方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重開",
@@ -687,6 +752,10 @@ let showMoveHints = true;
 let showAIProgress = true;
 let showMoveLog = true;
 
+// 全域變數追蹤狀態
+let wasInCheck = false;
+let checkmateTimeout = null; // 追蹤 Checkmate 的 3秒延遲動畫計時器
+
 function toggleSet() { const s = document.getElementById('settings'); s.style.display = s.style.display==='block'?'none':'block'; }
 function toggleRules() { const r = document.getElementById('rules-modal'); r.style.display = r.style.display==='flex'?'none':'flex'; }
 function adjBgm() { audio.volume = document.getElementById('bgm-vol').value/100; document.getElementById('bgm-val-hint').innerText = document.getElementById('bgm-vol').value; }
@@ -887,7 +956,7 @@ function updateMoveLog() {
     let wLabel = playerColor === 'w' ? playerText : compText;
     let bLabel = playerColor === 'w' ? compText : playerText;
     
-    // 【調整】將標題區塊整合為 Grid，並在右上角加入可以點擊顯示浮動說明的「?」按鈕
+    // 將標題區塊整合為 Grid，並在右上角加入可以點擊顯示浮動說明的「?」按鈕
     let html = `
         <div style="position: sticky; top: 0; background: rgba(0,0,0,0.85); z-index: 10; cursor: help; border-bottom: 1px solid #555; margin-bottom: 1.5vmin; padding-bottom: 0.8vmin;" onmouseenter="showLogTip(event)" onmouseleave="hideLogTip()" onmousemove="moveLogTip(event)">
             <div style="position: absolute; right: 2px; top: 2px; width: 20px; height: 20px; border: 1px solid #aaa; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 13px; color: #aaa; cursor: pointer; background: rgba(255,255,255,0.1);" onclick="toggleLogTip(event)" title="規則說明">?</div>
@@ -916,7 +985,7 @@ function updateMoveLog() {
         const wStyle = isWLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
         const bStyle = isBLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
 
-        // 【調整】改用 CSS Grid 排版 (1.5fr / 3fr / 3fr)，配合 fit-content 縮放時文字才會永遠完美垂直對齊
+        // 改用 CSS Grid 排版 (1.5fr / 3fr / 3fr)，配合 fit-content 縮放時文字才會永遠完美垂直對齊
         rows.push(`<div style="display: grid; grid-template-columns: 1.5fr 3fr 3fr; margin-bottom: 1vmin; padding: 0.5vmin 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; gap: 5px;">
                     <div style="color: #aaa;">${turnNum}.</div>
                     <div style="${wStyle}">${wMove}</div>
@@ -935,7 +1004,7 @@ function updateMoveLog() {
 function updateBoard() {
     document.querySelectorAll('.square').forEach(sq => {
         sq.innerHTML = ''; 
-        sq.classList.remove('selected', 'highlight-move', 'highlight-capture', 'last-move-to', 'last-move-from');
+        sq.classList.remove('selected', 'highlight-move', 'highlight-capture', 'last-move-to', 'last-move-from', 'in-check');
     });
 
     const boardData = game.board(), files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -986,6 +1055,21 @@ function updateBoard() {
             }
         }
     }
+
+    // 尋找目前被將軍的國王位置，並加上閃爍紅光特效
+    if (game.in_check()) {
+        const currentTurn = game.turn();
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = boardData[r][c];
+                if (p && p.type === 'k' && p.color === currentTurn) {
+                    const sqId = files[c] + (8 - r);
+                    const kSq = document.querySelector(`[data-square="${sqId}"]`);
+                    if (kSq) kSq.classList.add('in-check');
+                }
+            }
+        }
+    }
     
     updateStatus();
     updateMoveLog(); // 繪製完畢後更新側邊文字面板
@@ -1017,39 +1101,96 @@ function handleSquareClick(squareId) {
     }
 }
 
-function updateStatus() {
-    let isPlayerTurn = game.turn() === playerColor;
-    if (game.in_checkmate()) {
-        let msg = isPlayerTurn ? langDict[currentLang].mateB : langDict[currentLang].mateW;
-        statusEl.innerHTML = msg;
-        showWin(isPlayerTurn ? 'YOU LOSE' : 'YOU WIN', isPlayerTurn ? '#e74c3c' : '#0ff');
-    } else if (game.in_draw()) {
-        statusEl.innerHTML = langDict[currentLang].draw;
-        showWin('DRAW', '#f1c40f');
+// === 觸發畫面中央大字閃爍提示的函數 ===
+function showCheckFlash(msg, isCheckmate = false) {
+    const flashEl = document.getElementById('check-flash');
+    flashEl.innerText = msg;
+    flashEl.className = ''; // 移除舊動畫
+    void flashEl.offsetWidth; // 觸發 reflow 讓動畫可以重新播放
+    
+    // 依據是否為死棋，指派不同的 CSS 動畫
+    if (isCheckmate) {
+        flashEl.classList.add('show-checkmate');
     } else {
-        statusEl.innerHTML = isPlayerTurn ? langDict[currentLang].turnW : langDict[currentLang].turnB;
-        if (game.in_check()) statusEl.innerHTML += ` <span style="color:#ff4444;">${langDict[currentLang].check}</span>`;
+        flashEl.classList.add('show-check');
     }
 }
 
-function showWin(msg, color) {
+function updateStatus() {
+    let isPlayerTurn = game.turn() === playerColor;
+    let currentlyInCheck = game.in_check();
+
+    if (game.in_checkmate()) {
+        let msg = isPlayerTurn ? langDict[currentLang].mateB : langDict[currentLang].mateW;
+        statusEl.innerHTML = msg;
+        
+        // 觸發 3秒的 Checkmate !!! 彈跳動畫
+        showCheckFlash('Checkmate !!!', true);
+        
+        // 延遲 3 秒後顯示 You Win / You Lose
+        checkmateTimeout = setTimeout(() => {
+            showWin(isPlayerTurn ? 'You Lose' : 'You Win', isPlayerTurn ? 'lose' : 'win');
+        }, 3000);
+        
+        wasInCheck = false; // 避免普通將軍提示干擾
+    } else if (game.in_draw()) {
+        statusEl.innerHTML = langDict[currentLang].draw;
+        showWin('DRAW', 'draw');
+        wasInCheck = false;
+    } else {
+        statusEl.innerHTML = isPlayerTurn ? langDict[currentLang].turnW : langDict[currentLang].turnB;
+        if (currentlyInCheck) {
+            statusEl.innerHTML += ` <span style="color:#ff4444;">${langDict[currentLang].check}</span>`;
+            // 如果剛進入將軍狀態，觸發 2秒的 Check ! 提示
+            if (!wasInCheck) {
+                showCheckFlash('Check !', false);
+            }
+        }
+        wasInCheck = currentlyInCheck; // 更新將軍狀態
+    }
+}
+
+// === 調整：將 Win / Lose 修改為帶有白色外框的鮮豔藍/紅 ===
+function showWin(msg, type) {
     playSfx(800, 'win');
-    winOverlay.innerHTML = `<div style="font-size: calc(var(--board-size) * 0.16); color: ${color}; text-shadow: 0 0 10px ${color}, 0 0 20px #000, 2px 2px 5px #000;">${msg}</div>`;
+    let color = '#f1c40f'; // 預設平局黃色
+    let textShadow = '2px 2px 0 #000'; // 預設平局陰影
+    
+    if (type === 'win') {
+        color = '#00aaff'; // 鮮豔的藍色
+        // 白色外框 + 黑色發光底
+        textShadow = '-3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 20px #000, 5px 5px 15px rgba(0,0,0,0.8)';
+    } else if (type === 'lose') {
+        color = '#ff0000'; // 鮮豔的紅色
+        // 白色外框 + 黑色發光底
+        textShadow = '-3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 20px #000, 5px 5px 15px rgba(0,0,0,0.8)';
+    }
+    
+    winOverlay.innerHTML = `<div style="font-size: calc(var(--board-size) * 0.16); color: ${color}; text-shadow: ${textShadow}; font-weight: 900; letter-spacing: 2px;">${msg}</div>`;
     winOverlay.classList.add('show');
 }
 
-// === 狀態取消助手函數 (中斷電腦思考) ===
+// === 狀態取消助手函數 (中斷電腦思考與延遲動畫) ===
 function cancelAI() {
     if (aiCountdownInterval) { clearInterval(aiCountdownInterval); aiCountdownInterval = null; }
     if (aiProgressAnim) { cancelAnimationFrame(aiProgressAnim); aiProgressAnim = null; }
+    
+    // 如果正在等待 3秒的 Checkmate 結束，則強制清除避免異常彈出 You Win
+    if (checkmateTimeout) { clearTimeout(checkmateTimeout); checkmateTimeout = null; }
+    
     const bar = document.getElementById('scroll-progress-bar');
     bar.style.opacity = '0'; bar.style.width = '0%';
     thinkingEl.style.opacity = '0'; aiBestMove = null;
+    
+    // 同時隱藏尚未播放完畢的中央大字
+    const flashEl = document.getElementById('check-flash');
+    if (flashEl) { flashEl.className = ''; flashEl.style.opacity = '0'; }
 }
 
 // === 換方與悔棋邏輯 ===
 function switchSides() {
     cancelAI(); playerColor = playerColor === 'w' ? 'b' : 'w';
+    wasInCheck = false; // 換方時重設將軍狀態
     createBoard(); updateStatus();
     if (game.turn() !== playerColor && !game.game_over()) { startAISequence(); }
 }
@@ -1066,12 +1207,14 @@ function undoMove() {
     }
     selectedSquare = null;
     winOverlay.classList.remove('show');
+    wasInCheck = game.in_check(); // 悔棋後重新判定將軍狀態，避免誤觸閃爍提示
     createBoard(); updateStatus();
 }
 
 function resetGame() {
     cancelAI(); changeBoardStyle(); game.reset(); selectedSquare = null;
     winOverlay.classList.remove('show');
+    wasInCheck = false; // 重開遊戲重設將軍狀態
     if (playerColor === 'b') { createBoard(); startAISequence(); } else { createBoard(); }
 }
 
