@@ -104,7 +104,7 @@
 
         /* ===================================================
            【新增/調整】手機橫向模式 (Landscape) RWD 佈局
-           將走棋記錄放在棋盤左邊
+           將走棋記錄放在棋盤左邊，並使用 fit-content 自動適應文字寬度
            =================================================== */
         body.is-landscape #game-container {
             display: flex;
@@ -119,10 +119,13 @@
         body.is-landscape #move-log-panel {
             position: relative; /* 取消絕對定位，跟隨 flex 排版 */
             top: auto; left: auto; transform: none;
-            width: 25vw; max-width: 200px; /* 控制左側走棋面板的合理寬度 */
+            width: fit-content; /* 自動依據文字所需寬度 (autofit概念) */
+            min-width: 140px;   /* 基本安全最小寬度保證顯示 */
+            max-width: 25vw;    /* 最大不超過畫面比例 */
             height: var(--board-size); /* 高度與棋盤對齊 */
             order: 1; /* 走棋紀錄放在左邊 */
             margin: auto 0;
+            white-space: nowrap; /* 不折行，確保文字不受擠壓 */
         }
 
         /* ===================================================
@@ -193,6 +196,7 @@
         #log-tooltip {
             position: fixed; /* 使用 fixed 確保不會被父元素 overflow 給裁切 */
             width: 340px;
+            max-width: 90vw; /* 避免在手機螢幕過寬破版 */
             background: rgba(30, 30, 30, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 12px;
@@ -448,6 +452,7 @@ const pieceImages = {
 };
 
 /* === 語言切換系統與規則字庫 === */
+// 在語系中新增 logHeaderRound、logHeaderPlayer、logHeaderComputer 三個欄位名稱
 const langDict = {
     tw: { 
         title: "西洋棋大師 2026", btnSet: "⚙️ 設定", btnSwitch: "🔄 換方", btnUndo: "↩️ 悔棋", btnReset: "🛑 重開",
@@ -455,6 +460,7 @@ const langDict = {
         lang: "語言", bgm: "背景音樂", volBgm: "音樂音量", volSfx: "音效音量",
         boardStyle: "棋盤樣式", styleRandom: "🎲 隨機", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 經典綠", styleBrown: "🟫 淺褐", styleTeal: "🌊 藍綠",
         moveHint: "移動提示", aiProgress: "電腦思考", moveLog: "走棋記錄", moveLogTitle: "走 棋 記 錄",
+        logHeaderRound: "回合", logHeaderPlayer: "玩家", logHeaderComputer: "電腦",
         btnRules: "📖 遊戲規則", btnHome: "🏠 回首頁", btnDone: "完成設定",
         rulesTitle: "西洋棋詳細規則", btnCloseRules: "關閉說明",
         turnW: "您 (白方) 的回合", turnB: "電腦的回合", check: "(將軍!)", mateW: "遊戲結束！您贏了！", mateB: "遊戲結束！您被將死了", draw: "遊戲和局。",
@@ -482,6 +488,7 @@ const langDict = {
         lang: "语言", bgm: "背景音乐", volBgm: "音乐音量", volSfx: "音效音量",
         boardStyle: "棋盘样式", styleRandom: "🎲 随机", styleMarble: "🪨 大理石", styleWood: "🪵 原木", styleGreen: "🌿 经典绿", styleBrown: "🟫 浅褐", styleTeal: "🌊 蓝绿",
         moveHint: "移动提示", aiProgress: "电脑思考", moveLog: "走棋记录", moveLogTitle: "走 棋 记 录",
+        logHeaderRound: "回合", logHeaderPlayer: "玩家", logHeaderComputer: "电脑",
         btnRules: "📖 游戏规则", btnHome: "🏠 回首页", btnDone: "完成设置",
         rulesTitle: "国际象棋详细规则", btnCloseRules: "关闭说明",
         turnW: "您 (白方) 的回合", turnB: "电脑的回合", check: "(将军!)", mateW: "游戏结束！您赢了！", mateB: "游戏结束！您被将死了", draw: "游戏和局。",
@@ -509,6 +516,7 @@ const langDict = {
         lang: "Language", bgm: "Music", volBgm: "Music Vol", volSfx: "SFX Vol",
         boardStyle: "Board Style", styleRandom: "🎲 Random", styleMarble: "🪨 Marble", styleWood: "🪵 Wood", styleGreen: "🌿 Green", styleBrown: "🟫 Brown", styleTeal: "🌊 Teal",
         moveHint: "Move Hint", aiProgress: "AI Progress", moveLog: "Text Hint", moveLogTitle: "Move Log",
+        logHeaderRound: "Turn", logHeaderPlayer: "Player", logHeaderComputer: "AI",
         btnRules: "📖 Rules", btnHome: "🏠 Home", btnDone: "Done",
         rulesTitle: "Chess Rules Summary", btnCloseRules: "Close",
         turnW: "Your Turn (White)", turnB: "AI's Turn", check: "(Check!)", mateW: "Game Over! You Win!", mateB: "Game Over! Checkmated", draw: "Game Draw.",
@@ -612,8 +620,8 @@ function resizeBoard() {
         finalSizePx = Math.min(winW - 20, winH - header.offsetHeight - logSpaceYPx - 30);
     } else if (isLand) {
         // 【手機橫向模式】
-        // 左側為選單區(header=140px)，接著是走棋紀錄面板(最高200px)，然後才是棋盤
-        let logSpaceXPx = showLog ? Math.min(winW * 0.25, 200) : 0;
+        // 左側為選單區(header=140px)，接著是走棋紀錄面板(最高抓180px當安全邊界)，然後才是棋盤
+        let logSpaceXPx = showLog ? Math.min(winW * 0.25, 180) : 0;
         const headerW = 140, gap = 20; // flex 佈局的安全間隔
         finalSizePx = Math.min(winW - headerW - logSpaceXPx - gap * 2, winH - 20);
     } else {
@@ -722,7 +730,7 @@ function moveLogTip(e) {
     const rect = tip.getBoundingClientRect();
     
     // 邊界防護：避免超出畫面右側與下方
-    if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - 15;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 15;
     if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 15;
     
     tip.style.left = x + 'px';
@@ -733,6 +741,42 @@ function hideLogTip() {
     tip.classList.remove('show');
     setTimeout(() => { if (!tip.classList.contains('show')) tip.style.display = 'none'; }, 300);
 }
+
+// 【新增功能】讓手機可以點擊按鈕來開關 Tooltip
+function toggleLogTip(e) {
+    e.stopPropagation(); // 防止點擊事件冒泡
+    const tip = document.getElementById('log-tooltip');
+    
+    if (tip.classList.contains('show')) {
+        hideLogTip();
+    } else {
+        tip.style.display = 'block';
+        setTimeout(() => tip.classList.add('show'), 10);
+        
+        let x = e.clientX || window.innerWidth / 2;
+        let y = e.clientY || window.innerHeight / 2;
+        
+        // 給予邊距避免被切掉
+        const rect = tip.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 15;
+        if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 15;
+        if (x < 15) x = 15;
+        if (y < 15) y = 15;
+        
+        tip.style.left = x + 'px';
+        tip.style.top = y + 'px';
+    }
+}
+
+// 【新增功能】點擊畫面其他地方即可關閉浮動的規則說明
+document.addEventListener('click', (e) => {
+    const tip = document.getElementById('log-tooltip');
+    const logPanel = document.getElementById('move-log-panel');
+    if (tip && tip.classList.contains('show') && !tip.contains(e.target) && (!logPanel || !logPanel.contains(e.target))) {
+        hideLogTip();
+    }
+});
+
 
 /* === 縮放與平移系統 (支援 RWD) === */
 let currentZoom = 1.0, isPanning = false, lastPanX = 0, lastPanY = 0, panX = 0, panY = 0, hasMoved = false, initialPinchDistance = null, startZoom = 1.0;
@@ -833,9 +877,28 @@ function updateMoveLog() {
     
     const history = game.history({ verbose: true });
     let titleStr = langDict[currentLang].moveLogTitle || "走 棋 記 錄";
+
+    // 取得目前語系的欄位名稱
+    let roundText = langDict[currentLang].logHeaderRound || "回合";
+    let playerText = langDict[currentLang].logHeaderPlayer || "玩家";
+    let compText = langDict[currentLang].logHeaderComputer || "電腦";
+
+    // 動態判斷第二欄(白方)與第三欄(黑方)是屬於玩家還是電腦
+    let wLabel = playerColor === 'w' ? playerText : compText;
+    let bLabel = playerColor === 'w' ? compText : playerText;
     
-    // 加入 position: sticky 以及懸浮事件 (onmouseenter / onmouseleave) 來觸發 Tooltip
-    let html = `<div style="text-align:center; font-weight:bold; margin-bottom: 1.5vmin; color: #f1c40f; border-bottom: 1px solid #555; padding-bottom: 0.8vmin; position: sticky; top: 0; background: rgba(0,0,0,0.8); z-index: 10; cursor: help;" onmouseenter="showLogTip(event)" onmouseleave="hideLogTip()" onmousemove="moveLogTip(event)">${titleStr}</div>`;
+    // 【調整】將標題區塊整合為 Grid，並在右上角加入可以點擊顯示浮動說明的「?」按鈕
+    let html = `
+        <div style="position: sticky; top: 0; background: rgba(0,0,0,0.85); z-index: 10; cursor: help; border-bottom: 1px solid #555; margin-bottom: 1.5vmin; padding-bottom: 0.8vmin;" onmouseenter="showLogTip(event)" onmouseleave="hideLogTip()" onmousemove="moveLogTip(event)">
+            <div style="position: absolute; right: 2px; top: 2px; width: 20px; height: 20px; border: 1px solid #aaa; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 13px; color: #aaa; cursor: pointer; background: rgba(255,255,255,0.1);" onclick="toggleLogTip(event)" title="規則說明">?</div>
+            <div style="text-align:center; font-weight:bold; color: #f1c40f; margin-bottom: 1vmin; padding-right: 25px;">${titleStr}</div>
+            <div style="display: grid; grid-template-columns: 1.5fr 3fr 3fr; font-size: 0.85em; color: #888; padding: 0.5vmin 0; text-align: left; gap: 5px;">
+                <div>${roundText}</div>
+                <div>${wLabel}</div>
+                <div>${bLabel}</div>
+            </div>
+        </div>
+    `;
     
     let rows = [];
     const totalMoves = history.length;
@@ -853,10 +916,11 @@ function updateMoveLog() {
         const wStyle = isWLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
         const bStyle = isBLatest ? 'color: #ff9900; font-weight: bold;' : 'color: #fff;';
 
-        rows.push(`<div style="display:flex; margin-bottom: 1vmin; padding: 0.5vmin 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <div style="width: 25%; color: #aaa;">${turnNum}.</div>
-                    <div style="width: 37.5%; ${wStyle}">${wMove}</div>
-                    <div style="width: 37.5%; ${bStyle}">${bMove}</div>
+        // 【調整】改用 CSS Grid 排版 (1.5fr / 3fr / 3fr)，配合 fit-content 縮放時文字才會永遠完美垂直對齊
+        rows.push(`<div style="display: grid; grid-template-columns: 1.5fr 3fr 3fr; margin-bottom: 1vmin; padding: 0.5vmin 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; gap: 5px;">
+                    <div style="color: #aaa;">${turnNum}.</div>
+                    <div style="${wStyle}">${wMove}</div>
+                    <div style="${bStyle}">${bMove}</div>
                  </div>`);
     }
 
