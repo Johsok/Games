@@ -224,6 +224,37 @@
         .tip-item { margin-bottom: 8px; text-align: justify;}
         .tip-item b { color: #4dd0e1; }
 
+        /* 【調整需求1】走棋記錄規則說明關閉按鈕 */
+        .close-tip {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 1.2rem;
+            color: #aaa;
+            cursor: pointer;
+            font-weight: bold;
+            display: none; /* 預設桌機隱藏 */
+            padding: 5px;
+            z-index: 10000;
+        }
+        .close-tip:hover { color: #fff; }
+
+        /* 【調整需求1】手機版專屬 (寬度小於 768px)：Tooltip 置中與顯示 X */
+        @media (max-width: 768px) {
+            #log-tooltip {
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, calc(-50% + 10px)) !important;
+                pointer-events: auto !important; /* 手機版需要可以點擊 X */
+            }
+            #log-tooltip.show {
+                transform: translate(-50%, -50%) !important;
+            }
+            .close-tip {
+                display: block; /* 手機版顯示關閉按鈕 */
+            }
+        }
+
         .board-wrap { 
             position: relative; 
             width: var(--board-size);
@@ -487,6 +518,7 @@
 </div>
 
 <div id="log-tooltip">
+    <div class="close-tip" onclick="hideLogTip()">✕</div>
     <div class="tip-title">走棋記錄規則：</div>
     <div class="tip-item"><b>2 個字元（純目的地）：</b>例如 d5、e4、g4。當「兵 (Pawn)」移動時，不需要寫出棋子代號，只寫目的地座標。</div>
     <div class="tip-item"><b>3 個字元（棋子代號 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大寫字母代表棋子（N=騎士, Q=皇后, R=城堡, B=主教, K=國王），後面接目的地。</div>
@@ -542,7 +574,9 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>國王 (King)：</b>周圍8個方向皆可移動1格。若受到敵方攻擊稱為「將軍」(Check)，必須立刻避開。若無法逃脫則被「將死」(Checkmate)，遊戲結束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系統已內建完美支援「王車易位」、「吃過路兵」及「兵的升變」等特殊規則。</div></div>
              `,
+        // 【調整需求1】加入關閉按鈕
         logTip: `
+            <div class="close-tip" onclick="hideLogTip()">✕</div>
             <div class="tip-title">走棋記錄規則：</div>
             <div class="tip-item"><b>2 個字元（純目的地）：</b>例如 d5、e4、g4。當「兵 (Pawn)」移動時，不需要寫出棋子代號，只寫目的地座標。</div>
             <div class="tip-item"><b>3 個字元（棋子代號 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大寫字母代表棋子（N=騎士, Q=皇后, R=城堡, B=主教, K=國王），後面接目的地。</div>
@@ -570,7 +604,9 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>国王 (King)：</b>周围8个方向皆可移动1格。若受到敌方攻击称为「将军」(Check)，必须立刻避开。若无法逃脱则被「将死」(Checkmate)，游戏结束。</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* 系统已内建完美支援「王车易位」、「吃过路兵」及「兵的升变」等特殊规则。</div></div>
         `,
+        // 【調整需求1】加入關閉按鈕
         logTip: `
+            <div class="close-tip" onclick="hideLogTip()">✕</div>
             <div class="tip-title">走棋记录规则：</div>
             <div class="tip-item"><b>2 个字符（纯目的地）：</b>例如 d5、e4、g4。当「兵 (Pawn)」移动时，不需要写出棋子代号，只写目的地坐标。</div>
             <div class="tip-item"><b>3 个字符（棋子代号 + 目的地）：</b>例如 Nf3、Qd6、Rg1。大写字母代表棋子（N=骑士, Q=皇后, R=城堡, B=主教, K=国王），后面接目的地。</div>
@@ -598,7 +634,9 @@ const langDict = {
             <div class="rule-item"><img class="rule-piece" src='${encodeURI(pieceImages.bk)}'><div class="rule-text"><b>King：</b>Moves 1 square in any direction. Must escape if attacked ('Check'). If it cannot escape, it's 'Checkmate'.</div></div>
             <div class="rule-item" style="background:transparent; border:none; padding:0; margin-top:5px; box-shadow:none;"><div class="rule-text" style="color:#aaa; font-size:0.85rem;">* Castling, En Passant, and Pawn Promotion are fully supported.</div></div>
         `,
+        // 【調整需求1】加入關閉按鈕
         logTip: `
+            <div class="close-tip" onclick="hideLogTip()">✕</div>
             <div class="tip-title">Move Log Rules:</div>
             <div class="tip-item"><b>2 Chars (Destination only):</b> e.g., d5, e4, g4. When a Pawn moves, its letter is omitted; only the destination is noted.</div>
             <div class="tip-item"><b>3 Chars (Piece + Destination):</b> e.g., Nf3, Qd6, Rg1. Uppercase letter indicates the piece (N=Knight, Q=Queen, R=Rook, B=Bishop, K=King).</div>
@@ -670,7 +708,6 @@ function checkOrientation() {
 }
 
 // 【調整: 動態計算棋盤大小，完美支援三種情境 (桌機、手機直向、手機橫向)】
-// 【新增調整需求1】：在手機模式先找手機螢幕長寬，動態調整走棋記錄的整體大小(包含文字與區塊)
 function resizeBoard() { 
     const isLand = checkOrientation();
     const isMobilePortrait = document.body.classList.contains('is-mobile-portrait');
@@ -691,7 +728,7 @@ function resizeBoard() {
         let logSpaceYPx = showLog ? Math.min(winH * 0.25, 180) : 0; 
         finalSizePx = Math.min(winW - 20, winH - header.offsetHeight - logSpaceYPx - 30);
         
-        // 【調整需求1】依據螢幕寬度動態調整走棋紀錄文字大小 (保持在 13px ~ 18px 之間)
+        // 依據螢幕寬度動態調整走棋紀錄文字大小 (保持在 13px ~ 18px 之間)
         logFontSize = Math.max(13, Math.min(winW * 0.04, 18)) + 'px';
         
         // 覆蓋 CSS 高度限制，讓整體區塊符合運算大小
@@ -707,7 +744,7 @@ function resizeBoard() {
         const headerW = 140, gap = 20; 
         finalSizePx = Math.min(winW - headerW - logSpaceXPx - gap * 2, winH - 20);
         
-        // 【調整需求1】依據螢幕高度動態調整文字大小
+        // 依據螢幕高度動態調整文字大小
         logFontSize = Math.max(13, Math.min(winH * 0.045, 18)) + 'px';
         
         if(logPanel) {
@@ -734,7 +771,7 @@ function resizeBoard() {
     // 將計算出的像素大小轉換為 vmin，並賦予給 CSS 變數
     let sizeInVmin = finalSizePx / currentVminPx;
     document.documentElement.style.setProperty('--board-size', `${sizeInVmin}vmin`);
-    // 【調整需求1】寫入動態字體變數，配合 CSS var() 設定走棋記錄的文字大小
+    // 寫入動態字體變數，配合 CSS var() 設定走棋記錄的文字大小
     document.documentElement.style.setProperty('--log-font-size', logFontSize);
     
     applyZoom();
@@ -831,6 +868,9 @@ function showLogTip(e) {
     moveLogTip(e);
 }
 function moveLogTip(e) {
+    // 【調整需求1】如果畫面寬度小於 768px (手機版)，則跳出不進行動態座標計算，統一交由 CSS 控制畫面置中
+    if (window.innerWidth <= 768) return;
+
     const tip = document.getElementById('log-tooltip');
     let x = e.clientX + 15;
     let y = e.clientY + 15;
@@ -849,7 +889,7 @@ function hideLogTip() {
     setTimeout(() => { if (!tip.classList.contains('show')) tip.style.display = 'none'; }, 300);
 }
 
-// 【新增功能】讓手機可以點擊按鈕來開關 Tooltip
+// 讓手機可以點擊按鈕來開關 Tooltip
 function toggleLogTip(e) {
     e.stopPropagation(); // 防止點擊事件冒泡
     const tip = document.getElementById('log-tooltip');
@@ -860,22 +900,25 @@ function toggleLogTip(e) {
         tip.style.display = 'block';
         setTimeout(() => tip.classList.add('show'), 10);
         
-        let x = e.clientX || window.innerWidth / 2;
-        let y = e.clientY || window.innerHeight / 2;
-        
-        // 給予邊距避免被切掉
-        const rect = tip.getBoundingClientRect();
-        if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 15;
-        if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 15;
-        if (x < 15) x = 15;
-        if (y < 15) y = 15;
-        
-        tip.style.left = x + 'px';
-        tip.style.top = y + 'px';
+        // 【調整需求1】手機版交由 CSS @media 處理置中，不覆寫 left/top，僅在桌機模式才進行動態計算
+        if (window.innerWidth > 768) {
+            let x = e.clientX || window.innerWidth / 2;
+            let y = e.clientY || window.innerHeight / 2;
+            
+            // 給予邊距避免被切掉
+            const rect = tip.getBoundingClientRect();
+            if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 15;
+            if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 15;
+            if (x < 15) x = 15;
+            if (y < 15) y = 15;
+            
+            tip.style.left = x + 'px';
+            tip.style.top = y + 'px';
+        }
     }
 }
 
-// 【新增功能】點擊畫面其他地方即可關閉浮動的規則說明
+// 點擊畫面其他地方即可關閉浮動的規則說明
 document.addEventListener('click', (e) => {
     const tip = document.getElementById('log-tooltip');
     const logPanel = document.getElementById('move-log-panel');
@@ -1114,8 +1157,6 @@ function updateBoard() {
 }
 
 function handleSquareClick(squareId) {
-    /* 遊戲結束或非玩家回合時禁止動作，此處的 game.game_over() 防護能滿足需求 2
-       遊戲結束後不會讓玩家與電腦再移動棋子 */
     if (game.game_over() || game.turn() !== playerColor) return; 
 
     const piece = game.get(squareId);
@@ -1206,12 +1247,9 @@ function showWin(msg, type) {
         textShadow = '-3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 20px #000, 5px 5px 15px rgba(0,0,0,0.8)';
     }
     
-    // 【調整需求3】加入 padding: 20px; 與 line-height 確保 Y 外框的陰影或斜角不會被 div 邊界給切掉
     winOverlay.innerHTML = `<div style="padding: 20px; line-height: 1.2; font-size: calc(var(--board-size) * 0.16); color: ${color}; text-shadow: ${textShadow}; font-weight: 900; letter-spacing: 2px;">${msg}</div>`;
     winOverlay.classList.add('show');
 
-    // 【調整需求2】宣告 3 秒後將 winOverlay 隱藏，讓畫面變回清晰。
-    // 因原遊戲已由 game.game_over() 阻斷移動，故盤面狀態會維持鎖定且依然能進行「悔棋」
     setTimeout(() => {
         winOverlay.classList.remove('show');
     }, 3000);
