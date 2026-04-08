@@ -24,6 +24,8 @@
             --safe-right: env(safe-area-inset-right, 0px);
             /* 動態大小，會被 JS 的 resizeBoard 以 vmin 為單位自動覆蓋 */
             --board-size: 95vmin; 
+            /* 新增：動態文字大小變數，給走棋紀錄使用 */
+            --log-font-size: 2.2vmin;
         }
 
         /* === 視覺風格定義 (5種主題) === */
@@ -181,7 +183,8 @@
             box-sizing: border-box;
             padding: 1.5vmin;
             color: #ddd;
-            font-size: 2.2vmin;
+            /* 改成套用動態變數，配合 JS 的 RWD 計算 */
+            font-size: var(--log-font-size, 2.2vmin);
             z-index: 50;
             display: block; /* 由 JS 依據設定控制開關 */
             scrollbar-width: thin;
@@ -667,6 +670,7 @@ function checkOrientation() {
 }
 
 // 【調整: 動態計算棋盤大小，完美支援三種情境 (桌機、手機直向、手機橫向)】
+// 【新增調整需求1】：在手機模式先找手機螢幕長寬，動態調整走棋記錄的整體大小(包含文字與區塊)
 function resizeBoard() { 
     const isLand = checkOrientation();
     const isMobilePortrait = document.body.classList.contains('is-mobile-portrait');
@@ -677,27 +681,61 @@ function resizeBoard() {
     let showLog = document.getElementById('show-log-chk') ? document.getElementById('show-log-chk').checked : true;
     let currentVminPx = Math.min(winW, winH) / 100;
     
+    // 取得走棋紀錄面板 DOM
+    const logPanel = document.getElementById('move-log-panel');
+    let logFontSize = '2.2vmin'; // 預設字體大小
+
     if (isMobilePortrait) {
         // 【手機垂直模式】
-        // 棋盤可最大化至螢幕寬度，下方空間留給走棋記錄 (最高150px)
-        let logSpaceYPx = showLog ? Math.min(winH * 0.20, 150) : 0;
-        // 可用高度 = 全高 - header高度 - log面板高度 - 佈局預留的間隔(約30px)
+        // 依據螢幕高度計算走棋紀錄面板合適的空間
+        let logSpaceYPx = showLog ? Math.min(winH * 0.25, 180) : 0; 
         finalSizePx = Math.min(winW - 20, winH - header.offsetHeight - logSpaceYPx - 30);
+        
+        // 【調整需求1】依據螢幕寬度動態調整走棋紀錄文字大小 (保持在 13px ~ 18px 之間)
+        logFontSize = Math.max(13, Math.min(winW * 0.04, 18)) + 'px';
+        
+        // 覆蓋 CSS 高度限制，讓整體區塊符合運算大小
+        if(logPanel) {
+            logPanel.style.width = 'var(--board-size)';
+            logPanel.style.height = logSpaceYPx + 'px';
+            logPanel.style.maxHeight = 'none'; // 取消原先 max-height 以配合計算空間
+        }
     } else if (isLand) {
         // 【手機橫向模式】
-        // 左側為選單區(header=140px)，接著是走棋紀錄面板(最高抓180px當安全邊界)，然後才是棋盤
-        let logSpaceXPx = showLog ? Math.min(winW * 0.25, 180) : 0;
-        const headerW = 140, gap = 20; // flex 佈局的安全間隔
+        // 依據螢幕寬度計算走棋紀錄面板的空間
+        let logSpaceXPx = showLog ? Math.min(winW * 0.25, 200) : 0;
+        const headerW = 140, gap = 20; 
         finalSizePx = Math.min(winW - headerW - logSpaceXPx - gap * 2, winH - 20);
+        
+        // 【調整需求1】依據螢幕高度動態調整文字大小
+        logFontSize = Math.max(13, Math.min(winH * 0.045, 18)) + 'px';
+        
+        if(logPanel) {
+            logPanel.style.width = logSpaceXPx + 'px';
+            logPanel.style.minWidth = '140px';
+            logPanel.style.maxWidth = 'none';
+            logPanel.style.height = 'var(--board-size)';
+        }
     } else {
-        // 【桌上型電腦模式】維持原版邏輯完全不變 (利用絕對定位來保持棋盤整體置中)
+        // 【桌上型電腦模式】維持原版邏輯不變
         let logSpacePx = showLog ? (27 * currentVminPx) : 0;
         finalSizePx = Math.min(winW - 20 - logSpacePx * 2, winH - header.offsetHeight - 20);
+        logFontSize = '2.2vmin';
+        
+        if(logPanel) {
+            logPanel.style.width = ''; // 清除 inline styles 回歸 CSS 控制
+            logPanel.style.height = '';
+            logPanel.style.maxHeight = '';
+            logPanel.style.minWidth = '';
+            logPanel.style.maxWidth = '';
+        }
     }
     
     // 將計算出的像素大小轉換為 vmin，並賦予給 CSS 變數
     let sizeInVmin = finalSizePx / currentVminPx;
     document.documentElement.style.setProperty('--board-size', `${sizeInVmin}vmin`);
+    // 【調整需求1】寫入動態字體變數，配合 CSS var() 設定走棋記錄的文字大小
+    document.documentElement.style.setProperty('--log-font-size', logFontSize);
     
     applyZoom();
 }
@@ -1076,6 +1114,8 @@ function updateBoard() {
 }
 
 function handleSquareClick(squareId) {
+    /* 遊戲結束或非玩家回合時禁止動作，此處的 game.game_over() 防護能滿足需求 2
+       遊戲結束後不會讓玩家與電腦再移動棋子 */
     if (game.game_over() || game.turn() !== playerColor) return; 
 
     const piece = game.get(squareId);
@@ -1166,8 +1206,15 @@ function showWin(msg, type) {
         textShadow = '-3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 20px #000, 5px 5px 15px rgba(0,0,0,0.8)';
     }
     
-    winOverlay.innerHTML = `<div style="font-size: calc(var(--board-size) * 0.16); color: ${color}; text-shadow: ${textShadow}; font-weight: 900; letter-spacing: 2px;">${msg}</div>`;
+    // 【調整需求3】加入 padding: 20px; 與 line-height 確保 Y 外框的陰影或斜角不會被 div 邊界給切掉
+    winOverlay.innerHTML = `<div style="padding: 20px; line-height: 1.2; font-size: calc(var(--board-size) * 0.16); color: ${color}; text-shadow: ${textShadow}; font-weight: 900; letter-spacing: 2px;">${msg}</div>`;
     winOverlay.classList.add('show');
+
+    // 【調整需求2】宣告 3 秒後將 winOverlay 隱藏，讓畫面變回清晰。
+    // 因原遊戲已由 game.game_over() 阻斷移動，故盤面狀態會維持鎖定且依然能進行「悔棋」
+    setTimeout(() => {
+        winOverlay.classList.remove('show');
+    }, 3000);
 }
 
 // === 狀態取消助手函數 (中斷電腦思考與延遲動畫) ===

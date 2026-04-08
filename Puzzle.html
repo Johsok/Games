@@ -215,6 +215,22 @@
             filter: grayscale(40%); /* 略帶灰色讓它看起來像佔位符 */
         }
 
+        /* 新增：放對位置的拼圖樣式 (無外框、不可移動) */
+        .tile.correct-pos {
+            box-shadow: none !important;
+            border: none !important;
+            transform: scale(1.005); /* 微微放大以彌補切割縫隙 */
+            z-index: 1 !important;
+            cursor: default !important; /* 游標改為預設，表示不可移動 */
+        }
+        /* 防止 hover 改變正確拼圖的樣式 */
+        .tile.correct-pos:hover {
+            box-shadow: none !important;
+            border: none !important;
+            z-index: 1 !important;
+            transform: scale(1.005);
+        }
+
         /* 獲勝後，去除所有框線，顯示完整圖片 */
         .board-inner.win-state .tile {
             box-shadow: none !important;
@@ -381,7 +397,16 @@
         <div style="display: flex; gap: 5px; width: 100%;">
             <select id="level-sel" onchange="changeLevel()" style="flex: 1.2; width: 0;"></select>
             <select id="img-sel" onchange="changeImage()" style="flex: 1; width: 0;"></select>
-            <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="flex: 0.8; width: 0; display:flex; align-items:center; justify-content:center; padding: 4px;">👁️ 提示</button>
+        </div>
+    </div>
+
+    <div class="set-row flex-split" style="align-items: center; margin-top: 10px;">
+        <div style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px;">
+            <input type="checkbox" id="chk-correct-hint" checked onchange="toggleCorrectHint()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+            <label for="chk-correct-hint" id="lbl-correct-hint" style="margin: 0; display: inline; cursor: pointer; color: #aaa; font-size: 0.85rem;">正確提示</label>
+        </div>
+        <div>
+            <button class="btn btn-hint" id="btn-hint" onclick="showHint()" style="width: 100%; height: 38px; display:flex; align-items:center; justify-content:center; padding: 4px;">👁️ 完整圖片提示</button>
         </div>
     </div>
 
@@ -501,6 +526,7 @@ let currentLang = 'tw';
 let userInteracted = false;
 let slicedImages = []; 
 let isInitialLoad = true; // 標記是否為首次載入，以提供全局隨機功能
+let useCorrectHint = true; // 新增：是否啟用正確提示，預設為 true 開啟
 
 /* 點擊與飄浮專用變數 */
 let dragSrcIdx = -1;
@@ -519,26 +545,26 @@ let hasMoved = false;
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-/* 文案更新：更改為「點擊使其飄浮，再次點擊即可交換」的引導文字 */
+/* 文案更新：更改為「點擊使其飄浮，再次點擊即可交換」的引導文字，並新增新按鈕的翻譯 */
 const TRANSLATIONS = {
     tw: { 
         title: "拼圖大師 2026", msgStart: "點擊方塊使其飄浮，再次點擊進行交換", msgWin: "拼 圖 完 成 !", msgMemo: "記憶時間...", 
         random: "🎲 隨機", diff: "難度等級", img: "關卡 / 圖片", undo: "復原", rules: "規則", home: "回首頁",
-        theme: "視覺風格", music: "背景音樂", settings: "設定", hint: "提示", 
+        theme: "視覺風格", music: "背景音樂", settings: "設定", hint: "完整圖片提示", correctHint: "正確提示", 
         done: "完成設定", closeRules: "關閉說明", volBgm: "音樂音量", volSfx: "音效音量",
         ruleDrag: "點擊選取方塊使其飄浮，移動到目標位置後再次點擊即可<b>交換</b>位置。"
     },
     cn: { 
         title: "拼图大师 2026", msgStart: "点击方块使其悬浮，再次点击进行交换", msgWin: "拼 图 完 成 !", msgMemo: "记忆时间...", 
         random: "🎲 随机", diff: "难度等级", img: "关卡 / 图片", undo: "撤销", rules: "规则", home: "回首页",
-        theme: "视觉风格", music: "背景音乐", settings: "设置", hint: "提示", 
+        theme: "视觉风格", music: "背景音乐", settings: "设置", hint: "完整图片提示", correctHint: "正确提示", 
         done: "完成设置", closeRules: "关闭说明", volBgm: "音乐音量", volSfx: "音效音量",
         ruleDrag: "点击选取方块使其悬浮，移动到目标位置后再次点击即可<b>交换</b>位置。"
     },
     en: { 
         title: "Puzzle Master", msgStart: "Click a tile to float, click again to swap", msgWin: "SOLVED!", msgMemo: "Memorize...", 
         random: "🎲 Random", diff: "Difficulty", img: "Level / Image", undo: "Undo", rules: "Rules", home: "Home",
-        theme: "Theme", music: "Music", settings: "Settings", hint: "Hint", 
+        theme: "Theme", music: "Music", settings: "Settings", hint: "Full Image Hint", correctHint: "Correct Hint", 
         done: "Done", closeRules: "Close", volBgm: "BGM Volume", volSfx: "SFX Volume",
         ruleDrag: "Click to pick up a tile, then click on the target position to <b>swap</b>."
     }
@@ -965,6 +991,11 @@ function renderTiles() {
         
         el.dataset.idx = currentPos;
         
+        // 新增：如果開啟正確提示，且該拼圖位於正確位置，則加上 correct-pos class
+        if (useCorrectHint && originalIdx === currentPos) {
+            el.classList.add('correct-pos');
+        }
+        
         // 改為純粹的 click 監聽 (兼顧手機觸控的 Tap 與電腦的滑鼠點擊)
         el.addEventListener('click', handleTileClick);
         
@@ -972,10 +1003,24 @@ function renderTiles() {
     });
 }
 
+// 新增：切換是否啟用正確提示功能的函數
+function toggleCorrectHint() {
+    useCorrectHint = document.getElementById('chk-correct-hint').checked;
+    if (tiles.length > 0) {
+        renderTiles(); // 即時重新渲染以套用/取消拼圖的正確狀態樣式與鎖定
+    }
+}
+
 // 核心邏輯：點擊選取方塊，使其懸浮跟隨
 function handleTileClick(e) {
     if (isLocked) return;
     e.stopPropagation(); // 阻止冒泡，避免直接觸發全域放下
+    
+    // 新增：如果開啟正確提示，且被點擊的拼圖已經在正確位置(即被鎖定)，則不允許拿起來
+    const clickedIdx = parseInt(e.currentTarget.dataset.idx);
+    if (useCorrectHint && tiles[clickedIdx] === clickedIdx) {
+        return; 
+    }
     
     if (!dragEl) {
         // --- 狀態：拿起 (Pick up) ---
@@ -1064,9 +1109,14 @@ function handleGlobalDrop(e) {
     
     // 執行資料交換並發出音效
     if (targetIdx !== -1 && targetIdx !== dragSrcIdx) {
-        historyStack.push([...tiles]);
-        [tiles[dragSrcIdx], tiles[targetIdx]] = [tiles[targetIdx], tiles[dragSrcIdx]];
-        playSfx(600);
+        // 新增：如果目標位置的拼圖已經是正確位置且開啟了提示(被鎖定)，則不允許覆蓋交換
+        if (useCorrectHint && tiles[targetIdx] === targetIdx) {
+            playSfx(400); // 視為無效掉落，拼圖會直接歸回原位
+        } else {
+            historyStack.push([...tiles]);
+            [tiles[dragSrcIdx], tiles[targetIdx]] = [tiles[targetIdx], tiles[dragSrcIdx]];
+            playSfx(600);
+        }
     } else {
         playSfx(400); // 落在無效區域或原位，播放還原音效
     }
@@ -1165,7 +1215,8 @@ function changeLang() {
     document.getElementById('lbl-theme').innerText = t.theme;
     document.getElementById('lbl-music').innerText = t.music;
     document.getElementById('btn-settings').innerHTML = "⚙️ " + t.settings;
-    document.getElementById('btn-hint').innerHTML = "👁️ " + t.hint;
+    document.getElementById('btn-hint').innerHTML = "👁️ " + t.hint; 
+    document.getElementById('lbl-correct-hint').innerText = t.correctHint; // 新增：正確提示的翻譯支援
     document.getElementById('btn-done').innerText = t.done;
     document.getElementById('btn-rules').innerHTML = "📖 " + t.rules;
     document.getElementById('btn-home').innerHTML = "🏠 " + t.home;
