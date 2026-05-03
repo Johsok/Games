@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tower Defense — TD WebGame</title>
+  <!--
+    素材來源：Kenney.nl「Tower Defense (top-down)」套件（CC0 1.0，可自由商用，無需署名）。
+    OpenGameArt 鏡像：https://opengameart.org/content/tower-defense-300-tilessprites
+    塔種能力值為自洽平衡；靈感取向同類「瀏覽器 / Phaser」塔防（如 game.5portal.net 之 Tower Defense 遊戲型態），非逐欄位抄寫該站。
+  -->
+  <style>
+    :root {
+      --bg: #0a0b1e;
+      --panel: #12142f;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.35);
+      --path: #4a6d82;
+      --field: #1e3d2f;
+      --spawn: #22c55e;
+      --goal: #dc2626;
+      --text: #e8eefc;
+      --muted: #8892a8;
+      --gold: #fbbf24;
+      --danger: #ef4444;
+      --map-hue: 210;
+      --map-sat: 18%;
+      --tile-pattern: 0.08;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+      background: radial-gradient(ellipse 120% 80% at 50% 0%, #141839 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+
+    .screen {
+      display: none;
+      min-height: 100vh;
+      padding: 1rem;
+      flex-direction: column;
+      align-items: center;
+    }
+    .screen.active { display: flex; }
+
+    h1 {
+      margin: 0.5rem 0 0.25rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 24px var(--accent-glow);
+    }
+    .subtitle { color: var(--muted); margin-bottom: 1.25rem; }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 0.55rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: transform 0.08s, box-shadow 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(180deg, #4f8cff, var(--accent));
+      color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .btn-danger {
+      background: linear-gradient(180deg, #f87171, var(--danger));
+      color: #fff;
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .btn-start {
+      background: linear-gradient(180deg, #4ade80, #22c55e);
+      color: #06280f;
+      font-size: 1.05rem;
+      padding: 0.75rem 1.5rem;
+      width: 100%;
+      margin-top: auto;
+    }
+
+    /* --- 關卡選擇 --- */
+    /* 頂欄：寬度同關卡網格；三欄 grid 讓左「回首頁」、中「選擇關卡」、右佔位對齊 */
+    .top-bar {
+      width: min(960px, 100%);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      width: min(960px, 100%);
+      max-width: 100%;
+    }
+    @media (max-width: 720px) {
+      .level-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .level-card {
+      aspect-ratio: 1.1;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.1);
+      background: rgba(18, 20, 47, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+    }
+    .level-card:hover:not(.locked) {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .level-card.locked {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .level-card .lv-label { font-weight: 700; font-size: 1.1rem; }
+    .level-card .lv-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    .top-bar__center {
+      justify-self: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    /* 右欄佔位：與左欄按鈕視覺平衡，避免中間標題偏左 */
+    .top-bar__spacer {
+      justify-self: end;
+      width: 100%;
+      min-height: 1px;
+    }
+    /*
+     * 「回首頁」專用：紅色按鈕底（覆寫 .btn-ghost 的半透明灰底），白字以保持對比與可讀性。
+     * :hover / :active 僅微調亮度，不改變版面與其他 .btn 元件。
+     */
+    .btn-back-lobby {
+      justify-self: start;
+      white-space: nowrap;
+      background: linear-gradient(180deg, #f87171 0%, #dc2626 48%, #b91c1c 100%);
+      color: #fff;
+      border: 1px solid rgba(254, 202, 202, 0.65);
+      box-shadow: 0 4px 16px rgba(220, 38, 38, 0.5);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
+    .btn-back-lobby:hover {
+      filter: brightness(1.08);
+      border-color: rgba(254, 249, 249, 0.85);
+    }
+    .btn-back-lobby:active {
+      filter: brightness(0.96);
+    }
+
+    /* --- 遊戲版面：中央戰場放大，左右側欄不與棋盤重疊 --- */
+    #screen-game.screen {
+      align-items: stretch;
+      padding: 0.75rem 0 1rem;
+    }
+    #screen-game.screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+    .game-toolbar {
+      width: 100%;
+      /* 調整：釋放寬度限制，以滿版呈現 */
+      max-width: 100%; 
+      margin: 0 auto;
+      padding: 0 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .game-stage {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+      /* 調整：釋放寬度限制，以滿版呈現 */
+      max-width: 100%;
+      margin: 0 auto;
+      flex: 1;
+      min-height: 0;
+      /* 底部留空，避免 2.5D 棋盤「遠端」貼齊視窗下緣被裁切 */
+      padding: 8px 16px clamp(12px, 3vmin, 28px);
+    }
+    .panel {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 12px;
+      flex: 0 0 auto;
+      width: 196px;
+      max-height: calc(100vh - 88px);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    .panel.panel--right {
+      width: 232px;
+    }
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .stat-row img { width: 22px; height: 22px; object-fit: contain; }
+    .stat-big { font-size: 1.5rem; font-weight: 800; color: var(--gold); }
+
+    .wave-bar {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .wave-seg {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.12);
+    }
+    .wave-seg.done { background: var(--accent); }
+    .wave-seg.current { box-shadow: 0 0 8px var(--accent); background: #60a5fa; }
+
+    .life-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.35);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .life-bar > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      border-radius: 4px;
+      transition: width 0.2s;
+    }
+
+    .map-outer {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      /* 以 flex 剩餘高度為準（近似 vh 扣掉工具列／側欄後的可用區），整棋盤縮放由此區決定 */
+      min-height: 0;
+      max-height: calc(100vh - clamp(52px, 9vh, 88px));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /*
+       * 不放捲軸：射程圈超出棋盤時僅裁切，不出現可拉式捲軸（與攻擊範圍視覺一致）。
+       * 斜視棋盤超出時改由 script 縮放 --map-fit-scale 完整納入此區。
+       */
+      overflow: hidden;
+      /*
+       * rotateX 斜視時畫面下方延伸最多，底側需比頂側更多呼吸空間，
+       * 否則遠端格線貼邊；縮放後仍保留少量 vh 比例內距。
+       */
+      padding:
+        clamp(6px, 1.2vh, 18px)
+        clamp(4px, 0.8vw, 12px)
+        clamp(12px, 3.5vh, 72px);
+    }
+    /* 2.5D 斜向戰場：外層透視，棋盤見 .map-board transform */
+    .map-scene {
+      perspective: min(1400px, 95vw);
+      perspective-origin: 50% 38%;
+      display: flex;
+      align-items: center; /* 保持原本的置中特性 */
+      justify-content: center;
+      flex: 1 1 auto;
+      min-width: 0;
+      /* 垂直位移改小：避免未縮放前整塊被推出視窗外；最終置中由父層 flex 與縮放共同完成 */
+      margin-top: clamp(-4vh, -2vmin, 0px);
+    }
+    .map-board {
+      display: grid;
+      gap: 3px;
+      padding: 12px;
+      border-radius: 16px;
+      background: hsl(var(--map-hue), var(--map-sat), 11%);
+      border: 1px solid rgba(255,255,255,0.1);
+      transform-style: preserve-3d;
+      /*
+       * scale 由 JS 依視窗與斜視後包圍盒計算（先 rotate 再以螢幕座標 AABB 決定 --map-fit-scale），
+       * 預設 1 供初次排版量測。
+       */
+      transform: translateY(-8%) rotateX(56deg) rotateZ(-36deg) scale(var(--map-fit-scale, 1));
+      transform-origin: 50% 50%;
+      box-shadow:
+        0 28px 60px rgba(0,0,0,0.55),
+        0 8px 24px rgba(0,0,0,0.35),
+        inset 0 0 40px rgba(59, 130, 246, 0.06);
+    }
+
+    .cell {
+      /* 以 vh 為主配合 vmin，使各關卡格子在垂直視窗佔比一致，再由整體縮放塞滿中央戰場區 */
+      width: clamp(40px, min(7.5vh, 9vmin), 120px);
+      height: clamp(40px, min(7.5vh, 9vmin), 120px);
+      border-radius: 6px;
+      position: relative;
+      cursor: crosshair;
+      transition: filter 0.15s, outline 0.15s;
+    }
+
+    .cell.field {
+      background:
+        linear-gradient(135deg, rgba(255,255,255,var(--tile-pattern)), transparent),
+        hsl(calc(var(--map-hue) + 96), 28%, 18%);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .cell.field:hover { filter: brightness(1.12); outline: 1px solid rgba(59,130,246,0.5); }
+    .cell.path {
+      background:
+        linear-gradient(-45deg, rgba(255,255,255,0.06), transparent),
+        hsl(calc(var(--map-hue) + 40), var(--map-sat), 28%);
+      border: 1px solid rgba(120, 170, 210, 0.25);
+    }
+    .cell.spawn::after {
+      content: "▶";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: #bbf7d0;
+      text-shadow: 0 0 8px #22c55e;
+    }
+    .cell.goal::after {
+      content: "♜";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      filter: drop-shadow(0 0 4px #f87171);
+    }
+
+    .tower-icon {
+      position: absolute;
+      inset: 3px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+      z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .enemy-sprite {
+      position: absolute;
+      inset: auto;
+      width: 28px;
+      height: 28px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+      z-index: 3;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .range-ring {
+      position: absolute;
+      border: 2px solid rgba(96, 165, 250, 0.45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    /* 未從商店選定塔種時：不顯示任何射程（含已蓋塔 hover） */
+    #screen-game:not(.tower-picked) .range-ring.placed {
+      opacity: 0 !important;
+    }
+    /* 已選塔：滑鼠移到該格才顯示該塔射程 */
+    #screen-game.tower-picked .cell:hover .range-ring.placed {
+      opacity: 1;
+    }
+
+    /* 放置前射程預覽：選塔後滑鼠在草地格上顯示虛線圈 */
+    .range-ring.preview {
+      opacity: 0.88;
+      border-style: dashed;
+      border-color: rgba(147, 197, 253, 0.82);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    .range-ring.preview.unaffordable {
+      border-color: rgba(248, 113, 113, 0.72);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    }
+    /* 未選塔時不繪製預覽圈（防殘留 DOM） */
+    #screen-game:not(.tower-picked) .range-ring.preview {
+      display: none;
+    }
+
+    .shop-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 62vh;
+      overflow-y: auto;
+    }
+    .tower-card {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: rgba(0,0,0,0.2);
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      align-items: center;
+    }
+    .tower-card:hover { border-color: rgba(255,255,255,0.15); }
+    .tower-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .tower-card.disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      filter: grayscale(0.35) brightness(0.65);
+    }
+    .tower-card.disabled:hover {
+      border-color: transparent;
+    }
+    .tower-card img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .tower-card small { color: var(--muted); display: block; }
+
+    @media (max-width: 960px) {
+      .game-stage {
+        flex-wrap: wrap;
+        align-content: flex-start;
+      }
+      .panel {
+        width: 100%;
+        max-width: 100%;
+        max-height: none;
+      }
+      .map-outer {
+        order: -1;
+        flex: 1 1 100%;
+      }
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 20, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #bonus-overlay {
+      z-index: 110;
+    }
+    .overlay.active { display: flex; }
+    .modal {
+      background: var(--panel);
+      padding: 1.5rem 2rem;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      text-align: center;
+      max-width: 360px;
+    }
+
+    .tip {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .copyright-note {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 2rem;
+      opacity: 0.75;
+      text-align: center;
+      max-width: 640px;
+      line-height: 1.5;
+    }
+
+    /* 敵人與子彈覆蓋層（避免每幀重建外層結構） */
+    .enemy-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 3;
+    }
+
+    /* 子彈（由塔射向怪） */
+    .projectile-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      overflow: visible;
+    }
+    .projectile {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      margin: -5px 0 0 -5px;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* 過關/過波加成三選一 */
+    .bonus-modal {
+      max-width: 720px;
+      width: min(96vw, 720px);
+      text-align: center;
+    }
+    .bonus-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .bonus-card {
+      flex: 1 1 200px;
+      max-width: 220px;
+      min-height: 120px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid rgba(59, 130, 246, 0.45);
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.08s;
+    }
+    .bonus-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+    .bonus-card:active { transform: scale(0.98); }
+    .bonus-card strong { display: block; font-size: 1rem; margin-bottom: 8px; color: #93c5fd; }
+    .bonus-card span { font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <section id="screen-levels" class="screen active">
+    <div class="top-bar">
+      <!-- 回首頁：返回遊戲大廳 index.html；若本頁由大廳 iframe 內嵌開啟，則改呼叫父頁 closeGame() -->
+      <button type="button" class="btn btn-ghost btn-back-lobby" id="btn-back-lobby" title="回到遊戲大廳">回首頁</button>
+      <span class="top-bar__center">選擇關卡</span>
+      <span class="top-bar__spacer" aria-hidden="true"></span>
+    </div>
+    <h1>Tower Defense</h1>
+    <p class="subtitle">選擇關卡</p>
+    <div class="level-grid" id="level-grid"></div>
+    <p class="copyright-note">
+      角色與砲塔圖檔取自 Kenney.nl 公開領域 CC0 素材（Tower Defense top-down），檔案置於 TD_Photo 資料夾。
+    </p>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="game-toolbar">
+      <button type="button" class="btn btn-danger" id="btn-giveup">放棄</button>
+      <div id="game-level-title" style="font-weight:700;">Lv.1</div>
+      <button type="button" class="btn btn-ghost" id="btn-back-menu">關卡選擇</button>
+    </div>
+    <div class="game-stage">
+      <aside class="panel panel--left">
+        <div class="stat-row">
+          <span>WAVE</span>
+          <strong id="ui-wave">1 / 10</strong>
+        </div>
+        <div class="wave-bar" id="wave-bar"></div>
+        <h3>生命</h3>
+        <div class="stat-row">
+          <span>❤</span>
+          <span id="ui-life-text">10 / 10</span>
+        </div>
+        <div class="life-bar"><i id="ui-life-fill" style="width:100%;"></i></div>
+        <h3>擊殺</h3>
+        <div class="stat-row"><span>💀</span><strong id="ui-kills">0</strong></div>
+        <h3>金幣</h3>
+        <div class="stat-row">
+          <img src="TD_Photo/ui_gold.png" alt="" />
+          <span class="stat-big" id="ui-gold">200</span>
+        </div>
+      </aside>
+
+      <div id="map-outer" class="map-outer">
+        <div class="map-scene">
+          <div id="map-board" class="map-board"></div>
+        </div>
+      </div>
+
+      <aside class="panel panel--right">
+        <h3>手牌（點選後放置於草地格）</h3>
+        <div class="shop-list" id="shop-list"></div>
+        <button type="button" class="btn btn-start" id="btn-start-wave">開始 Wave</button>
+        <p class="tip" id="wave-tip">擺好塔後按「開始 Wave」</p>
+      </aside>
+    </div>
+  </section>
+
+  <div id="overlay" class="overlay">
+    <div class="modal">
+      <h2 id="modal-title">遊戲結束</h2>
+      <p id="modal-desc"></p>
+      <div style="margin-top:1rem;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary" id="modal-again">再來一局</button>
+        <button type="button" class="btn btn-ghost" id="modal-menu">關卡選擇</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bonus-overlay" class="overlay">
+    <div class="modal bonus-modal">
+      <h2 id="bonus-title">選擇加成</h2>
+      <p id="bonus-sub" style="color:var(--muted);font-size:0.9rem;">每回合結束獎勵：以下三選一（類似 roguelike 升級）</p>
+      <div id="bonus-cards" class="bonus-cards"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /**
+       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string }} TowerDef
+       * 參數設計參考常見瀏覽器 TD／Phaser 類作品（如 GamePortal 等頁遊）之塔種分工：速射、重砲、緩速、狙擊、飛彈、連鎖等。
+       */
+      /** @typedef {{ id: string, name: string, hp: number, speed: number, reward: number, img: string }} EnemyDef */
+
+      /**
+       * 八種塔：機槍、重砲（溅射）、寒冰（緩速）、狙擊、火箭（溅射）、雷電（連鎖）、攻城砲、連射。
+       * @type {TowerDef[]}
+       */
+      const TOWER_TYPES = [
+        { id: 'gatling', name: '機槍塔', cost: 38, range: 5.6, damage: 9, cooldown: 240, projSpeed: 5.5, bullet: '#fbbf24', img: 'TD_Photo/tower_basic.png', desc: '高射速', special: '' },
+        { id: 'cannon', name: '重砲塔', cost: 88, range: 5.0, damage: 36, cooldown: 900, projSpeed: 3.2, bullet: '#94a3b8', img: 'TD_Photo/tower_heavy.png', desc: '單發高傷+小範圍溅射', special: 'splash' },
+        { id: 'frost', name: '寒冰塔', cost: 72, range: 5.4, damage: 13, cooldown: 580, projSpeed: 3.8, bullet: '#67e8f9', img: 'TD_Photo/tower_plasma.png', desc: '命中緩速', special: 'slow' },
+        { id: 'sniper', name: '狙擊塔', cost: 122, range: 8.2, damage: 78, cooldown: 1580, projSpeed: 8.5, bullet: '#fb7185', img: 'TD_Photo/tower_missile.png', desc: '極遠程單體', special: '' },
+        { id: 'rocket', name: '火箭塔', cost: 128, range: 6.2, damage: 46, cooldown: 1280, projSpeed: 3.6, bullet: '#fb923c', img: 'TD_Photo/tower_missile.png', desc: '爆炸溅射', special: 'splash' },
+        { id: 'tesla', name: '雷電塔', cost: 102, range: 5.6, damage: 16, cooldown: 350, projSpeed: 6.2, bullet: '#fde047', img: 'TD_Photo/tower_electric.png', desc: '連鎖次要目標', special: 'chain' },
+        { id: 'siege', name: '攻城砲', cost: 108, range: 5.2, damage: 44, cooldown: 1020, projSpeed: 2.6, bullet: '#cbd5e1', img: 'TD_Photo/tower_heavy.png', desc: '大中範圍溅射', special: 'splash' },
+        { id: 'burst', name: '連射塔', cost: 48, range: 5.8, damage: 11, cooldown: 360, projSpeed: 5.0, bullet: '#a3e635', img: 'TD_Photo/tower_basic.png', desc: '中速連發', special: '' }
+      ];
+
+      /**
+       * 過關可選加成（累積至整場遊戲）。
+       * @type {{ id: string, name: string, desc: string, apply: () => void }[]}
+       */
+      const PERK_POOL = [
+        {
+          id: 'dmg',
+          name: '火力強化',
+          desc: '所有砲塔傷害 +10%',
+          apply: function () {
+            playerMods.damageMul *= 1.1;
+          }
+        },
+        {
+          id: 'range',
+          name: '射程增幅',
+          desc: '砲塔射程 +8%',
+          apply: function () {
+            playerMods.rangeMul *= 1.08;
+          }
+        },
+        {
+          id: 'loot',
+          name: '戰利品',
+          desc: '擊殺金幣 +12%',
+          apply: function () {
+            playerMods.goldKillMul *= 1.12;
+          }
+        },
+        {
+          id: 'haste',
+          name: '冷卻專精',
+          desc: '砲塔射速 +7%（冷卻縮短）',
+          apply: function () {
+            playerMods.cooldownMul *= 0.93;
+          }
+        },
+        {
+          id: 'ice',
+          name: '深寒共鳴',
+          desc: '寒冰緩速效果 +15%',
+          apply: function () {
+            playerMods.slowPotency *= 1.15;
+          }
+        },
+        {
+          id: 'vault',
+          name: '資金注入',
+          desc: '立即獲得額外 +70 金幣',
+          apply: function () {
+            gold += 70;
+            updateHud();
+          }
+        },
+        {
+          id: 'heart',
+          name: '生命祝福',
+          desc: '立即獲得 +2 生命（上限 20）',
+          apply: function () {
+            lives = Math.min(20, lives + 2);
+            updateHud();
+          }
+        },
+        {
+          id: 'rich',
+          name: '即時賞金',
+          desc: '立即獲得 +120 金幣',
+          apply: function () {
+            gold += 120;
+            updateHud();
+          }
+        }
+      ];
+
+      /** @type {{ damageMul: number, rangeMul: number, goldKillMul: number, cooldownMul: number, slowPotency: number, startGoldBonus: number }} */
+      let playerMods = {
+        damageMul: 1,
+        rangeMul: 1,
+        goldKillMul: 1,
+        cooldownMul: 1,
+        slowPotency: 1,
+        startGoldBonus: 0
+      };
+
+      /** @type {{ x: number, y: number, target: Object, dmg: number, def: TowerDef, speed: number, color: string }[]} */
+      let projectiles = [];
+
+      /**
+       * 五種敵人：步兵、快兵、重坦、戰機、轟炸（獎勵金幣不同）。
+       * @type {EnemyDef[]}
+       */
+      const ENEMY_TYPES = [
+        { id: 'grunt', name: '步兵', hp: 55, speed: 0.038, reward: 9, img: 'TD_Photo/enemy_grunt.png' },
+        { id: 'runner', name: '快攻兵', hp: 32, speed: 0.062, reward: 11, img: 'TD_Photo/enemy_runner.png' },
+        { id: 'tank', name: '重裝甲', hp: 140, speed: 0.02, reward: 28, img: 'TD_Photo/enemy_tank.png' },
+        { id: 'plane', name: '戰機', hp: 48, speed: 0.048, reward: 14, img: 'TD_Photo/enemy_plane.png' },
+        { id: 'bomber', name: '轟炸機', hp: 85, speed: 0.032, reward: 20, img: 'TD_Photo/enemy_bomber.png' }
+      ];
+
+      /**
+       * @param {number} seed
+       * @returns {() => number}
+       */
+      function mulberry32(seed) {
+        return function () {
+          let t = (seed += 0x6d2b79f5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      /**
+       * 計算路徑彎折點數：於某一格轉向（與前一段、後一段方向向量不同）即計一次。
+       * @param {[number,number][]} path
+       * @returns {number}
+       */
+      function countPathBends(path) {
+        if (!path || path.length < 3) return 0;
+        let bends = 0;
+        for (let i = 1; i < path.length - 1; i++) {
+          const dr1 = path[i][0] - path[i - 1][0];
+          const dc1 = path[i][1] - path[i - 1][1];
+          const dr2 = path[i + 1][0] - path[i][0];
+          const dc2 = path[i + 1][1] - path[i][1];
+          if (dr1 !== dr2 || dc1 !== dc2) bends++;
+        }
+        return bends;
+      }
+
+      /**
+       * 隨機漫步生成單一路徑（不重用格子）；失敗則回傳 null。
+       * @param {number} rows
+       * @param {number} cols
+       * @param {[number,number]} spawn
+       * @param {[number,number]} goal
+       * @param {() => number} rng
+       * @param {number} [loosenessExtra] 越大越偏離最短曼哈頓路徑，便於製造更多彎折
+       * @returns {[number,number][]|null}
+       */
+      function greedyRandomPath(rows, cols, spawn, goal, rng, loosenessExtra) {
+        const key = (rr, cc) => rr + ',' + cc;
+        const visited = new Set();
+        const path = [];
+        let r = spawn[0];
+        let c = spawn[1];
+        const gr = goal[0];
+        const gc = goal[1];
+        path.push([r, c]);
+        visited.add(key(r, c));
+        const dirs = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ];
+        let guard = 0;
+        while ((r !== gr || c !== gc) && guard++ < rows * cols * 8) {
+          const cand = [];
+          for (let i = 0; i < dirs.length; i++) {
+            const dr = dirs[i][0];
+            const dc = dirs[i][1];
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+            if (visited.has(key(nr, nc))) continue;
+            const md = Math.abs(nr - gr) + Math.abs(nc - gc);
+            cand.push({ nr, nc, md });
+          }
+          if (!cand.length) return null;
+          cand.sort(function (a, b) {
+            return a.md - b.md;
+          });
+          const looseness = (loosenessExtra | 0) + 2 + Math.floor(rng() * 4);
+          const near = cand.filter(function (x) {
+            return x.md <= cand[0].md + looseness;
+          });
+          const pick = near[Math.floor(rng() * near.length)];
+          r = pick.nr;
+          c = pick.nc;
+          visited.add(key(r, c));
+          path.push([r, c]);
+        }
+        return r === gr && c === gc ? path : null;
+      }
+
+      /**
+       * 依關卡強制「彎折數 = 關卡編號」（Lv.1 一個彎折點、Lv.2 兩個…）並拉長路徑：
+       * 先多種子嘗試較鬆的 greedy；不足則 Serpentine 折線保證彎折數。
+       * @param {number} rows
+       * @param {number} cols
+       * @param {number} seed
+       * @param {number} levelIndex 0..9（彎折數 = levelIndex + 1）
+       * @returns {{ pathOrder: [number,number][], spawn: [number,number], goal: [number,number] }}
+       */
+      function buildPath(rows, cols, seed, levelIndex) {
+        const targetBends = levelIndex + 1;
+        const maxBendsFit = Math.max(0, rows + cols - 4);
+        const needBends = Math.min(targetBends, maxBendsFit);
+        for (let attempt = 0; attempt < 260; attempt++) {
+          const rngA = mulberry32(seed ^ 1337 ^ attempt * 7919);
+          const innerW = Math.max(1, cols - 2);
+          const sc = 1 + Math.floor(rngA() * innerW);
+          const gc = 1 + Math.floor(rngA() * innerW);
+          const spawn = /** @type {[number,number]} */ ([0, sc]);
+          const goal = /** @type {[number,number]} */ ([rows - 1, gc]);
+          const loosenessExtra = Math.floor(attempt / 12) * 2;
+          const path = greedyRandomPath(rows, cols, spawn, goal, rngA, loosenessExtra);
+          if (path && countPathBends(path) >= needBends) {
+            return { pathOrder: path, spawn, goal };
+          }
+        }
+        return buildSerpentinePath(rows, cols, seed, needBends);
+      }
+
+      /**
+       * 以「之字形」曼哈頓段強制達成指定彎折數（並拉長路徑）；若幾何上不可行則退回直線後備。
+       * @param {number} rows
+       * @param {number} cols
+       * @param {number} seed
+       * @param {number} targetBends
+       * @returns {{ pathOrder: [number,number][], spawn: [number,number], goal: [number,number] }}
+       */
+      function buildSerpentinePath(rows, cols, seed, targetBends) {
+        const rng = mulberry32(seed ^ 0x9e3779b9);
+        const innerW = Math.max(1, cols - 2);
+        let sc = 1 + Math.floor(rng() * innerW);
+        let gc = 1 + Math.floor(rng() * innerW);
+        if (Math.abs(sc - gc) < 1 && cols >= 4) {
+          gc = sc + 1 <= innerW ? sc + 1 : sc - 1;
+        }
+        const spawn = /** @type {[number,number]} */ ([0, sc]);
+        const goal = /** @type {[number,number]} */ ([rows - 1, gc]);
+        const path = [];
+        const used = new Set();
+        /**
+         * @param {number} r
+         * @param {number} c
+         * @returns {boolean}
+         */
+        function visit(r, c) {
+          const k = r + ',' + c;
+          if (r < 0 || r >= rows || c < 0 || c >= cols || used.has(k)) return false;
+          used.add(k);
+          path.push([r, c]);
+          return true;
+        }
+        if (!visit(spawn[0], spawn[1])) {
+          return buildFallbackPath(rows, cols, spawn, goal);
+        }
+        let curR = spawn[0];
+        let curC = spawn[1];
+        /**
+         * @param {number} tr
+         * @param {number} tc
+         * @returns {boolean}
+         */
+        function walkTo(tr, tc) {
+          while (curR !== tr || curC !== tc) {
+            if (curR < tr) curR++;
+            else if (curR > tr) curR--;
+            else if (curC < tc) curC++;
+            else if (curC > tc) curC--;
+            if (!visit(curR, curC)) return false;
+          }
+          return true;
+        }
+        /** @type {number[]} */
+        const bendRows = [];
+        const tb = Math.max(1, Math.min(targetBends, Math.max(0, rows - 3)));
+        for (let b = 0; b < tb; b++) {
+          const t = (b + 1) / (tb + 1);
+          const lo = 1 + Math.floor(t * (rows - 3));
+          const hi = rows - 2;
+          const br = lo + Math.floor(rng() * Math.max(1, hi - lo + 1));
+          bendRows.push(Math.min(hi, Math.max(lo, br)));
+        }
+        bendRows.sort(function (a, b) {
+          return a - b;
+        });
+        for (let i = 1; i < bendRows.length; i++) {
+          if (bendRows[i] <= bendRows[i - 1]) bendRows[i] = bendRows[i - 1] + 1;
+        }
+        if (bendRows.length && bendRows[bendRows.length - 1] >= rows - 1) {
+          bendRows[bendRows.length - 1] = rows - 2;
+        }
+        /** @type {number[]} */
+        const colTargets = [sc];
+        for (let b = 0; b < tb; b++) {
+          const t = (b + 1) / (tb + 1);
+          let cx = Math.round(sc + (gc - sc) * t + (rng() - 0.45) * 2);
+          cx = Math.max(1, Math.min(cols - 2, cx));
+          colTargets.push(cx);
+        }
+        colTargets.push(gc);
+        for (let i = 0; i < tb; i++) {
+          const nextR = bendRows[i];
+          const nextC = colTargets[i + 1];
+          if (!walkTo(nextR, curC)) return buildFallbackPath(rows, cols, spawn, goal);
+          if (!walkTo(curR, nextC)) return buildFallbackPath(rows, cols, spawn, goal);
+        }
+        if (!walkTo(goal[0], goal[1])) return buildFallbackPath(rows, cols, spawn, goal);
+        return { pathOrder: path, spawn, goal };
+      }
+
+      /**
+       * @param {number} rows
+       * @param {number} cols
+       * @param {[number,number]} spawn
+       * @param {[number,number]} goal
+       */
+      function buildFallbackPath(rows, cols, spawn, goal) {
+        const path = [spawn.slice()];
+        let r = spawn[0];
+        let c = spawn[1];
+        while (r !== goal[0] || c !== goal[1]) {
+          if (r < goal[0]) r++;
+          else if (r > goal[0]) r--;
+          else if (c < goal[1]) c++;
+          else if (c > goal[1]) c--;
+          path.push([r, c]);
+        }
+        return { pathOrder: path, spawn, goal };
+      }
+
+      /**
+       * 單一關卡參數：網格大小、起始金錢、波數與難度係數。
+       * @param {number} levelIndex 0..9
+       */
+      function getLevelConfig(levelIndex) {
+        const rows = 12 + levelIndex * 2;
+        const cols = 12 + levelIndex * 2;
+        const waves = 6 + levelIndex;
+        const startGold = 130 + levelIndex * 35;
+        const diff = 1 + levelIndex * 0.09;
+        return { rows, cols, waves, startGold, diff, seed: 10007 + levelIndex * 7919 };
+      }
+
+      /**
+       * @param {TowerDef} def
+       * @returns {number}
+       */
+      function getEffectiveRange(def) {
+        return def.range * playerMods.rangeMul;
+      }
+
+      /**
+       * @param {TowerDef} def
+       * @returns {number}
+       */
+      function getEffectiveCooldown(def) {
+        return def.cooldown * playerMods.cooldownMul;
+      }
+
+      /**
+       * @param {TowerDef} def
+       * @returns {number}
+       */
+      function getEffectiveDamage(def) {
+        return def.damage * playerMods.damageMul;
+      }
+
+      let unlockedMax = 0;
+      let currentLevel = 0;
+      let gold = 200;
+      let lives = 10;
+      let kills = 0;
+      let waveIndex = 0;
+      let waveActive = false;
+      let waveQueue = [];
+      let enemies = [];
+      let towers = [];
+      let pathOrder = [];
+      let pathSet = new Set();
+      let spawnCell = /** @type {[number,number]} */ ([0, 0]);
+      let goalCell = /** @type {[number,number]} */ ([0, 0]);
+      let rows = 10;
+      let cols = 10;
+      /** @type {string|null} 未選商店塔種時為 null，不顯示射程預覽與已蓋塔範圍 */
+      let selectedTowerId = null;
+      /** @type {HTMLElement | null} 目前滑鼠下的可建造草地格，供換選塔時重繪預覽圈 */
+      let previewHoverCell = null;
+      let lastTs = 0;
+      let animId = 0;
+      let levelDiff = 1;
+
+      const els = {
+        screens: {
+          levels: document.getElementById('screen-levels'),
+          game: document.getElementById('screen-game')
+        },
+        levelGrid: document.getElementById('level-grid'),
+        mapBoard: document.getElementById('map-board'),
+        mapOuter: document.getElementById('map-outer'),
+        shopList: document.getElementById('shop-list'),
+        uiGold: document.getElementById('ui-gold'),
+        uiKills: document.getElementById('ui-kills'),
+        uiLifeText: document.getElementById('ui-life-text'),
+        uiLifeFill: document.getElementById('ui-life-fill'),
+        uiWave: document.getElementById('ui-wave'),
+        waveBar: document.getElementById('wave-bar'),
+        gameLevelTitle: document.getElementById('game-level-title'),
+        waveTip: document.getElementById('wave-tip'),
+        overlay: document.getElementById('overlay'),
+        modalTitle: document.getElementById('modal-title'),
+        modalDesc: document.getElementById('modal-desc'),
+        bonusOverlay: document.getElementById('bonus-overlay'),
+        bonusCards: document.getElementById('bonus-cards')
+      };
+
+      /**
+       * 切換畫面顯示。
+       * @param {'levels'|'game'} name
+       */
+      function showScreen(name) {
+        Object.values(els.screens).forEach((s) => s.classList.remove('active'));
+        els.screens[name].classList.add('active');
+      }
+
+      /**
+       * 依關卡套用 CSS 變數，讓地圖配色隨機感（色相／飽和／紋理強度）。
+       * @param {number} levelIndex
+       */
+      function applyMapTheme(levelIndex) {
+        const rng = mulberry32(5000 + levelIndex * 997);
+        const hue = Math.floor(160 + rng() * 80 + levelIndex * 6);
+        const sat = 12 + Math.floor(rng() * 18);
+        const pat = (0.05 + rng() * 0.1).toFixed(3);
+        document.documentElement.style.setProperty('--map-hue', String(hue));
+        document.documentElement.style.setProperty('--map-sat', sat + '%');
+        document.documentElement.style.setProperty('--tile-pattern', pat);
+      }
+
+      /**
+       * 渲染關卡選擇網格。
+       */
+      function renderLevelSelect() {
+        els.levelGrid.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'level-card' + (i > unlockedMax ? ' locked' : '');
+          card.innerHTML =
+            '<span class="lv-label">Lv.' + (i + 1) + '</span>' +
+            '<span class="lv-sub">' +
+            (i > unlockedMax ? '🔒 鎖定' : i === unlockedMax ? '目前進度' : '可遊玩') +
+            '</span>';
+          if (i <= unlockedMax) {
+            card.addEventListener('click', () => startLevel(i));
+          }
+          els.levelGrid.appendChild(card);
+        }
+      }
+
+      /**
+       * 若當前選中的塔已買不起則取消選取（不自動改選，避免未操作就出現射程圈）。
+       */
+      function ensureSelectableTower() {
+        if (!selectedTowerId) return;
+        const cur = TOWER_TYPES.find((x) => x.id === selectedTowerId);
+        if (cur && gold >= cur.cost) return;
+        selectedTowerId = null;
+      }
+
+      /**
+       * 依是否在商店選定塔種，切換 `#screen-game.tower-picked` 以控制射程圈顯示。
+       */
+      function updateTowerPickedClass() {
+        els.screens.game.classList.toggle('tower-picked', !!selectedTowerId);
+      }
+
+      /**
+       * 依 `#map-outer` 可視區（扣 padding）與棋盤經斜視變換後的螢幕座標包圍盒，
+       * 設定 `--map-fit-scale` 使整個戰場在不出現捲軸的前提下最大化（先量測旋轉後最高／最低點所佔寬高）。
+       */
+      function fitBattlefieldToViewport() {
+        const outer = els.mapOuter;
+        const board = els.mapBoard;
+        if (!outer || !board) return;
+        board.style.setProperty('--map-fit-scale', '1');
+        void board.offsetHeight;
+        const rect = board.getBoundingClientRect();
+        const ow = outer.clientWidth;
+        const oh = outer.clientHeight;
+        if (rect.width < 2 || rect.height < 2 || ow < 2 || oh < 2) return;
+        const pad = 0.97;
+        const s = Math.min((ow * pad) / rect.width, (oh * pad) / rect.height);
+        board.style.setProperty('--map-fit-scale', String(Math.max(0.06, Math.min(s, 6))));
+      }
+
+      /**
+       * 建立商店 UI；金額不足者加上 disabled，無法點選。
+       */
+      function renderShop() {
+        ensureSelectableTower();
+        els.shopList.innerHTML = '';
+        TOWER_TYPES.forEach((t) => {
+          const can = gold >= t.cost;
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className =
+            'tower-card' +
+            (selectedTowerId === t.id && can ? ' selected' : '') +
+            (can ? '' : ' disabled');
+          b.disabled = !can;
+          b.innerHTML =
+            '<img src="' + t.img + '" alt="" />' +
+            '<div><strong>' + t.name + '</strong><small>💰' + t.cost +
+            ' · 攻 ' + Math.round(t.damage * playerMods.damageMul) +
+            ' · 距 ' + getEffectiveRange(t).toFixed(1) +
+            ' · CD ' + Math.round(getEffectiveCooldown(t)) + 'ms<br>' +
+            t.desc +
+            '</small></div>';
+          b.addEventListener('click', () => {
+            if (!can) return;
+            if (selectedTowerId === t.id) {
+              selectedTowerId = null;
+            } else {
+              selectedTowerId = t.id;
+            }
+            renderShop();
+          });
+          els.shopList.appendChild(b);
+        });
+        updateTowerPickedClass();
+        refreshPlacementPreview();
+      }
+
+      /**
+       * 換選塔或重繪商店後，若仍停在草地上則更新射程預覽圈尺寸／樣式。
+       */
+      function refreshPlacementPreview() {
+        if (previewHoverCell && document.body.contains(previewHoverCell)) {
+          if (!selectedTowerId) removePlacementPreview(previewHoverCell);
+          else applyPlacementPreview(previewHoverCell);
+        }
+      }
+
+      /**
+       * 移除單格的放置預覽圈。
+       * @param {HTMLElement} cell
+       */
+      function removePlacementPreview(cell) {
+        if (previewHoverCell === cell) previewHoverCell = null;
+        const ring = cell.querySelector('.range-ring.preview');
+        if (ring) ring.remove();
+      }
+
+      /**
+       * 在空地格上繪製目前選中塔種的射程預覽（與 placeTowerVisual 同一套格距換算）。
+       * @param {HTMLElement} cell `.cell.field`
+       */
+      function applyPlacementPreview(cell) {
+        if (!selectedTowerId) return;
+        const old = cell.querySelector('.range-ring.preview');
+        if (old) old.remove();
+        if (cell.querySelector('.tower-icon')) return;
+        const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
+        if (!def) return;
+        const ring = document.createElement('div');
+        ring.className =
+          'range-ring preview' + (gold < def.cost ? ' unaffordable' : '');
+        const effR = getEffectiveRange(def);
+        const px = effR * (cell.clientWidth || 44) * 1.12;
+        ring.style.width = px * 2 + 'px';
+        ring.style.height = px * 2 + 'px';
+        cell.appendChild(ring);
+      }
+
+      /**
+       * 依目前網格與路徑重繪棋盤 DOM。
+       */
+      function renderMap() {
+        previewHoverCell = null;
+        els.mapBoard.innerHTML = '';
+        els.mapBoard.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const cell = document.createElement('div');
+            const k = r + ',' + c;
+            const onPath = pathSet.has(k);
+            cell.className = 'cell ' + (onPath ? 'path' : 'field');
+            cell.dataset.r = String(r);
+            cell.dataset.c = String(c);
+            if (onPath && spawnCell[0] === r && spawnCell[1] === c) cell.classList.add('spawn');
+            if (onPath && goalCell[0] === r && goalCell[1] === c) cell.classList.add('goal');
+            if (!onPath) {
+              cell.addEventListener('click', onCellClick);
+              cell.addEventListener('mouseenter', function onFieldEnter() {
+                previewHoverCell = cell;
+                applyPlacementPreview(cell);
+              });
+              cell.addEventListener('mouseleave', function onFieldLeave() {
+                removePlacementPreview(cell);
+              });
+            }
+            els.mapBoard.appendChild(cell);
+          }
+        }
+        towers.forEach((tw) => placeTowerVisual(tw));
+        const enemyLayer = document.createElement('div');
+        enemyLayer.id = 'enemy-layer';
+        enemyLayer.className = 'enemy-layer';
+        els.mapBoard.appendChild(enemyLayer);
+        const pj = document.createElement('div');
+        pj.id = 'projectile-layer';
+        pj.className = 'projectile-layer';
+        els.mapBoard.appendChild(pj);
+        els.mapBoard.style.position = 'relative';
+        requestAnimationFrame(function () {
+          requestAnimationFrame(fitBattlefieldToViewport);
+        });
+      }
+
+      /**
+       * @param {{ row: number, col: number, typeId: string, id: number }} tw
+       */
+      function placeTowerVisual(tw) {
+        const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
+        if (!def) return;
+        const idx = tw.row * cols + tw.col;
+        const cell = els.mapBoard.children[idx];
+        if (!cell) return;
+        const icon = document.createElement('div');
+        icon.className = 'tower-icon';
+        icon.style.backgroundImage = 'url(' + def.img + ')';
+        const ring = document.createElement('div');
+        ring.className = 'range-ring placed';
+        const effR = getEffectiveRange(def);
+        const px = effR * (cell.clientWidth || 44) * 1.12;
+        ring.style.width = px * 2 + 'px';
+        ring.style.height = px * 2 + 'px';
+        cell.appendChild(ring);
+        cell.appendChild(icon);
+      }
+
+      /**
+       * @param {MouseEvent} e
+       */
+      function onCellClick(e) {
+        const t = /** @type {HTMLElement} */ (e.currentTarget);
+        const r = +t.dataset.r;
+        const c = +t.dataset.c;
+        const k = r + ',' + c;
+        if (pathSet.has(k)) return;
+        if (t.querySelector('.tower-icon')) return;
+        if (!selectedTowerId) return;
+        const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
+        if (!def || gold < def.cost) return;
+        gold -= def.cost;
+        const tw = { id: Date.now(), row: r, col: c, typeId: def.id, lastShot: 0 };
+        towers.push(tw);
+        placeTowerVisual(tw);
+        const prRing = t.querySelector('.range-ring.preview');
+        if (prRing) prRing.remove();
+        updateHud();
+      }
+
+      function updateHud() {
+        els.uiGold.textContent = String(Math.floor(gold));
+        els.uiKills.textContent = String(kills);
+        els.uiLifeText.textContent = lives + ' / 10';
+        els.uiLifeFill.style.width = Math.max(0, (lives / 10) * 100) + '%';
+        const cfg = getLevelConfig(currentLevel);
+        const waveDisp = Math.min(waveIndex + 1, cfg.waves);
+        els.uiWave.textContent = waveDisp + ' / ' + cfg.waves;
+        els.waveBar.innerHTML = '';
+        for (let w = 0; w < cfg.waves; w++) {
+          const seg = document.createElement('div');
+          seg.className =
+            'wave-seg' +
+            (w < waveIndex ? ' done' : '') +
+            (w === waveIndex && waveActive ? ' current' : '');
+          els.waveBar.appendChild(seg);
+        }
+        renderShop();
+      }
+
+      /**
+       * @param {number} levelIndex
+       */
+      function startLevel(levelIndex) {
+        currentLevel = levelIndex;
+        const cfg = getLevelConfig(levelIndex);
+        rows = cfg.rows;
+        cols = cfg.cols;
+        levelDiff = cfg.diff;
+        gold = cfg.startGold + playerMods.startGoldBonus;
+        playerMods.startGoldBonus = 0;
+        lives = 10;
+        kills = 0;
+        waveIndex = 0;
+        waveActive = false;
+        spawnCooldownMs = 0;
+        enemies = [];
+        towers = [];
+        projectiles = [];
+        applyMapTheme(levelIndex);
+        selectedTowerId = null;
+        const built = buildPath(rows, cols, cfg.seed, levelIndex);
+        pathOrder = built.pathOrder;
+        pathSet = new Set(pathOrder.map((p) => p[0] + ',' + p[1]));
+        spawnCell = built.spawn;
+        goalCell = built.goal;
+        els.gameLevelTitle.textContent = 'Lv.' + (levelIndex + 1);
+        showScreen('game');
+        renderShop();
+        renderMap();
+        updateTowerPickedClass();
+        updateHud();
+        els.waveTip.textContent = '擺好塔後按「開始 Wave」';
+        stopLoop();
+      }
+
+      /** @type {number} 生怪間隔累計（毫秒） */
+      let spawnCooldownMs = 0;
+
+      /**
+       * 產生當前波的敵人佇列（尚未入場者）。
+       */
+      function buildWaveQueue() {
+        const cfg = getLevelConfig(currentLevel);
+        const n = 5 + waveIndex + Math.floor(currentLevel * 0.65);
+        const rng = mulberry32(cfg.seed + waveIndex * 313 + 17);
+        const q = [];
+        for (let i = 0; i < n; i++) {
+          let pick = Math.floor(rng() * ENEMY_TYPES.length);
+          if (waveIndex < 2 && pick > 2) pick = Math.floor(rng() * 3);
+          const base = ENEMY_TYPES[pick];
+          const hpScale = levelDiff * (1 + waveIndex * 0.12);
+          q.push({
+            typeId: base.id,
+            hp: base.hp * hpScale,
+            maxHp: base.hp * hpScale,
+            speed: base.speed * (1 + currentLevel * 0.03),
+            reward: Math.floor(base.reward * (1 + currentLevel * 0.05)),
+            seg: 0,
+            t: 0,
+            slowMul: 1
+          });
+        }
+        return q;
+      }
+
+      /**
+       * 依路徑弧長換算世界座標（格中心）。
+       * @param {number} segIndex
+       * @param {number} t01 段內比例 0..1
+       */
+      function pathPosition(segIndex, t01) {
+        const a = pathOrder[segIndex];
+        const b = pathOrder[Math.min(segIndex + 1, pathOrder.length - 1)];
+        if (!a || !b) return { x: 0, y: 0 };
+        return {
+          x: (a[1] + (b[1] - a[1]) * t01 + 0.5) / cols,
+          y: (a[0] + (b[0] - a[0]) * t01 + 0.5) / rows
+        };
+      }
+
+      /**
+       * 塔與敵人之「格距離」（歐幾里得）。敵人座標以路徑內插取得的正規化座標換算為格中心。
+       * @param {{ row:number, col:number }} tw
+       * @param {*} en
+       * @returns {number}
+       */
+      function distCells(tw, en) {
+        const ecx = en._nx * cols;
+        const ecy = en._ny * rows;
+        const tcx = tw.col + 0.5;
+        const tcy = tw.row + 0.5;
+        const dx = ecx - tcx;
+        const dy = ecy - tcy;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      /**
+       * @param {{ col: number, row: number }} tw
+       * @param {*} target
+       * @param {TowerDef} def
+       * @param {number} dmg
+       */
+      function spawnProjectile(tw, target, def, dmg) {
+        projectiles.push({
+          x: (tw.col + 0.5) / cols,
+          y: (tw.row + 0.5) / rows,
+          target: target,
+          dmg: dmg,
+          def: def,
+          speed: def.projSpeed,
+          color: def.bullet
+        });
+      }
+
+      /**
+       * @param {number} dt
+       */
+      function updateProjectiles(dt) {
+        const hitNorm = 0.02;
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+          const p = projectiles[i];
+          if (enemies.indexOf(p.target) < 0) {
+            projectiles.splice(i, 1);
+            continue;
+          }
+          const tx = p.target._nx;
+          const ty = p.target._ny;
+          const dx = tx - p.x;
+          const dy = ty - p.y;
+          const dist = Math.hypot(dx, dy);
+          const step = (p.speed * dt) / 2400;
+          if (dist < hitNorm || dist <= step) {
+            applyDamage(p.target, p.dmg, p.def);
+            projectiles.splice(i, 1);
+            continue;
+          }
+          p.x += (dx / dist) * step;
+          p.y += (dy / dist) * step;
+        }
+      }
+
+      function syncProjectileLayer() {
+        let layer = document.getElementById('projectile-layer');
+        if (!layer) return;
+        layer.innerHTML = '';
+        projectiles.forEach(function (p) {
+          const d = document.createElement('div');
+          d.className = 'projectile';
+          d.style.left = p.x * 100 + '%';
+          d.style.top = p.y * 100 + '%';
+          d.style.color = p.color;
+          d.style.background = 'radial-gradient(circle at 30% 30%, #fff 0%, ' + p.color + ' 55%, transparent 100%)';
+          layer.appendChild(d);
+        });
+      }
+
+      /**
+       * 自加成池中抽三張不重複卡牌。
+       * @param {number} n
+       * @returns {typeof PERK_POOL}
+       */
+      function pickRandomPerks(n) {
+        const rng = mulberry32((Date.now() & 0xfffff) + currentLevel * 997);
+        const pool = PERK_POOL.slice();
+        const out = [];
+        while (out.length < n && pool.length) {
+          const j = Math.floor(rng() * pool.length);
+          out.push(pool.splice(j, 1)[0]);
+        }
+        return out;
+      }
+
+      function startWave() {
+        if (waveActive) return;
+        const cfg = getLevelConfig(currentLevel);
+        if (waveIndex >= cfg.waves) return;
+        waveQueue = buildWaveQueue();
+        waveActive = true;
+        spawnCooldownMs = 0;
+        els.waveTip.textContent = '敵軍來襲！';
+        updateHud();
+        lastTs = performance.now();
+        animId = requestAnimationFrame(gameLoop);
+      }
+
+      /**
+       * 停止動畫迴圈。一律呼叫 cancelAnimationFrame（傳入 0 為瀏覽器 no-op），避免 rAF 回傳 0 時未能取消而殘留雙迴圈。
+       */
+      function stopLoop() {
+        cancelAnimationFrame(animId);
+        animId = 0;
+      }
+
+      /**
+       * 主迴圈：生怪、移動、塔攻擊、結束判斷。
+       * @param {number} ts
+       */
+      function gameLoop(ts) {
+        if (!waveActive) return;
+        const raw = ts - lastTs;
+        const dt = Math.max(0, Math.min(40, raw));
+        lastTs = ts;
+
+        /* 從佇列依間隔送敵人入場 */
+        if (waveQueue.length) {
+          spawnCooldownMs -= dt;
+          if (spawnCooldownMs <= 0) {
+            const next = waveQueue.shift();
+            next.seg = 0;
+            next.t = 0;
+            const pos = pathPosition(0, 0);
+            next._nx = pos.x;
+            next._ny = pos.y;
+            enemies.push(next);
+            spawnCooldownMs = 380 + Math.floor(currentLevel * 25);
+          }
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const en = enemies[i];
+          const def = ENEMY_TYPES.find((e) => e.id === en.typeId);
+          if (!def) continue;
+          const slowSafe =
+            en.slowMul != null && isFinite(en.slowMul) && en.slowMul > 0 ? en.slowMul : 1;
+          en.t += (def.speed * slowSafe * dt) / 14;
+          let segSteps = 0;
+          const maxSegSteps = pathOrder.length + 6;
+          while (en.t >= 1 && en.seg < pathOrder.length - 1 && segSteps < maxSegSteps) {
+            en.t -= 1;
+            en.seg++;
+            segSteps++;
+          }
+          if (en.seg >= pathOrder.length - 1 && en.t >= 1) {
+            leakEnemy(en);
+            enemies.splice(i, 1);
+            continue;
+          }
+          const pos = pathPosition(en.seg, Math.min(1, Math.max(0, en.t)));
+          en._nx = pos.x;
+          en._ny = pos.y;
+        }
+
+        updateProjectiles(dt);
+
+        towers.forEach((tw) => {
+          const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
+          if (!def) return;
+          tw.lastShot += dt;
+          if (tw.lastShot < getEffectiveCooldown(def)) return;
+          let target = null;
+          let bestP = -1;
+          const effRange = getEffectiveRange(def);
+          enemies.forEach((en) => {
+            if (distCells(tw, en) <= effRange) {
+              const prog = en.seg + en.t;
+              if (prog > bestP) {
+                bestP = prog;
+                target = en;
+              }
+            }
+          });
+          if (!target) return;
+          tw.lastShot = 0;
+          const dmg = getEffectiveDamage(def) * (0.92 + levelDiff * 0.04);
+          spawnProjectile(tw, target, def, dmg);
+        });
+
+        syncEnemySprites();
+        syncProjectileLayer();
+
+        if (enemies.length === 0 && waveQueue.length === 0) {
+          waveActive = false;
+          waveIndex++;
+          updateHud();
+          const cfg = getLevelConfig(currentLevel);
+          if (waveIndex >= cfg.waves) {
+            // 調整：如果是最後一波過關，呼叫 true 呈現過關選單
+            openBonusChoice(true);
+            return;
+          } else {
+            // 調整：每波過完也要觸發強化選單
+            openBonusChoice(false);
+            return;
+          }
+        }
+
+        animId = requestAnimationFrame(gameLoop);
+      }
+
+      /**
+       * @param {*} target
+       * @param {number} dmg
+       * @param {TowerDef} def
+       */
+      function applyDamage(target, dmg, def) {
+        if (def.special === 'splash') {
+          enemies.forEach((e) => {
+            if (e === target) return;
+            const dCells = Math.hypot(
+              e._nx * cols - target._nx * cols,
+              e._ny * rows - target._ny * rows
+            );
+            const splashRad = def.id === 'siege' ? 2.8 : 2.2;
+            if (dCells < splashRad) e.hp -= dmg * 0.38;
+          });
+        }
+        target.hp -= dmg;
+        if (def.special === 'slow') {
+          const factor = 0.78 / Math.sqrt(playerMods.slowPotency);
+          const prev = target.slowMul != null && isFinite(target.slowMul) ? target.slowMul : 1;
+          target.slowMul = Math.min(0.38, Math.max(0.08, prev * factor));
+        }
+        if (def.special === 'chain') {
+          let second = null;
+          let best = Infinity;
+          enemies.forEach((e) => {
+            if (e === target) return;
+            const dCells = Math.hypot(
+              e._nx * cols - target._nx * cols,
+              e._ny * rows - target._ny * rows
+            );
+            if (dCells < best) {
+              best = dCells;
+              second = e;
+            }
+          });
+          if (second) second.hp -= dmg * 0.48;
+        }
+        if (target.hp <= 0) {
+          gold += Math.floor(target.reward * playerMods.goldKillMul);
+          kills++;
+          enemies = enemies.filter((e) => e !== target);
+          // BUG 修復：不要在這裡刪除子彈參照！
+          // 因為 updateProjectiles 正在輪詢 projectiles 陣列，直接 filter 會導致底層 index 失效並造成迴圈卡死
+          // 交由外層迴圈檢查 enemies.indexOf() < 0 後，使用 splice 自我清理。
+          // projectiles = projectiles.filter((p) => p.target !== target);
+          updateHud();
+        }
+      }
+
+      /**
+       * @param {*} en
+       */
+      function leakEnemy(en) {
+        lives--;
+        updateHud();
+        enemies = enemies.filter((e) => e !== en);
+        if (lives <= 0) {
+          stopLoop();
+          waveActive = false;
+          gameOver(false);
+        }
+      }
+
+      /**
+       * 同步敵人精靈位置。重用同一 `#enemy-layer` 並更新子節點，避免每幀整棵重建造成中期嚴重掉幀。
+       */
+      function syncEnemySprites() {
+        const layer = document.getElementById('enemy-layer');
+        if (!layer) return;
+        const n = enemies.length;
+        while (layer.children.length > n) {
+          layer.removeChild(layer.lastChild);
+        }
+        for (let i = 0; i < n; i++) {
+          const en = enemies[i];
+          const def = ENEMY_TYPES.find((e) => e.id === en.typeId);
+          if (!def) continue;
+          let sp = layer.children[i];
+          if (!sp) {
+            sp = document.createElement('div');
+            sp.className = 'enemy-sprite';
+            layer.appendChild(sp);
+          }
+          sp.style.backgroundImage = 'url(' + def.img + ')';
+          sp.style.left = 'calc(' + en._nx * 100 + '% - 14px)';
+          sp.style.top = 'calc(' + en._ny * 100 + '% - 14px)';
+        }
+      }
+
+      /**
+       * @param {boolean} win
+       */
+      function gameOver(win) {
+        els.overlay.classList.add('active');
+        els.modalTitle.textContent = win ? '勝利！' : '基地被突破';
+        els.modalDesc.textContent = win
+          ? '你守住了第 ' + (currentLevel + 1) + ' 關！'
+          : '生命歸零或放棄本關。';
+      }
+
+      /**
+       * 調整：支援每波與通關的選單。通過傳入是否為「關卡結束」(isLevelEnd) 判斷。
+       * @param {boolean} isLevelEnd
+       */
+      function openBonusChoice(isLevelEnd) {
+        stopLoop();
+        waveActive = false;
+        projectiles = [];
+        syncProjectileLayer();
+        const picks = pickRandomPerks(3);
+        els.bonusCards.innerHTML = '';
+        picks.forEach(function (perk) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'bonus-card';
+          btn.innerHTML = '<strong>' + perk.name + '</strong><span>' + perk.desc + '</span>';
+          btn.addEventListener('click', function () {
+            perk.apply();
+            els.bonusOverlay.classList.remove('active');
+            
+            if (isLevelEnd) {
+              // 整個關卡通關
+              finalizeVictory();
+            } else {
+              // 僅此波結束，顯示繼續提示
+              els.waveTip.textContent = '加成已套用！按「開始 Wave」進行下一波';
+            }
+          });
+          els.bonusCards.appendChild(btn);
+        });
+
+        // 根據情境調整 Modal 內的標題字眼
+        const titleEl = document.getElementById('bonus-title');
+        const subEl = document.getElementById('bonus-sub');
+        if (isLevelEnd) {
+          titleEl.textContent = '關卡通關 - 選擇最終加成';
+          subEl.textContent = '通關獎勵：以下三選一（將繼承至下一關）';
+        } else {
+          titleEl.textContent = '本波防守成功';
+          subEl.textContent = '回合強化：選擇一項能力來強化你的防線';
+        }
+
+        els.bonusOverlay.classList.add('active');
+      }
+
+      /**
+       * 加成套用後解鎖關卡並顯示通關對話框。
+       */
+      function finalizeVictory() {
+        if (currentLevel === unlockedMax && currentLevel < 9) unlockedMax++;
+        els.overlay.classList.add('active');
+        els.modalTitle.textContent = '關卡通關！';
+        els.modalDesc.textContent =
+          '第 ' + (currentLevel + 1) + ' 關完成。已解鎖下一關（若適用），加成已累積。';
+      }
+
+      document.getElementById('btn-back-menu').addEventListener('click', () => {
+        stopLoop();
+        els.bonusOverlay.classList.remove('active');
+        renderLevelSelect();
+        showScreen('levels');
+      });
+      function giveUp() {
+        stopLoop();
+        waveActive = false;
+        projectiles = [];
+        gameOver(false);
+      }
+      document.getElementById('btn-giveup').addEventListener('click', giveUp);
+      document.getElementById('btn-start-wave').addEventListener('click', () => {
+        if (!waveActive) startWave();
+      });
+      document.getElementById('modal-again').addEventListener('click', () => {
+        els.overlay.classList.remove('active');
+        startLevel(currentLevel);
+      });
+      document.getElementById('modal-menu').addEventListener('click', () => {
+        els.overlay.classList.remove('active');
+        els.bonusOverlay.classList.remove('active');
+        renderLevelSelect();
+        showScreen('levels');
+      });
+
+      window.addEventListener('resize', function () {
+        fitBattlefieldToViewport();
+        refreshPlacementPreview();
+      });
+
+      renderLevelSelect();
+      showScreen('levels');
+    })();
+  </script>
+  <script>
+    /**
+     * 關卡選擇頁「回首頁」：返回遊戲大廳。
+     * - 若由 index.html 以 iframe 內嵌（同時提供父層 `closeGame`），則關閉 iframe 並顯示大廳。
+     * - 若直接開啟本檔，則以同目錄 `index.html` 導向。
+     */
+    (function setupBackToLobbyButton() {
+      var btn = document.getElementById('btn-back-lobby');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        try {
+          if (
+            window.parent &&
+            window.parent !== window &&
+            typeof window.parent.closeGame === 'function'
+          ) {
+            window.parent.closeGame();
+          } else {
+            window.location.href = 'index.html';
+          }
+        } catch (err) {
+          window.location.href = 'index.html';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
