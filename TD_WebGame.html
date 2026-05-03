@@ -2,12 +2,15 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- viewport-fit=cover：配合 env(safe-area-inset-*) 在瀏海／手勢條裝置留白 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Tower Defense — TD WebGame</title>
-  <!--
+    <!--
     素材來源：Kenney.nl「Tower Defense (top-down)」套件（CC0 1.0，可自由商用，無需署名）。
     OpenGameArt 鏡像：https://opengameart.org/content/tower-defense-300-tilessprites
     塔種能力值為自洽平衡；靈感取向同類「瀏覽器 / Phaser」塔防（如 game.5portal.net 之 Tower Defense 遊戲型態），非逐欄位抄寫該站。
+    砲塔外觀：採用 Game-icons.net 向量圖（經 jsDelivr 載入，CC BY 3.0，作者見 https://game-icons.net ），以 CSS `mask-image` 著上與子彈同色之漸層，並直立透視呈現立體感。
+    背景音樂：同資料夾 `MP3/02.MP3`（較高抽中機率）與 `MP3/04.MP3` 共三條候選隨機，於進入關卡選擇與進入戰場時延遲非同步載入。
   -->
   <style>
     :root {
@@ -169,6 +172,15 @@
     #screen-game.screen.active {
       display: flex;
       flex-direction: column;
+      /*
+       * RWD：以 dvh 扣掉動態網址列，避免手機上整欄被截斷；子層 `.game-stage` 再負責內部捲動。
+       */
+      min-height: 100vh;
+      min-height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
+      box-sizing: border-box;
+      overflow: hidden;
     }
     .game-toolbar {
       width: 100%;
@@ -176,6 +188,9 @@
       max-width: 100%; 
       margin: 0 auto;
       padding: 0 16px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-top: max(0px, env(safe-area-inset-top, 0px));
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -346,32 +361,67 @@
       color: #bbf7d0;
       text-shadow: 0 0 8px #22c55e;
     }
+    /*
+     * 主堡（路徑終點格）：`::after` 顯示主堡圖案（棋塔符號）；底部 `#goal-base-hud` 顯示血量（❤ 紅色 + 數字）。
+     * `.cell` 已 `position:relative`；圖案 `z-index:2`、血量 `z-index:5` 避免疊蓋。
+     */
     .cell.goal::after {
       content: "♜";
       position: absolute;
-      inset: 0;
-      display: flex;
+      left: 50%;
+      top: 6%;
+      transform: translateX(-50%);
+      z-index: 2;
+      font-size: clamp(0.95rem, 3.2vmin, 1.4rem);
+      line-height: 1;
+      color: #fecdd3;
+      filter: drop-shadow(0 0 7px rgba(248, 113, 113, 0.8));
+      pointer-events: none;
+    }
+    .goal-base-hud {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(2px, 0.6vmin, 6px);
+      transform: translateX(-50%);
+      z-index: 5;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      filter: drop-shadow(0 0 4px #f87171);
+      gap: 0.2em;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(5, 8, 20, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: clamp(0.58rem, min(1.9vmin, 2.1vh), 0.82rem);
+      font-weight: 700;
+      color: var(--text);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .goal-base-hud__heart {
+      color: #ef4444;
+      filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.55));
+    }
+    /* 左上「生命」列：愛心改紅色與主堡一致 */
+    .life-heart--ui {
+      color: #ef4444;
+      filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
     }
 
-    .tower-icon {
+    /* 外層包住 3D 棱柱；原 `.tower-icon` 二維背景圖改為內層 flex 容器 */
+    .tower-icon-wrap {
       position: absolute;
       inset: 3px;
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
       pointer-events: none;
       z-index: 2;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
     }
+    /* 敵人精靈：原 28px→42px→再 2 倍 → 84px（syncEnemySprites 內減半偏移同步為 42px 置中） */
     .enemy-sprite {
       position: absolute;
       inset: auto;
-      width: 28px;
-      height: 28px;
+      width: 84px;
+      height: 84px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -455,19 +505,82 @@
     }
     .tower-card small { color: var(--muted); display: block; }
 
+    /*
+     * 手機／窄螢幕 RWD：
+     * 舊版 `flex-wrap` + `map-outer flex:1 1 100%` 會讓地圖列在 `align-items:stretch` 下吃滿整段高度，
+     * 下方左右面板被壓成 0 高度而「看不到」。改為單欄 `column`：戰場 `flex:1` 最大化剩餘空間，
+     * 統計／商店改置於地圖下方，必要時僅 `.game-stage` 垂直捲動。
+     */
     @media (max-width: 960px) {
+      #screen-game.screen {
+        padding: 0.35rem 0 0.25rem;
+      }
       .game-stage {
-        flex-wrap: wrap;
-        align-content: flex-start;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        align-content: stretch;
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 6px max(8px, env(safe-area-inset-left, 0px)) 10px
+          max(8px, env(safe-area-inset-right, 0px));
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+        flex: 1 1 0;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .map-outer {
+        order: -1;
+        width: 100%;
+        flex: 1 1 0;
+        min-height: min(52vh, 420px);
+        max-height: none;
+        margin: 0;
+        padding: clamp(4px, 1vh, 10px) 2px clamp(8px, 2.5vh, 36px);
+      }
+      .map-scene {
+        margin-top: clamp(-2vh, -1vmin, 0px);
       }
       .panel {
         width: 100%;
         max-width: 100%;
+        flex: 0 0 auto;
         max-height: none;
+        order: 0;
       }
-      .map-outer {
-        order: -1;
-        flex: 1 1 100%;
+      .panel.panel--right .shop-list {
+        max-height: min(36vh, 280px);
+      }
+      .game-toolbar {
+        padding-left: max(10px, env(safe-area-inset-left, 0px));
+        padding-right: max(10px, env(safe-area-inset-right, 0px));
+      }
+      .game-toolbar .btn {
+        font-size: 0.85rem;
+        padding: 0.45rem 0.65rem;
+      }
+      #game-level-title {
+        font-size: 0.9rem;
+      }
+      /* 觸控無 hover：按住草地格時短暫顯示已放置塔之射程（沿用既有 .placed 圈） */
+      #screen-game.tower-picked .cell.field:active .range-ring.placed {
+        opacity: 1 !important;
+      }
+    }
+
+    /* 極窄寬度：略縮字級與內距，讓商店列與統計列仍單欄可讀。 */
+    @media (max-width: 400px) {
+      .panel {
+        padding: 10px;
+        border-radius: 12px;
+      }
+      .stat-row {
+        font-size: 0.82rem;
+      }
+      .tower-card {
+        padding: 6px;
       }
     }
 
@@ -526,13 +639,99 @@
       z-index: 4;
       overflow: visible;
     }
+    /* 子彈錨點：立體外觀見檔末 `.projectile` 覆寫（WebGL 以外之 CSS 3D 彈體） */
     .projectile {
       position: absolute;
-      width: 10px;
-      height: 10px;
-      margin: -5px 0 0 -5px;
+    }
+
+    /*
+     * 子彈命中敵人：連鎖閃電視覺（純 CSS 動畫 + 短暫 DOM）。
+     * 主幹 + 數支延遲出現的斜向分支，模擬電弧分叉；外層光暈可吃 --hit-tint（子彈色）。
+     */
+    /*
+     * 雷電外層 class 常與 `.hit-fx-root` 疊用：勿在此覆寫寬高為 0，否則與精靈框置中邏輯衝突。
+     * 實際錨點置中由 `.hit-fx-root`／`.hit-fx-inner` 與 JS 的 calc(-42px) 共同完成。
+     */
+    .hit-chain-lightning {
+      position: absolute;
+      pointer-events: none;
+      z-index: 6;
+    }
+    @keyframes chain-bolt-flash {
+      0% { opacity: 0; filter: brightness(2.2) saturate(1.4); }
+      18% { opacity: 1; }
+      100% { opacity: 0; filter: brightness(1) saturate(1); }
+    }
+    @keyframes chain-glow-pulse {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35); }
+      25% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); }
+    }
+    .hit-chain-lightning .chain-bolt {
+      position: absolute;
+      z-index: 2;
+      left: 0;
+      top: 0;
+      width: 4px;
+      margin-left: -2px;
+      border-radius: 2px;
+      transform-origin: 50% 100%;
+      background: linear-gradient(
+        to top,
+        rgba(255, 255, 255, 1) 0%,
+        rgba(186, 230, 253, 0.95) 35%,
+        rgba(96, 165, 250, 0.65) 70%,
+        transparent 100%
+      );
+      filter: drop-shadow(0 0 8px #e0f2fe) drop-shadow(0 0 16px var(--hit-tint, #60a5fa));
+      opacity: 0;
+      animation: chain-bolt-flash 0.45s ease-out forwards;
+    }
+    .hit-chain-lightning .chain-bolt--main {
+      height: 52px;
+      margin-top: -52px;
+      transform: translate(0, 0) rotate(0deg);
+    }
+    .hit-chain-lightning .chain-bolt--b1 {
+      height: 38px;
+      margin-top: -34px;
+      margin-left: -10px;
+      transform: translate(0, 0) rotate(38deg);
+      animation-delay: 0.07s;
+    }
+    .hit-chain-lightning .chain-bolt--b2 {
+      height: 36px;
+      margin-top: -30px;
+      margin-left: 6px;
+      transform: translate(0, 0) rotate(-48deg);
+      animation-delay: 0.12s;
+    }
+    .hit-chain-lightning .chain-bolt--b3 {
+      height: 30px;
+      margin-top: -22px;
+      margin-left: -2px;
+      transform: translate(0, 0) rotate(132deg);
+      animation-delay: 0.18s;
+    }
+    .hit-chain-lightning .chain-hit-glow {
+      position: absolute;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 72px;
+      height: 72px;
+      margin-left: -36px;
+      margin-top: -36px;
       border-radius: 50%;
-      box-shadow: 0 0 8px currentColor;
+      background: radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.55) 0%,
+        var(--hit-tint, rgba(96, 165, 250, 0.45)) 38%,
+        transparent 72%
+      );
+      opacity: 0;
+      animation: chain-glow-pulse 0.48s ease-out forwards;
+      pointer-events: none;
     }
 
     /* 過關/過波加成三選一 */
@@ -568,6 +767,309 @@
     .bonus-card:active { transform: scale(0.98); }
     .bonus-card strong { display: block; font-size: 1rem; margin-bottom: 8px; color: #93c5fd; }
     .bonus-card span { font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
+
+    /*
+     * --- 砲塔外觀：網路向量圖 + 直立透視 ---
+     * 圖檔來源：game-icons/icons（https://github.com/game-icons/icons ，CC BY 3.0），
+     * 經 jsDelivr 以 SVG 遮罩（mask）叠上與子彈同色之漸層；動畫採微擺＋略向上視角，使塔身接近「直立」體積感。
+     */
+    .tower-icon-wrap .tower-icon {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      perspective: 220px;
+    }
+    .tower-art-shell {
+      width: 86%;
+      height: 92%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      transform-style: preserve-3d;
+      transform-origin: 50% 92%;
+      transform: rotateX(-8deg) rotateY(18deg);
+      animation: tower-stand-sway 5.4s ease-in-out infinite;
+    }
+    @keyframes tower-stand-sway {
+      0%,
+      100% {
+        transform: rotateX(-10deg) rotateY(14deg) translateZ(0);
+      }
+      50% {
+        transform: rotateX(-4deg) rotateY(24deg) translateZ(5px);
+      }
+    }
+    .tower-art-mask {
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center bottom;
+      mask-position: center bottom;
+      -webkit-mask-mode: luminance;
+      mask-mode: luminance;
+      background: linear-gradient(
+        185deg,
+        #ffffff 0%,
+        var(--tower-tint, #94a3b8) 42%,
+        color-mix(in srgb, var(--tower-tint, #64748b) 72%, #020617) 100%
+      );
+      filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+    }
+
+    .tower-thumb-wrap {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      perspective: 120px;
+    }
+    .tower-thumb-wrap .tower-icon {
+      width: 100%;
+      height: 100%;
+    }
+    .tower-thumb-wrap .tower-art-shell {
+      width: 92%;
+      height: 94%;
+      animation-duration: 4.2s;
+    }
+
+    /* 立體子彈：雙層 preserve-3d 菱錐感 + 外光暈 */
+    .projectile {
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+      width: 18px;
+      height: 18px;
+      margin: -9px 0 0 -9px;
+      perspective: 36px;
+    }
+    /* 子彈略「直立」旋轉：rotateX 偏高使彈體在斜視棋盤上仍像朝上的柱狀體 */
+    .proj-3d {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transform: rotateX(68deg) rotateY(0deg) rotateZ(10deg);
+      animation: proj-spin 0.55s linear infinite;
+    }
+    @keyframes proj-spin {
+      to {
+        transform: rotateX(68deg) rotateY(360deg) rotateZ(10deg);
+      }
+    }
+    .proj-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin: -6px 0 0 -6px;
+      border-radius: 3px;
+      background: radial-gradient(circle at 30% 25%, #fff 0%, var(--pj-c, #fbbf24) 62%, transparent 100%);
+      transform: rotateX(12deg) translateZ(5px);
+      box-shadow: 0 0 14px var(--pj-c, #fbbf24);
+    }
+    .proj-fin {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 6px;
+      margin: -3px 0 0 -5px;
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--pj-c, #fbbf24) 70%, #fff), transparent);
+      transform: rotateZ(45deg) translateZ(-4px) skewX(-18deg);
+      opacity: 0.85;
+    }
+
+    /*
+     * 命中特效根節點：與 `.enemy-sprite` 相同以 84×84 外框 + 負邊距對齊路徑座標中心。
+     * 原因：舊版 0×0 節點搭配 translate(-50%,-50%) 時，百分比位移參考自身邊界盒寬高為 0，
+     * 導致 -50% 無效，特效視覺錨在怪物左上方；改為明確外框後由 `.hit-fx-inner` 承接 0×0 中心點。
+     */
+    .hit-fx-root {
+      position: absolute;
+      width: 84px;
+      height: 84px;
+      margin: -42px 0 0 -42px;
+      pointer-events: none;
+      z-index: 6;
+    }
+    /**
+     * 特效幾何中心：置於 84×84 外框正中央，子元素以 left/top:50% 或負 margin 向此點收斂。
+     */
+    .hit-fx-inner {
+      position: absolute;
+      left: 42px;
+      top: 42px;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    /*
+     * 子彈命中後持續黏在敵人中心的脈衝環：顏色強制跟隨 `--hit-tint`（與該塔 `bullet`／子彈同色），
+     * 動畫循環至父節點逾時移除；位移仍由 `updateBoardFollowHits` 每幀對齊敵人路徑座標。
+     */
+    .hit-fx-pulse-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      margin: -26px 0 0 -26px;
+      border-radius: 50%;
+      border: 2px solid var(--hit-tint, #60a5fa);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--hit-tint, #60a5fa) 65%, transparent);
+      opacity: 0.65;
+      z-index: 0;
+      animation: hit-tracking-pulse 0.42s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes hit-tracking-pulse {
+      0%,
+      100% {
+        transform: scale(0.88);
+        opacity: 0.45;
+      }
+      50% {
+        transform: scale(1.08);
+        opacity: 0.85;
+      }
+    }
+    @keyframes hit-frost-spin {
+      to { transform: translate(-50%, -50%) rotate(220deg) scale(1.05); }
+    }
+    .hit-fx--frost .frost-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 56px;
+      height: 56px;
+      margin: -28px 0 0 -28px;
+      border-radius: 50%;
+      border: 2px solid rgba(186, 230, 253, 0.85);
+      box-shadow: 0 0 18px rgba(103, 232, 249, 0.55), inset 0 0 18px rgba(125, 211, 252, 0.35);
+      animation: hit-frost-spin 0.42s ease-out forwards;
+      opacity: 0.95;
+    }
+    .hit-fx--frost .frost-shard {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 4px;
+      height: 22px;
+      margin: -11px 0 0 -2px;
+      background: linear-gradient(to top, rgba(255, 255, 255, 0.95), rgba(125, 211, 252, 0.2));
+      transform-origin: 50% 100%;
+      opacity: 0;
+      animation: chain-bolt-flash 0.38s ease-out forwards;
+    }
+    .hit-fx--frost .frost-shard:nth-child(2) { transform: rotate(20deg); animation-delay: 0.04s; }
+    .hit-fx--frost .frost-shard:nth-child(3) { transform: rotate(110deg); animation-delay: 0.08s; }
+    .hit-fx--frost .frost-shard:nth-child(4) { transform: rotate(200deg); animation-delay: 0.12s; }
+
+    @keyframes hit-burst-pop {
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+      35% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+    }
+    .hit-fx--burst .burst-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 40px;
+      height: 40px;
+      margin: -20px 0 0 -20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.75) 0%, var(--hit-tint, #a3e635) 45%, transparent 68%);
+      animation: hit-burst-pop 0.32s ease-out forwards;
+    }
+    .hit-fx--burst .burst-spoke {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 3px;
+      height: 26px;
+      margin: -26px 0 0 -1.5px;
+      background: linear-gradient(to top, var(--hit-tint, #a3e635), transparent);
+      transform-origin: 50% 100%;
+      opacity: 0;
+      animation: chain-bolt-flash 0.28s ease-out forwards;
+    }
+    .hit-fx--burst .burst-spoke:nth-child(2) { transform: rotate(0deg); }
+    .hit-fx--burst .burst-spoke:nth-child(3) { transform: rotate(72deg); }
+    .hit-fx--burst .burst-spoke:nth-child(4) { transform: rotate(144deg); }
+    .hit-fx--burst .burst-spoke:nth-child(5) { transform: rotate(216deg); }
+    .hit-fx--burst .burst-spoke:nth-child(6) { transform: rotate(288deg); }
+
+    @keyframes hit-sniper-line {
+      0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.15); }
+      30% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1); }
+    }
+    .hit-fx--sniper .sniper-line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      height: 3px;
+      margin: -1.5px 0 0 -60px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), var(--hit-tint, #fb7185), transparent);
+      transform-origin: 50% 50%;
+      filter: drop-shadow(0 0 10px var(--hit-tint, #fb7185));
+      animation: hit-sniper-line 0.22s ease-out forwards;
+    }
+
+    @keyframes hit-boom-pulse {
+      0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0; }
+      22% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.55); opacity: 0; }
+    }
+    .hit-fx--explode .boom-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 86px;
+      height: 86px;
+      margin: -43px 0 0 -43px;
+      border-radius: 50%;
+      border: 3px solid color-mix(in srgb, var(--hit-tint, #fb923c) 70%, #fff);
+      box-shadow: 0 0 22px color-mix(in srgb, var(--hit-tint, #fb923c) 55%, transparent);
+      animation: hit-boom-pulse 0.48s ease-out forwards;
+    }
+    .hit-fx--explode .boom-haze {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 72px;
+      height: 72px;
+      margin: -36px 0 0 -36px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, var(--hit-tint, #fb923c) 42%, transparent 70%);
+      animation: chain-glow-pulse 0.5s ease-out forwards;
+    }
+
+    .hit-fx--spark .spark-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 6px;
+      height: 6px;
+      margin: -3px 0 0 -3px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 0%, var(--hit-tint, #fbbf24) 55%, transparent 70%);
+      opacity: 0;
+      animation: chain-bolt-flash 0.22s ease-out forwards;
+    }
+    .hit-fx--spark .spark-dot:nth-child(2) { transform: translate(10px, -6px); animation-delay: 0.03s; }
+    .hit-fx--spark .spark-dot:nth-child(3) { transform: translate(-12px, 8px); animation-delay: 0.06s; }
+    .hit-fx--spark .spark-dot:nth-child(4) { transform: translate(6px, 12px); animation-delay: 0.09s; }
   </style>
 </head>
 <body>
@@ -582,7 +1084,8 @@
     <p class="subtitle">選擇關卡</p>
     <div class="level-grid" id="level-grid"></div>
     <p class="copyright-note">
-      角色與砲塔圖檔取自 Kenney.nl 公開領域 CC0 素材（Tower Defense top-down），檔案置於 TD_Photo 資料夾。
+      敵人精靈等二維圖檔取自 Kenney.nl 公開領域 CC0 素材（Tower Defense top-down），檔案置於 TD_Photo 資料夾；砲塔圖示取自 Game-icons（CC BY 3.0），經 jsDelivr 熱連線 SVG 並以遮罩染色。
+      攻擊音效為 Web Audio API 即時合成；背景音樂請將 `02.MP3`、`04.MP3` 置於同層 `MP3` 資料夾（程式內含兩份 02 與一份 04 之隨機池）。砲塔圖示為 Game-icons（CC BY 3.0），使用時請保留授權頁連結於作品說明。
     </p>
   </section>
 
@@ -601,7 +1104,7 @@
         <div class="wave-bar" id="wave-bar"></div>
         <h3>生命</h3>
         <div class="stat-row">
-          <span>❤</span>
+          <span class="life-heart--ui" aria-hidden="true">❤</span>
           <span id="ui-life-text">10 / 10</span>
         </div>
         <div class="life-bar"><i id="ui-life-fill" style="width:100%;"></i></div>
@@ -653,7 +1156,8 @@
       'use strict';
 
       /**
-       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string }} TowerDef
+       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string, iconPath: string }} TowerDef
+       * `iconPath`：Game-icons 倉庫內相對路徑（與 `GAME_ICONS_CDN_BASE` 拼接），授權 CC BY 3.0（https://game-icons.net）。
        * 參數設計參考常見瀏覽器 TD／Phaser 類作品（如 GamePortal 等頁遊）之塔種分工：速射、重砲、緩速、狙擊、飛彈、連鎖等。
        */
       /** @typedef {{ id: string, name: string, hp: number, speed: number, reward: number, img: string }} EnemyDef */
@@ -663,14 +1167,118 @@
        * @type {TowerDef[]}
        */
       const TOWER_TYPES = [
-        { id: 'gatling', name: '機槍塔', cost: 38, range: 5.6, damage: 9, cooldown: 240, projSpeed: 5.5, bullet: '#fbbf24', img: 'TD_Photo/tower_basic.png', desc: '高射速', special: '' },
-        { id: 'cannon', name: '重砲塔', cost: 88, range: 5.0, damage: 36, cooldown: 900, projSpeed: 3.2, bullet: '#94a3b8', img: 'TD_Photo/tower_heavy.png', desc: '單發高傷+小範圍溅射', special: 'splash' },
-        { id: 'frost', name: '寒冰塔', cost: 72, range: 5.4, damage: 13, cooldown: 580, projSpeed: 3.8, bullet: '#67e8f9', img: 'TD_Photo/tower_plasma.png', desc: '命中緩速', special: 'slow' },
-        { id: 'sniper', name: '狙擊塔', cost: 122, range: 8.2, damage: 78, cooldown: 1580, projSpeed: 8.5, bullet: '#fb7185', img: 'TD_Photo/tower_missile.png', desc: '極遠程單體', special: '' },
-        { id: 'rocket', name: '火箭塔', cost: 128, range: 6.2, damage: 46, cooldown: 1280, projSpeed: 3.6, bullet: '#fb923c', img: 'TD_Photo/tower_missile.png', desc: '爆炸溅射', special: 'splash' },
-        { id: 'tesla', name: '雷電塔', cost: 102, range: 5.6, damage: 16, cooldown: 350, projSpeed: 6.2, bullet: '#fde047', img: 'TD_Photo/tower_electric.png', desc: '連鎖次要目標', special: 'chain' },
-        { id: 'siege', name: '攻城砲', cost: 108, range: 5.2, damage: 44, cooldown: 1020, projSpeed: 2.6, bullet: '#cbd5e1', img: 'TD_Photo/tower_heavy.png', desc: '大中範圍溅射', special: 'splash' },
-        { id: 'burst', name: '連射塔', cost: 48, range: 5.8, damage: 11, cooldown: 360, projSpeed: 5.0, bullet: '#a3e635', img: 'TD_Photo/tower_basic.png', desc: '中速連發', special: '' }
+        {
+          id: 'gatling',
+          name: '機槍塔',
+          cost: 38,
+          range: 5.6,
+          damage: 9,
+          cooldown: 240,
+          projSpeed: 5.5,
+          bullet: '#fbbf24',
+          img: 'TD_Photo/tower_basic.png',
+          iconPath: 'lorc/bolter-gun.svg',
+          desc: '高射速',
+          special: ''
+        },
+        {
+          id: 'cannon',
+          name: '重砲塔',
+          cost: 88,
+          range: 5.0,
+          damage: 36,
+          cooldown: 900,
+          projSpeed: 3.2,
+          bullet: '#94a3b8',
+          img: 'TD_Photo/tower_heavy.png',
+          iconPath: 'lorc/cannon.svg',
+          desc: '單發高傷+小範圍溅射',
+          special: 'splash'
+        },
+        {
+          id: 'frost',
+          name: '寒冰塔',
+          cost: 72,
+          range: 5.4,
+          damage: 13,
+          cooldown: 580,
+          projSpeed: 3.8,
+          bullet: '#67e8f9',
+          img: 'TD_Photo/tower_plasma.png',
+          iconPath: 'lorc/ice-bolt.svg',
+          desc: '命中緩速',
+          special: 'slow'
+        },
+        {
+          id: 'sniper',
+          name: '狙擊塔',
+          cost: 122,
+          range: 8.2,
+          damage: 78,
+          cooldown: 1580,
+          projSpeed: 8.5,
+          bullet: '#fb7185',
+          img: 'TD_Photo/tower_missile.png',
+          iconPath: 'lorc/laser-precision.svg',
+          desc: '極遠程單體',
+          special: ''
+        },
+        {
+          id: 'rocket',
+          name: '火箭塔',
+          cost: 128,
+          range: 6.2,
+          damage: 46,
+          cooldown: 1280,
+          projSpeed: 3.6,
+          bullet: '#fb923c',
+          img: 'TD_Photo/tower_missile.png',
+          iconPath: 'lorc/missile-pod.svg',
+          desc: '爆炸溅射',
+          special: 'splash'
+        },
+        {
+          id: 'tesla',
+          name: '雷電塔',
+          cost: 102,
+          range: 5.6,
+          damage: 16,
+          cooldown: 350,
+          projSpeed: 6.2,
+          bullet: '#fde047',
+          img: 'TD_Photo/tower_electric.png',
+          iconPath: 'lorc/laser-sparks.svg',
+          desc: '連鎖次要目標',
+          special: 'chain'
+        },
+        {
+          id: 'siege',
+          name: '攻城砲',
+          cost: 108,
+          range: 5.2,
+          damage: 44,
+          cooldown: 1020,
+          projSpeed: 2.6,
+          bullet: '#cbd5e1',
+          img: 'TD_Photo/tower_heavy.png',
+          iconPath: 'lorc/cannon-shot.svg',
+          desc: '大中範圍溅射',
+          special: 'splash'
+        },
+        {
+          id: 'burst',
+          name: '連射塔',
+          cost: 48,
+          range: 5.8,
+          damage: 11,
+          cooldown: 360,
+          projSpeed: 5.0,
+          bullet: '#a3e635',
+          img: 'TD_Photo/tower_basic.png',
+          iconPath: 'lorc/laser-blast.svg',
+          desc: '中速連發',
+          special: ''
+        }
       ];
 
       /**
@@ -761,15 +1369,446 @@
       let projectiles = [];
 
       /**
+       * 掛在棋盤上的命中特效：每幀以敵人 `_nx/_ny` 更新座標，使特效「黏在」移動中的敵人身上。
+       * （相對於把節點掛在敵人精靈 div：syncEnemySprites 會重用子節點，子元素易殘留／錯位。）
+       * @type {{ el: HTMLElement, en: Object }[]}
+       */
+      let boardFollowHits = [];
+
+      /** @type {HTMLAudioElement | null} 延遲載入之背景音樂實例 */
+      let bgmAudio = null;
+
+      /** @type {AudioContext | null} Web Audio 合成音效用 */
+      let webAudioCtx = null;
+
+      /** @type {AudioBuffer | null} 簡易雜訊緩衝（雷電／爆炸質感） */
+      let noiseBuffer = null;
+
+      /**
+       * 同資料夾 MP3：進入關卡選擇與進入戰鬥關卡時各抽一首（隨機）；載入延後以加速首屏。
+       * 曲目池依需求為 `02.MP3`（兩次權重）與 `04.MP3` 共三條隨機候選；若實際檔名不同可自行修改陣列。
+       * @type {string[]}
+       */
+      const BGM_POOL = ['MP3/02.MP3', 'MP3/02.MP3', 'MP3/04.MP3'];
+
+      /**
+       * 隨機挑選背景音樂路徑。
+       * @returns {string}
+       */
+      function pickRandomBgmSrc() {
+        return BGM_POOL[Math.floor(Math.random() * BGM_POOL.length)];
+      }
+
+      /**
+       * 停止並釋放上一首 BGM，避免切換畫面時重疊播放。
+       */
+      function stopBackgroundMusic() {
+        if (!bgmAudio) return;
+        try {
+          bgmAudio.pause();
+          bgmAudio.removeAttribute('src');
+          bgmAudio.load();
+        } catch (e) {
+          /* 忽略：部分瀏覽器在 src 清空時仍可能拋錯 */
+        }
+        bgmAudio = null;
+      }
+
+      /**
+       * 延遲非同步載入並循環播放 BGM（不阻塞版面與主腳本）。
+       * 使用 `preload="none"` 與 `setTimeout(0)`／`requestIdleCallback` 讓 DOM 先穩定再建立 Audio。
+       */
+      function beginBackgroundMusicDeferred() {
+        stopBackgroundMusic();
+        const kick = function () {
+          const a = new Audio();
+          a.preload = 'none';
+          a.loop = true;
+          a.volume = 0.38;
+          a.src = pickRandomBgmSrc();
+          /**
+           * 錯誤時靜默略過（例如本機尚無 MP3 資料夾），不影響遊戲主流程。
+           */
+          a.addEventListener(
+            'error',
+            function () {
+              bgmAudio = null;
+            },
+            { once: true }
+          );
+          a.addEventListener(
+            'canplaythrough',
+            function () {
+              a.play().catch(function () {
+                /* 自動播放策略：若被擋，待使用者第一次點擊後由 ensureAudioUnlocked 再嘗試 */
+              });
+            },
+            { once: true }
+          );
+          a.load();
+          bgmAudio = a;
+        };
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(
+            function () {
+              window.setTimeout(kick, 0);
+            },
+            { timeout: 6000 }
+          );
+        } else {
+          window.setTimeout(kick, 0);
+        }
+      }
+
+      /**
+       * 取得或建立 Web Audio 脈絡。
+       * @returns {AudioContext | null}
+       */
+      function ensureWebAudioCtx() {
+        if (webAudioCtx) return webAudioCtx;
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        webAudioCtx = new Ctor();
+        return webAudioCtx;
+      }
+
+      /**
+       * 建立白雜訊片段供雷擊／爆炸等音色叠加。
+       * @param {AudioContext} ctx
+       * @returns {AudioBuffer}
+       */
+      function buildNoiseBuffer(ctx) {
+        const len = Math.floor(ctx.sampleRate * 0.35);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.65;
+        }
+        return buf;
+      }
+
+      /**
+       * 解除 AudioContext 暫停（瀏覽器要求須經使用者手勢）。
+       * @returns {Promise<void>}
+       */
+      function resumeWebAudioCtx() {
+        const ctx = ensureWebAudioCtx();
+        if (!ctx) return Promise.resolve();
+        if (ctx.state === 'suspended') return ctx.resume().catch(function () {});
+        return Promise.resolve();
+      }
+
+      let audioUnlockBound = false;
+
+      /**
+       * 綁定一次性點擊／觸控：喚醒 Web Audio 並嘗試續播 BGM。
+       */
+      function ensureAudioUnlockedOnce() {
+        if (audioUnlockBound) return;
+        audioUnlockBound = true;
+        const handler = function () {
+          resumeWebAudioCtx();
+          if (bgmAudio && bgmAudio.paused) {
+            bgmAudio.play().catch(function () {});
+          }
+        };
+        document.addEventListener('pointerdown', handler, { passive: true });
+        document.addEventListener('keydown', handler);
+      }
+
+      /**
+       * 依塔種播放合成攻擊音效（至少八種參數組；皆為程式產生，無外部音檔依賴）。
+       * @param {TowerDef} def
+       */
+      function playTowerAttackSound(def) {
+        ensureAudioUnlockedOnce();
+        const ctx = ensureWebAudioCtx();
+        if (!ctx) return;
+        if (!noiseBuffer) noiseBuffer = buildNoiseBuffer(ctx);
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.0001, now);
+        master.connect(ctx.destination);
+
+        /**
+         * @param {number} f
+         * @param {string} type
+         * @param {number} t0
+         * @param {number} dur
+         * @param {number} vol
+         */
+        function beep(f, type, t0, dur, vol) {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = /** @type {OscillatorType} */ (type);
+          o.frequency.setValueAtTime(f, now + t0);
+          g.gain.setValueAtTime(0.0001, now + t0);
+          g.gain.exponentialRampToValueAtTime(vol, now + t0 + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + t0 + dur);
+          o.connect(g);
+          g.connect(master);
+          o.start(now + t0);
+          o.stop(now + t0 + dur + 0.02);
+        }
+
+        /**
+         * @param {number} t0
+         * @param {number} dur
+         * @param {number} vol
+         */
+        function noiseBurst(t0, dur, vol) {
+          const src = ctx.createBufferSource();
+          const g = ctx.createGain();
+          const bp = ctx.createBiquadFilter();
+          src.buffer = noiseBuffer;
+          bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(1800, now + t0);
+          bp.Q.setValueAtTime(0.9, now + t0);
+          g.gain.setValueAtTime(0.0001, now + t0);
+          g.gain.exponentialRampToValueAtTime(vol, now + t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + t0 + dur);
+          src.connect(bp);
+          bp.connect(g);
+          g.connect(master);
+          src.start(now + t0);
+          src.stop(now + t0 + dur + 0.02);
+        }
+
+        master.gain.exponentialRampToValueAtTime(0.55, now + 0.02);
+
+        switch (def.id) {
+          case 'gatling':
+            for (let i = 0; i < 4; i++) {
+              beep(920 + i * 70, 'square', i * 0.028, 0.05, 0.09);
+            }
+            noiseBurst(0.01, 0.06, 0.04);
+            break;
+          case 'cannon':
+            beep(140, 'sawtooth', 0, 0.22, 0.16);
+            beep(95, 'sine', 0.04, 0.35, 0.12);
+            noiseBurst(0.02, 0.18, 0.11);
+            break;
+          case 'frost':
+            beep(660, 'triangle', 0, 0.08, 0.08);
+            beep(990, 'sine', 0.06, 0.12, 0.06);
+            beep(1320, 'triangle', 0.12, 0.16, 0.05);
+            noiseBurst(0.04, 0.1, 0.03);
+            break;
+          case 'sniper':
+            noiseBurst(0, 0.05, 0.06);
+            beep(2200, 'square', 0.02, 0.07, 0.07);
+            beep(420, 'sine', 0.05, 0.2, 0.05);
+            break;
+          case 'rocket':
+            beep(300, 'sawtooth', 0, 0.12, 0.1);
+            noiseBurst(0.08, 0.28, 0.14);
+            beep(120, 'triangle', 0.12, 0.4, 0.12);
+            break;
+          case 'tesla':
+            for (let k = 0; k < 6; k++) {
+              beep(880 + (k % 3) * 140, 'square', k * 0.018, 0.04, 0.06);
+            }
+            noiseBurst(0, 0.14, 0.08);
+            break;
+          case 'siege':
+            beep(90, 'sawtooth', 0, 0.32, 0.18);
+            beep(55, 'sine', 0.06, 0.45, 0.14);
+            noiseBurst(0.04, 0.22, 0.12);
+            break;
+          case 'burst':
+            for (let j = 0; j < 3; j++) {
+              beep(740 - j * 60, 'triangle', j * 0.05, 0.07, 0.075);
+            }
+            noiseBurst(0.02, 0.08, 0.035);
+            break;
+          default:
+            beep(520, 'sine', 0, 0.12, 0.07);
+        }
+
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+      }
+
+      /**
+       * 每幀更新黏附型命中特效位置。
+       */
+      /**
+       * 每幀更新黏附型命中特效位置。
+       * 與 `syncEnemySprites` 相同採 `calc(百分比 - 42px)`，使 84×84 外框中心對齊敵人路徑座標（`_nx`／`_ny`）。
+       */
+      function updateBoardFollowHits() {
+        for (let i = 0; i < boardFollowHits.length; i++) {
+          const h = boardFollowHits[i];
+          if (!h.el.isConnected) continue;
+          const idx = enemies.indexOf(h.en);
+          if (idx < 0) continue;
+          h.el.style.left = 'calc(' + h.en._nx * 100 + '% - 42px)';
+          h.el.style.top = 'calc(' + h.en._ny * 100 + '% - 42px)';
+        }
+      }
+
+      /**
+       * 從棋盤追蹤陣列移除指定節點。
+       * @param {HTMLElement} el
+       */
+      function removeBoardFollowHit(el) {
+        for (let i = boardFollowHits.length - 1; i >= 0; i--) {
+          if (boardFollowHits[i].el === el) boardFollowHits.splice(i, 1);
+        }
+      }
+
+      /**
+       * Game-icons 向量圖 CDN 根路徑（與各塔 `iconPath` 拼接）。備援：GitHub raw 同路徑。
+       * 授權：CC BY 3.0（https://game-icons.net/about.html#license）。
+       * @type {string}
+       */
+      const GAME_ICONS_CDN_BASE = 'https://cdn.jsdelivr.net/gh/game-icons/icons@master/';
+
+      /**
+       * 建立砲塔外觀 HTML：遠端 SVG 作為 `-webkit-mask-image`／`mask-image`，並以 `--tower-tint` 上色。
+       * @param {TowerDef} def
+       * @param {'field'|'shop'} mode 商店列使用外層 `.tower-thumb-wrap` 控制 40×40 縮圖
+       * @returns {string}
+       */
+      function buildTowerArtHtml(def, mode) {
+        const url = GAME_ICONS_CDN_BASE + def.iconPath;
+        const inner =
+          '<div class="tower-icon">' +
+          '<div class="tower-art-shell">' +
+          '<div class="tower-art-mask" style="-webkit-mask-image:url(\'' +
+          url +
+          '\');mask-image:url(\'' +
+          url +
+          '\');--tower-tint:' +
+          def.bullet +
+          '"></div></div></div>';
+        if (mode === 'shop') {
+          return '<div class="tower-thumb-wrap">' + inner + '</div>';
+        }
+        return inner;
+      }
+
+      /**
+       * 依塔種建立命中特效 DOM（不含定位；定位由呼叫端寫入 `calc(% - 42px)` 與敵人精靈置中一致）。
+       * 外層 `.hit-fx-root` 為 84×84 外框，內層 `.hit-fx-inner` 為幾何中心（0×0），避免舊版 0×0 根節點
+       * 搭配 translate(-50%,-50%) 時百分比參考寬高為 0 導致特效錨在怪物左上方。
+       * @param {TowerDef} def
+       * @param {string} [tintHex]
+       * @returns {HTMLElement}
+       */
+      function createHitEffectElement(def, tintHex) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hit-fx-root';
+        // 子彈／命中特效著色：呼叫端傳入之塔子彈色優先，否則用該塔定義之 bullet（與子彈同色）
+        wrap.style.setProperty('--hit-tint', tintHex || def.bullet);
+        /** @type {HTMLElement} 置於外框中心的 0×0 錨點，供子元素以 50%/負 margin 對齊視覺中心 */
+        const inner = document.createElement('div');
+        inner.className = 'hit-fx-inner';
+        wrap.appendChild(inner);
+        const pulse = document.createElement('div');
+        pulse.className = 'hit-fx-pulse-ring';
+        inner.appendChild(pulse);
+
+        if (def.id === 'tesla' || def.special === 'chain') {
+          wrap.classList.add('hit-chain-lightning');
+          const branches = ['main', 'b1', 'b2', 'b3'];
+          for (let bi = 0; bi < branches.length; bi++) {
+            const bolt = document.createElement('div');
+            bolt.className = 'chain-bolt chain-bolt--' + branches[bi];
+            inner.appendChild(bolt);
+          }
+          const glow = document.createElement('div');
+          glow.className = 'chain-hit-glow';
+          inner.appendChild(glow);
+          return wrap;
+        }
+
+        if (def.special === 'slow' || def.id === 'frost') {
+          wrap.classList.add('hit-fx--frost');
+          const ring = document.createElement('div');
+          ring.className = 'frost-ring';
+          inner.appendChild(ring);
+          for (let s = 0; s < 4; s++) {
+            inner.appendChild(document.createElement('div')).className = 'frost-shard';
+          }
+          return wrap;
+        }
+
+        if (def.id === 'sniper') {
+          wrap.classList.add('hit-fx--sniper');
+          const line = document.createElement('div');
+          line.className = 'sniper-line';
+          inner.appendChild(line);
+          return wrap;
+        }
+
+        if (def.special === 'splash' || def.id === 'rocket' || def.id === 'cannon' || def.id === 'siege') {
+          wrap.classList.add('hit-fx--explode');
+          const haze = document.createElement('div');
+          haze.className = 'boom-haze';
+          const ring = document.createElement('div');
+          ring.className = 'boom-ring';
+          inner.appendChild(haze);
+          inner.appendChild(ring);
+          return wrap;
+        }
+
+        if (def.id === 'burst') {
+          wrap.classList.add('hit-fx--burst');
+          const core = document.createElement('div');
+          core.className = 'burst-core';
+          inner.appendChild(core);
+          for (let k = 0; k < 5; k++) {
+            const sp = document.createElement('div');
+            sp.className = 'burst-spoke';
+            inner.appendChild(sp);
+          }
+          return wrap;
+        }
+
+        /* 機槍塔等速射：火花簇 */
+        wrap.classList.add('hit-fx--spark');
+        for (let d = 0; d < 4; d++) {
+          const dot = document.createElement('div');
+          dot.className = 'spark-dot';
+          inner.appendChild(dot);
+        }
+        return wrap;
+      }
+
+      /**
+       * 在棋盤上生成「黏附敵人」之命中特效：每幀更新座標直至逾時移除。
+       * @param {Object} enemyRef 敵人物件參照（需具 `_nx`、`_ny`）
+       * @param {TowerDef} def
+       * @param {string} [tintHex]
+       * @param {number} [lifeMs]
+       */
+      function spawnTowerHitFollowEnemy(enemyRef, def, tintHex, lifeMs) {
+        const board = els.mapBoard;
+        if (!board || !enemyRef) return;
+        const wrap = createHitEffectElement(def, tintHex);
+        /* 與 `.enemy-sprite` 一致：外框左上角 = 路徑點中心減半寬高，特效視覺中心與怪物重合 */
+        wrap.style.left = 'calc(' + enemyRef._nx * 100 + '% - 42px)';
+        wrap.style.top = 'calc(' + enemyRef._ny * 100 + '% - 42px)';
+        board.appendChild(wrap);
+        boardFollowHits.push({ el: wrap, en: enemyRef });
+        /* 預設維持較久，讓脈衝環有足夠時間黏在敵人身上移動 */
+        const ms = lifeMs != null ? lifeMs : def.id === 'sniper' ? 300 : 680;
+        window.setTimeout(function () {
+          removeBoardFollowHit(wrap);
+          if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        }, ms);
+      }
+
+      /**
        * 五種敵人：步兵、快兵、重坦、戰機、轟炸（獎勵金幣不同）。
        * @type {EnemyDef[]}
        */
       const ENEMY_TYPES = [
-        { id: 'grunt', name: '步兵', hp: 55, speed: 0.038, reward: 9, img: 'TD_Photo/enemy_grunt.png' },
-        { id: 'runner', name: '快攻兵', hp: 32, speed: 0.062, reward: 11, img: 'TD_Photo/enemy_runner.png' },
-        { id: 'tank', name: '重裝甲', hp: 140, speed: 0.02, reward: 28, img: 'TD_Photo/enemy_tank.png' },
-        { id: 'plane', name: '戰機', hp: 48, speed: 0.048, reward: 14, img: 'TD_Photo/enemy_plane.png' },
-        { id: 'bomber', name: '轟炸機', hp: 85, speed: 0.032, reward: 20, img: 'TD_Photo/enemy_bomber.png' }
+        { id: 'grunt', name: '步兵', hp: 64, speed: 0.038, reward: 9, img: 'TD_Photo/enemy_grunt.png' },
+        { id: 'runner', name: '快攻兵', hp: 38, speed: 0.062, reward: 11, img: 'TD_Photo/enemy_runner.png' },
+        { id: 'tank', name: '重裝甲', hp: 168, speed: 0.02, reward: 28, img: 'TD_Photo/enemy_tank.png' },
+        { id: 'plane', name: '戰機', hp: 56, speed: 0.048, reward: 14, img: 'TD_Photo/enemy_plane.png' },
+        { id: 'bomber', name: '轟炸機', hp: 100, speed: 0.032, reward: 20, img: 'TD_Photo/enemy_bomber.png' }
       ];
 
       /**
@@ -1005,9 +2044,10 @@
       function getLevelConfig(levelIndex) {
         const rows = 12 + levelIndex * 2;
         const cols = 12 + levelIndex * 2;
-        const waves = 6 + levelIndex;
-        const startGold = 130 + levelIndex * 35;
-        const diff = 1 + levelIndex * 0.09;
+        /* 難度調高：波數 +2、起始金略減、成長係數提高，後期敵血更厚；另依需求全關初始資金 +100 */
+        const waves = 8 + levelIndex;
+        const startGold = 118 + levelIndex * 30 + 100;
+        const diff = 1 + levelIndex * 0.13;
         return { rows, cols, waves, startGold, diff, seed: 10007 + levelIndex * 7919 };
       }
 
@@ -1125,6 +2165,8 @@
           }
           els.levelGrid.appendChild(card);
         }
+        /* 進入關卡選擇畫面：延遲載入隨機 BGM（與 `startLevel` 進入戰場時相同策略） */
+        beginBackgroundMusicDeferred();
       }
 
       /**
@@ -1179,7 +2221,7 @@
             (can ? '' : ' disabled');
           b.disabled = !can;
           b.innerHTML =
-            '<img src="' + t.img + '" alt="" />' +
+            buildTowerArtHtml(t, 'shop') +
             '<div><strong>' + t.name + '</strong><small>💰' + t.cost +
             ' · 攻 ' + Math.round(t.damage * playerMods.damageMul) +
             ' · 距 ' + getEffectiveRange(t).toFixed(1) +
@@ -1229,7 +2271,7 @@
         if (!selectedTowerId) return;
         const old = cell.querySelector('.range-ring.preview');
         if (old) old.remove();
-        if (cell.querySelector('.tower-icon')) return;
+        if (cell.querySelector('.tower-icon-wrap')) return;
         const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
         if (!def) return;
         const ring = document.createElement('div');
@@ -1246,6 +2288,8 @@
        * 依目前網格與路徑重繪棋盤 DOM。
        */
       function renderMap() {
+        /* 重繪棋盤時一併清空黏附特效追蹤，避免指向已銷毀的 DOM／敵人參照 */
+        boardFollowHits = [];
         previewHoverCell = null;
         els.mapBoard.innerHTML = '';
         els.mapBoard.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
@@ -1258,7 +2302,19 @@
             cell.dataset.r = String(r);
             cell.dataset.c = String(c);
             if (onPath && spawnCell[0] === r && spawnCell[1] === c) cell.classList.add('spawn');
-            if (onPath && goalCell[0] === r && goalCell[1] === c) cell.classList.add('goal');
+            if (onPath && goalCell[0] === r && goalCell[1] === c) {
+              cell.classList.add('goal');
+              const goalHud = document.createElement('div');
+              goalHud.id = 'goal-base-hud';
+              goalHud.className = 'goal-base-hud';
+              goalHud.setAttribute('role', 'status');
+              goalHud.setAttribute('aria-live', 'polite');
+              goalHud.setAttribute('aria-label', '主堡生命');
+              goalHud.innerHTML =
+                '<span class="goal-base-hud__heart" aria-hidden="true">❤</span>' +
+                '<span class="goal-base-hud__text" id="goal-base-hud-text"></span>';
+              cell.appendChild(goalHud);
+            }
             if (!onPath) {
               cell.addEventListener('click', onCellClick);
               cell.addEventListener('mouseenter', function onFieldEnter() {
@@ -1297,8 +2353,8 @@
         const cell = els.mapBoard.children[idx];
         if (!cell) return;
         const icon = document.createElement('div');
-        icon.className = 'tower-icon';
-        icon.style.backgroundImage = 'url(' + def.img + ')';
+        icon.className = 'tower-icon-wrap';
+        icon.innerHTML = buildTowerArtHtml(def, 'field');
         const ring = document.createElement('div');
         ring.className = 'range-ring placed';
         const effR = getEffectiveRange(def);
@@ -1318,7 +2374,7 @@
         const c = +t.dataset.c;
         const k = r + ',' + c;
         if (pathSet.has(k)) return;
-        if (t.querySelector('.tower-icon')) return;
+        if (t.querySelector('.tower-icon-wrap')) return;
         if (!selectedTowerId) return;
         const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
         if (!def || gold < def.cost) return;
@@ -1334,8 +2390,13 @@
       function updateHud() {
         els.uiGold.textContent = String(Math.floor(gold));
         els.uiKills.textContent = String(kills);
-        els.uiLifeText.textContent = lives + ' / 10';
+        const lifeStr = lives + ' / 10';
+        els.uiLifeText.textContent = lifeStr;
         els.uiLifeFill.style.width = Math.max(0, (lives / 10) * 100) + '%';
+        const goalLifeEl = document.getElementById('goal-base-hud-text');
+        if (goalLifeEl) {
+          goalLifeEl.textContent = lifeStr;
+        }
         const cfg = getLevelConfig(currentLevel);
         const waveDisp = Math.min(waveIndex + 1, cfg.waves);
         els.uiWave.textContent = waveDisp + ' / ' + cfg.waves;
@@ -1385,6 +2446,8 @@
         updateHud();
         els.waveTip.textContent = '擺好塔後按「開始 Wave」';
         stopLoop();
+        /* 進入已選關卡戰場：另抽一首隨機 BGM，與關卡列表頁分開 */
+        beginBackgroundMusicDeferred();
       }
 
       /** @type {number} 生怪間隔累計（毫秒） */
@@ -1395,19 +2458,24 @@
        */
       function buildWaveQueue() {
         const cfg = getLevelConfig(currentLevel);
-        const n = 5 + waveIndex + Math.floor(currentLevel * 0.65);
+        const n = 7 + waveIndex + Math.floor(currentLevel * 0.88);
         const rng = mulberry32(cfg.seed + waveIndex * 313 + 17);
         const q = [];
         for (let i = 0; i < n; i++) {
           let pick = Math.floor(rng() * ENEMY_TYPES.length);
           if (waveIndex < 2 && pick > 2) pick = Math.floor(rng() * 3);
           const base = ENEMY_TYPES[pick];
-          const hpScale = levelDiff * (1 + waveIndex * 0.12);
+          const hpScale = levelDiff * (1 + waveIndex * 0.165);
+          /**
+           * 全關卡／全波次敵人血量：在原有 `base.hp * hpScale` 上再乘以 2（需求：各關血量兩倍）。
+           * @type {number}
+           */
+          const hpFinal = base.hp * hpScale * 2;
           q.push({
             typeId: base.id,
-            hp: base.hp * hpScale,
-            maxHp: base.hp * hpScale,
-            speed: base.speed * (1 + currentLevel * 0.03),
+            hp: hpFinal,
+            maxHp: hpFinal,
+            speed: base.speed * (1 + currentLevel * 0.042),
             reward: Math.floor(base.reward * (1 + currentLevel * 0.05)),
             seg: 0,
             t: 0,
@@ -1455,6 +2523,7 @@
        * @param {number} dmg
        */
       function spawnProjectile(tw, target, def, dmg) {
+        playTowerAttackSound(def);
         projectiles.push({
           x: (tw.col + 0.5) / cols,
           y: (tw.row + 0.5) / rows,
@@ -1484,6 +2553,8 @@
           const dist = Math.hypot(dx, dy);
           const step = (p.speed * dt) / 2400;
           if (dist < hitNorm || dist <= step) {
+            /* 命中瞬間：依塔種播放視覺特效；節點掛棋盤並每幀追蹤敵人座標（見 `boardFollowHits`） */
+            spawnTowerHitFollowEnemy(p.target, p.def, p.def.bullet);
             applyDamage(p.target, p.dmg, p.def);
             projectiles.splice(i, 1);
             continue;
@@ -1502,8 +2573,12 @@
           d.className = 'projectile';
           d.style.left = p.x * 100 + '%';
           d.style.top = p.y * 100 + '%';
-          d.style.color = p.color;
-          d.style.background = 'radial-gradient(circle at 30% 30%, #fff 0%, ' + p.color + ' 55%, transparent 100%)';
+          d.style.setProperty('--pj-c', p.color);
+          d.innerHTML =
+            '<div class="proj-3d" aria-hidden="true">' +
+            '<div class="proj-core"></div>' +
+            '<div class="proj-fin"></div>' +
+            '</div>';
           layer.appendChild(d);
         });
       }
@@ -1566,7 +2641,7 @@
             next._nx = pos.x;
             next._ny = pos.y;
             enemies.push(next);
-            spawnCooldownMs = 380 + Math.floor(currentLevel * 25);
+            spawnCooldownMs = 318 + Math.floor(currentLevel * 22);
           }
         }
 
@@ -1595,6 +2670,7 @@
         }
 
         updateProjectiles(dt);
+        updateBoardFollowHits();
 
         towers.forEach((tw) => {
           const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
@@ -1615,7 +2691,7 @@
           });
           if (!target) return;
           tw.lastShot = 0;
-          const dmg = getEffectiveDamage(def) * (0.92 + levelDiff * 0.04);
+          const dmg = getEffectiveDamage(def) * (0.85 + levelDiff * 0.03);
           spawnProjectile(tw, target, def, dmg);
         });
 
@@ -1627,6 +2703,19 @@
           waveIndex++;
           updateHud();
           const cfg = getLevelConfig(currentLevel);
+          /**
+           * 最後一關（Lv.10，`currentLevel === 9`）：不出現隨機加成三選一，僅清場並提示下一波或直接通關。
+           */
+          if (currentLevel === 9) {
+            clearWaveEndTransientFx();
+            if (waveIndex >= cfg.waves) {
+              stopLoop();
+              finalizeVictory();
+            } else {
+              els.waveTip.textContent = '本波完成（最終關無加成選單）。按「開始 Wave」進行下一波';
+            }
+            return;
+          }
           if (waveIndex >= cfg.waves) {
             // 調整：如果是最後一波過關，呼叫 true 呈現過關選單
             openBonusChoice(true);
@@ -1648,6 +2737,8 @@
        */
       function applyDamage(target, dmg, def) {
         if (def.special === 'splash') {
+          /** @type {TowerDef} 溅射周邊短火花視覺（沿用機槍塔之 `hit-fx--spark` 樣式，不額外播音效） */
+          const splashFxDef = TOWER_TYPES[0];
           enemies.forEach((e) => {
             if (e === target) return;
             const dCells = Math.hypot(
@@ -1655,7 +2746,10 @@
               e._ny * rows - target._ny * rows
             );
             const splashRad = def.id === 'siege' ? 2.8 : 2.2;
-            if (dCells < splashRad) e.hp -= dmg * 0.38;
+            if (dCells < splashRad) {
+              e.hp -= dmg * 0.38;
+              spawnTowerHitFollowEnemy(e, splashFxDef, def.bullet, 280);
+            }
           });
         }
         target.hp -= dmg;
@@ -1678,7 +2772,11 @@
               second = e;
             }
           });
-          if (second) second.hp -= dmg * 0.48;
+          if (second) {
+            second.hp -= dmg * 0.48;
+            /* 連鎖次要目標：同主目標之雷電特效並黏附次要敵人位移 */
+            spawnTowerHitFollowEnemy(second, def, def.bullet, 600);
+          }
         }
         if (target.hp <= 0) {
           gold += Math.floor(target.reward * playerMods.goldKillMul);
@@ -1693,10 +2791,13 @@
       }
 
       /**
-       * @param {*} en
+       * 敵人走完路徑抵達主堡（漏怪）：主堡生命依「每隻怪物」固定扣 1，與 UI「生命」及主堡 HUD 同步。
+       * @param {*} en 敵人物件（僅用於日後擴充，例如依敵種不同扣血；目前一律 -1）
        */
       function leakEnemy(en) {
-        lives--;
+        /** 單一怪物觸及主堡時扣除的主堡血量（與 UI「生命」／主堡 HUD 同義） */
+        const BASE_HP_LOSS_PER_LEAK = 1;
+        lives = Math.max(0, lives - BASE_HP_LOSS_PER_LEAK);
         updateHud();
         enemies = enemies.filter((e) => e !== en);
         if (lives <= 0) {
@@ -1727,8 +2828,9 @@
             layer.appendChild(sp);
           }
           sp.style.backgroundImage = 'url(' + def.img + ')';
-          sp.style.left = 'calc(' + en._nx * 100 + '% - 14px)';
-          sp.style.top = 'calc(' + en._ny * 100 + '% - 14px)';
+          /* 84×84 精靈置中：減半寬高 42px（出場大小為先前 42px 之 2 倍） */
+          sp.style.left = 'calc(' + en._nx * 100 + '% - 42px)';
+          sp.style.top = 'calc(' + en._ny * 100 + '% - 42px)';
         }
       }
 
@@ -1744,14 +2846,28 @@
       }
 
       /**
+       * 波次／關卡段落結束時清空飛行子彈與黏附命中 DOM，避免殘影或指標殘留。
+       * 抽出為共用函式，供 `openBonusChoice` 與「最後一關不顯示加成」分支呼叫。
+       */
+      function clearWaveEndTransientFx() {
+        projectiles = [];
+        syncProjectileLayer();
+        for (let hi = boardFollowHits.length - 1; hi >= 0; hi--) {
+          const hx = boardFollowHits[hi];
+          if (hx.el.parentNode) hx.el.parentNode.removeChild(hx.el);
+        }
+        boardFollowHits = [];
+      }
+
+      /**
        * 調整：支援每波與通關的選單。通過傳入是否為「關卡結束」(isLevelEnd) 判斷。
+       * 最後一關（`currentLevel === 9`）不會呼叫本函式，改由 `gameLoop` 直接結算或提示下一波。
        * @param {boolean} isLevelEnd
        */
       function openBonusChoice(isLevelEnd) {
         stopLoop();
         waveActive = false;
-        projectiles = [];
-        syncProjectileLayer();
+        clearWaveEndTransientFx();
         const picks = pickRandomPerks(3);
         els.bonusCards.innerHTML = '';
         picks.forEach(function (perk) {
@@ -1809,6 +2925,11 @@
         stopLoop();
         waveActive = false;
         projectiles = [];
+        for (let hi = boardFollowHits.length - 1; hi >= 0; hi--) {
+          const hx = boardFollowHits[hi];
+          if (hx.el.parentNode) hx.el.parentNode.removeChild(hx.el);
+        }
+        boardFollowHits = [];
         gameOver(false);
       }
       document.getElementById('btn-giveup').addEventListener('click', giveUp);
