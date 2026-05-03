@@ -55,6 +55,10 @@
       letter-spacing: 0.06em;
       text-shadow: 0 0 24px var(--accent-glow);
     }
+    /* 關卡選擇頁主標題：中文前綴與英文區隔 */
+    .level-select-title-zh {
+      margin-inline-end: 0.65em;
+    }
     .subtitle { color: var(--muted); margin-bottom: 1.25rem; }
 
     .btn {
@@ -87,7 +91,6 @@
       font-size: 1.05rem;
       padding: 0.75rem 1.5rem;
       width: 100%;
-      margin-top: auto;
     }
 
     /* --- 關卡選擇 --- */
@@ -129,7 +132,15 @@
       opacity: 0.45;
       cursor: not-allowed;
     }
-    .level-card .lv-label { font-weight: 700; font-size: 1.1rem; }
+    /* Lv 標籤：高對比亮色＋微弱光暈，在關卡卡深色底上更易辨識 */
+    .level-card .lv-label {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #5eead4;
+      text-shadow:
+        0 0 12px rgba(94, 234, 212, 0.55),
+        0 0 2px rgba(15, 23, 42, 0.9);
+    }
     .level-card .lv-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
 
     .top-bar__center {
@@ -196,6 +207,29 @@
       align-items: center;
       flex-shrink: 0;
     }
+    /* 頂欄左側：放棄／倍速成組排列 */
+    .game-toolbar__start {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    /* 十倍速開關：預設白底；aria-pressed 為 true 時綠底表示使用中 */
+    .btn-turbo {
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid rgba(15, 23, 42, 0.22);
+      white-space: nowrap;
+    }
+    .btn-turbo:hover {
+      filter: brightness(0.97);
+    }
+    .btn-turbo[aria-pressed='true'] {
+      background: linear-gradient(180deg, #4ade80, #22c55e);
+      color: #06280f;
+      border-color: rgba(34, 197, 94, 0.45);
+      box-shadow: 0 2px 12px rgba(34, 197, 94, 0.32);
+    }
     .game-stage {
       display: flex;
       flex-direction: row;
@@ -222,8 +256,25 @@
       overflow-x: hidden;
       overflow-y: auto;
     }
+    /* 右欄：直向 flex，讓塔列表吃滿工具列下方剩餘高度，避免 shop-list 被 vh 上限截斷留下大片空白 */
     .panel.panel--right {
       width: 232px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      align-self: stretch;
+      gap: 10px;
+    }
+    .panel.panel--right > h3 {
+      flex-shrink: 0;
+      margin-bottom: 0;
+    }
+    .panel.panel--right .btn-start,
+    .panel.panel--right .tip {
+      flex-shrink: 0;
+    }
+    .panel.panel--right .btn-start {
+      margin-top: 0;
     }
     .panel h3 {
       margin: 0 0 10px;
@@ -470,7 +521,8 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 62vh;
+      flex: 1 1 0;
+      min-height: 0;
       overflow-y: auto;
     }
     .tower-card {
@@ -550,8 +602,10 @@
         max-height: none;
         order: 0;
       }
+      /* 窄螢幕單欄：不再用低 vh 上限壓扁列表，高度隨塔卡內容；長列表由 .game-stage 整體捲動 */
       .panel.panel--right .shop-list {
-        max-height: min(36vh, 280px);
+        flex: 0 1 auto;
+        max-height: none;
       }
       .game-toolbar {
         padding-left: max(10px, env(safe-area-inset-left, 0px));
@@ -1080,7 +1134,7 @@
       <span class="top-bar__center">選擇關卡</span>
       <span class="top-bar__spacer" aria-hidden="true"></span>
     </div>
-    <h1>Tower Defense</h1>
+    <h1><span class="level-select-title-zh">塔防遊戲</span> Tower Defense</h1>
     <p class="subtitle">選擇關卡</p>
     <div class="level-grid" id="level-grid"></div>
     <p class="copyright-note">
@@ -1091,7 +1145,18 @@
 
   <section id="screen-game" class="screen">
     <div class="game-toolbar">
-      <button type="button" class="btn btn-danger" id="btn-giveup">放棄</button>
+      <div class="game-toolbar__start">
+        <button type="button" class="btn btn-danger" id="btn-giveup">放棄</button>
+        <button
+          type="button"
+          class="btn btn-turbo"
+          id="btn-turbo"
+          aria-pressed="false"
+          title="點選開啟 10 倍遊戲時間（再走訪本關將重設為關閉）"
+        >
+          10倍速
+        </button>
+      </div>
       <div id="game-level-title" style="font-weight:700;">Lv.1</div>
       <button type="button" class="btn btn-ghost" id="btn-back-menu">關卡選擇</button>
     </div>
@@ -2098,6 +2163,10 @@
       let lastTs = 0;
       let animId = 0;
       let levelDiff = 1;
+      /** 十倍速係數：`gameLoop` 的 `dt` 於開啟加速時乘以本常數（10）。 */
+      const TURBO_SPEED_MUL = 10;
+      /** @type {number} 目前時間倍率；`1` 為正常、`TURBO_SPEED_MUL` 為十倍速。 */
+      let gameSpeedMul = 1;
 
       const els = {
         screens: {
@@ -2120,8 +2189,29 @@
         modalTitle: document.getElementById('modal-title'),
         modalDesc: document.getElementById('modal-desc'),
         bonusOverlay: document.getElementById('bonus-overlay'),
-        bonusCards: document.getElementById('bonus-cards')
+        bonusCards: document.getElementById('bonus-cards'),
+        btnTurbo: document.getElementById('btn-turbo')
       };
+
+      /**
+       * 同步「10倍速」按鈕之 `aria-pressed`／樣式與目前的 {@link gameSpeedMul}。
+       */
+      function applyGameTurboUI() {
+        const btn = els.btnTurbo;
+        if (!btn) return;
+        const on = gameSpeedMul > 1;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on ? '十倍速運作中（再按恢復為一般速度）' : '點選以 10 倍速進行遊戲';
+      }
+
+      /**
+       * 開關戰鬥時間倍率（僅影響 `gameLoop` 中的 `dt`）。
+       * @param {boolean} on
+       */
+      function setGameTurbo(on) {
+        gameSpeedMul = on ? TURBO_SPEED_MUL : 1;
+        applyGameTurboUI();
+      }
 
       /**
        * 切換畫面顯示。
@@ -2446,6 +2536,7 @@
         updateHud();
         els.waveTip.textContent = '擺好塔後按「開始 Wave」';
         stopLoop();
+        setGameTurbo(false);
         /* 進入已選關卡戰場：另抽一首隨機 BGM，與關卡列表頁分開 */
         beginBackgroundMusicDeferred();
       }
@@ -2627,7 +2718,7 @@
       function gameLoop(ts) {
         if (!waveActive) return;
         const raw = ts - lastTs;
-        const dt = Math.max(0, Math.min(40, raw));
+        const dt = Math.max(0, Math.min(40, raw)) * gameSpeedMul;
         lastTs = ts;
 
         /* 從佇列依間隔送敵人入場 */
@@ -2917,12 +3008,14 @@
 
       document.getElementById('btn-back-menu').addEventListener('click', () => {
         stopLoop();
+        setGameTurbo(false);
         els.bonusOverlay.classList.remove('active');
         renderLevelSelect();
         showScreen('levels');
       });
       function giveUp() {
         stopLoop();
+        setGameTurbo(false);
         waveActive = false;
         projectiles = [];
         for (let hi = boardFollowHits.length - 1; hi >= 0; hi--) {
@@ -2933,6 +3026,10 @@
         gameOver(false);
       }
       document.getElementById('btn-giveup').addEventListener('click', giveUp);
+      els.btnTurbo &&
+        els.btnTurbo.addEventListener('click', () => {
+          setGameTurbo(!(gameSpeedMul > 1));
+        });
       document.getElementById('btn-start-wave').addEventListener('click', () => {
         if (!waveActive) startWave();
       });
@@ -2943,6 +3040,7 @@
       document.getElementById('modal-menu').addEventListener('click', () => {
         els.overlay.classList.remove('active');
         els.bonusOverlay.classList.remove('active');
+        setGameTurbo(false);
         renderLevelSelect();
         showScreen('levels');
       });
