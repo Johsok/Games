@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<!-- saved from url=(0029)https://xj.ncc.to/gomoku.html -->
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>五子棋 - 人類對 AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: #e8d5b7;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: 4px;
+        }
+
+        .status {
+            color: #e8d5b7;
+            font-size: clamp(0.9rem, 3vw, 1.3rem);
+            margin-bottom: 10px;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            text-align: center;
+        }
+
+        .status.winner {
+            background: rgba(255,215,0,0.3);
+            animation: glow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(255,215,0,0.5); }
+            to { box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+        }
+
+        .game-container {
+            background: linear-gradient(145deg, #c9a66b 0%, #b8956a 50%, #a0845a 100%);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 
+                0 10px 30px rgba(0,0,0,0.5),
+                inset 0 2px 5px rgba(255,255,255,0.3),
+                inset 0 -2px 5px rgba(0,0,0,0.2);
+            width: 95vw;
+            max-width: 500px;
+            aspect-ratio: 1;
+        }
+
+        .board {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #deb887;
+            border: 2px solid #5c4033;
+        }
+
+        /* 畫出棋盤線條 - 15條線產生14格，每格是 1/14 */
+        .board::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                /* 垂直線 */
+                repeating-linear-gradient(
+                    to right,
+                    transparent,
+                    transparent calc(100% / 14 - 1px),
+                    #5c4033 calc(100% / 14 - 1px),
+                    #5c4033 calc(100% / 14)
+                ),
+                /* 水平線 */
+                repeating-linear-gradient(
+                    to bottom,
+                    transparent,
+                    transparent calc(100% / 14 - 1px),
+                    #5c4033 calc(100% / 14 - 1px),
+                    #5c4033 calc(100% / 14)
+                );
+        }
+
+        /* 交叉點（放置棋子的位置）- 15x15=225個交叉點 */
+        .cell {
+            position: absolute;
+            width: 6.67%;  /* 100% / 15 = 6.67% 點周圍都可點 */
+            height: 6.67%;
+            margin-left: -3.33%;  /* 居中 */
+            margin-top: -3.33%;
+            cursor: pointer;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .cell:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .stone {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 
+                2px 2px 4px rgba(0,0,0,0.4),
+                inset -2px -2px 4px rgba(0,0,0,0.3),
+                inset 2px 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .stone.black {
+            background: radial-gradient(circle at 30% 30%, #555, #111 60%, #000);
+        }
+
+        .stone.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd 40%, #bbb 80%, #999);
+        }
+
+        .last-move {
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background: #ff4444;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-restart {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            box-shadow: 0 4px 15px rgba(231,76,60,0.4);
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231,76,60,0.6);
+        }
+
+        .btn-home {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52,152,219,0.4);
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52,152,219,0.6);
+        }
+
+        .score-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            color: #aaa;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
+        }
+
+        .score-info span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .score-info .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot.black-dot {
+            background: radial-gradient(circle at 30% 30%, #555, #111);
+        }
+
+        .dot.white-dot {
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+        }
+
+        .timer {
+            color: #e8d5b7;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin-bottom: 10px;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .game-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .leaderboard {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 15px;
+            border-radius: 10px;
+            width: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .leaderboard h3 {
+            color: #ffd700;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,215,0,0.3);
+            padding-bottom: 8px;
+        }
+
+        .leaderboard ol {
+            color: #e8d5b7;
+            padding-left: 20px;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard li {
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+
+        .leaderboard .time {
+            color: #aaa;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #ffd700;
+        }
+
+        .modal h2 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        .modal p {
+            color: #e8d5b7;
+            margin-bottom: 15px;
+        }
+
+        .modal input {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #5c4033;
+            background: #deb887;
+            color: #333;
+            font-size: 1rem;
+            width: 200px;
+            margin-bottom: 15px;
+        }
+
+        .modal input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
+        .modal .btn-save {
+            background: linear-gradient(145deg, #ffd700, #ffaa00);
+            color: #1a1a2e;
+            padding: 10px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .modal .btn-skip {
+            background: transparent;
+            color: #aaa;
+            border: 1px solid #aaa;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>五子棋</h1>
+    <div class="timer" id="timer">00:00:17</div>
+    <div class="status" id="status">輪到您：黑子</div>
+    <div class="game-layout">
+        <div class="game-container">
+            <div class="board" id="board"><div class="cell" data-row="0" data-col="0" style="left: 0%; top: 0%;"></div><div class="cell" data-row="0" data-col="1" style="left: 7.14286%; top: 0%;"></div><div class="cell" data-row="0" data-col="2" style="left: 14.2857%; top: 0%;"></div><div class="cell" data-row="0" data-col="3" style="left: 21.4286%; top: 0%;"></div><div class="cell" data-row="0" data-col="4" style="left: 28.5714%; top: 0%;"></div><div class="cell" data-row="0" data-col="5" style="left: 35.7143%; top: 0%;"></div><div class="cell" data-row="0" data-col="6" style="left: 42.8571%; top: 0%;"></div><div class="cell" data-row="0" data-col="7" style="left: 50%; top: 0%;"></div><div class="cell" data-row="0" data-col="8" style="left: 57.1429%; top: 0%;"></div><div class="cell" data-row="0" data-col="9" style="left: 64.2857%; top: 0%;"></div><div class="cell" data-row="0" data-col="10" style="left: 71.4286%; top: 0%;"></div><div class="cell" data-row="0" data-col="11" style="left: 78.5714%; top: 0%;"></div><div class="cell" data-row="0" data-col="12" style="left: 85.7143%; top: 0%;"></div><div class="cell" data-row="0" data-col="13" style="left: 92.8571%; top: 0%;"></div><div class="cell" data-row="0" data-col="14" style="left: 100%; top: 0%;"></div><div class="cell" data-row="1" data-col="0" style="left: 0%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="1" style="left: 7.14286%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="2" style="left: 14.2857%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="3" style="left: 21.4286%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="4" style="left: 28.5714%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="5" style="left: 35.7143%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="6" style="left: 42.8571%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="7" style="left: 50%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="8" style="left: 57.1429%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="9" style="left: 64.2857%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="10" style="left: 71.4286%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="11" style="left: 78.5714%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="12" style="left: 85.7143%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="13" style="left: 92.8571%; top: 7.14286%;"></div><div class="cell" data-row="1" data-col="14" style="left: 100%; top: 7.14286%;"></div><div class="cell" data-row="2" data-col="0" style="left: 0%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="1" style="left: 7.14286%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="2" style="left: 14.2857%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="3" style="left: 21.4286%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="4" style="left: 28.5714%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="5" style="left: 35.7143%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="6" style="left: 42.8571%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="7" style="left: 50%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="8" style="left: 57.1429%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="9" style="left: 64.2857%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="10" style="left: 71.4286%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="11" style="left: 78.5714%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="12" style="left: 85.7143%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="13" style="left: 92.8571%; top: 14.2857%;"></div><div class="cell" data-row="2" data-col="14" style="left: 100%; top: 14.2857%;"></div><div class="cell" data-row="3" data-col="0" style="left: 0%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="1" style="left: 7.14286%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="2" style="left: 14.2857%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="3" style="left: 21.4286%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="4" style="left: 28.5714%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="5" style="left: 35.7143%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="6" style="left: 42.8571%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="7" style="left: 50%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="8" style="left: 57.1429%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="9" style="left: 64.2857%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="10" style="left: 71.4286%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="11" style="left: 78.5714%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="12" style="left: 85.7143%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="13" style="left: 92.8571%; top: 21.4286%;"></div><div class="cell" data-row="3" data-col="14" style="left: 100%; top: 21.4286%;"></div><div class="cell" data-row="4" data-col="0" style="left: 0%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="1" style="left: 7.14286%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="2" style="left: 14.2857%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="3" style="left: 21.4286%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="4" style="left: 28.5714%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="5" style="left: 35.7143%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="6" style="left: 42.8571%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="7" style="left: 50%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="8" style="left: 57.1429%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="9" style="left: 64.2857%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="10" style="left: 71.4286%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="11" style="left: 78.5714%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="12" style="left: 85.7143%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="13" style="left: 92.8571%; top: 28.5714%;"></div><div class="cell" data-row="4" data-col="14" style="left: 100%; top: 28.5714%;"></div><div class="cell" data-row="5" data-col="0" style="left: 0%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="1" style="left: 7.14286%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="2" style="left: 14.2857%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="3" style="left: 21.4286%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="4" style="left: 28.5714%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="5" style="left: 35.7143%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="6" style="left: 42.8571%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="7" style="left: 50%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="8" style="left: 57.1429%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="9" style="left: 64.2857%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="10" style="left: 71.4286%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="11" style="left: 78.5714%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="12" style="left: 85.7143%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="13" style="left: 92.8571%; top: 35.7143%;"></div><div class="cell" data-row="5" data-col="14" style="left: 100%; top: 35.7143%;"></div><div class="cell" data-row="6" data-col="0" style="left: 0%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="1" style="left: 7.14286%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="2" style="left: 14.2857%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="3" style="left: 21.4286%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="4" style="left: 28.5714%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="5" style="left: 35.7143%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="6" style="left: 42.8571%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="7" style="left: 50%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="8" style="left: 57.1429%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="9" style="left: 64.2857%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="10" style="left: 71.4286%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="11" style="left: 78.5714%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="12" style="left: 85.7143%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="13" style="left: 92.8571%; top: 42.8571%;"></div><div class="cell" data-row="6" data-col="14" style="left: 100%; top: 42.8571%;"></div><div class="cell" data-row="7" data-col="0" style="left: 0%; top: 50%;"></div><div class="cell" data-row="7" data-col="1" style="left: 7.14286%; top: 50%;"></div><div class="cell" data-row="7" data-col="2" style="left: 14.2857%; top: 50%;"></div><div class="cell" data-row="7" data-col="3" style="left: 21.4286%; top: 50%;"></div><div class="cell" data-row="7" data-col="4" style="left: 28.5714%; top: 50%;"></div><div class="cell" data-row="7" data-col="5" style="left: 35.7143%; top: 50%;"></div><div class="cell" data-row="7" data-col="6" style="left: 42.8571%; top: 50%;"></div><div class="cell" data-row="7" data-col="7" style="left: 50%; top: 50%;"></div><div class="cell" data-row="7" data-col="8" style="left: 57.1429%; top: 50%;"></div><div class="cell" data-row="7" data-col="9" style="left: 64.2857%; top: 50%;"></div><div class="cell" data-row="7" data-col="10" style="left: 71.4286%; top: 50%;"></div><div class="cell" data-row="7" data-col="11" style="left: 78.5714%; top: 50%;"></div><div class="cell" data-row="7" data-col="12" style="left: 85.7143%; top: 50%;"></div><div class="cell" data-row="7" data-col="13" style="left: 92.8571%; top: 50%;"></div><div class="cell" data-row="7" data-col="14" style="left: 100%; top: 50%;"></div><div class="cell" data-row="8" data-col="0" style="left: 0%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="1" style="left: 7.14286%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="2" style="left: 14.2857%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="3" style="left: 21.4286%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="4" style="left: 28.5714%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="5" style="left: 35.7143%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="6" style="left: 42.8571%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="7" style="left: 50%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="8" style="left: 57.1429%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="9" style="left: 64.2857%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="10" style="left: 71.4286%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="11" style="left: 78.5714%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="12" style="left: 85.7143%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="13" style="left: 92.8571%; top: 57.1429%;"></div><div class="cell" data-row="8" data-col="14" style="left: 100%; top: 57.1429%;"></div><div class="cell" data-row="9" data-col="0" style="left: 0%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="1" style="left: 7.14286%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="2" style="left: 14.2857%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="3" style="left: 21.4286%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="4" style="left: 28.5714%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="5" style="left: 35.7143%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="6" style="left: 42.8571%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="7" style="left: 50%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="8" style="left: 57.1429%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="9" style="left: 64.2857%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="10" style="left: 71.4286%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="11" style="left: 78.5714%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="12" style="left: 85.7143%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="13" style="left: 92.8571%; top: 64.2857%;"></div><div class="cell" data-row="9" data-col="14" style="left: 100%; top: 64.2857%;"></div><div class="cell" data-row="10" data-col="0" style="left: 0%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="1" style="left: 7.14286%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="2" style="left: 14.2857%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="3" style="left: 21.4286%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="4" style="left: 28.5714%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="5" style="left: 35.7143%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="6" style="left: 42.8571%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="7" style="left: 50%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="8" style="left: 57.1429%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="9" style="left: 64.2857%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="10" style="left: 71.4286%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="11" style="left: 78.5714%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="12" style="left: 85.7143%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="13" style="left: 92.8571%; top: 71.4286%;"></div><div class="cell" data-row="10" data-col="14" style="left: 100%; top: 71.4286%;"></div><div class="cell" data-row="11" data-col="0" style="left: 0%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="1" style="left: 7.14286%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="2" style="left: 14.2857%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="3" style="left: 21.4286%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="4" style="left: 28.5714%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="5" style="left: 35.7143%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="6" style="left: 42.8571%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="7" style="left: 50%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="8" style="left: 57.1429%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="9" style="left: 64.2857%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="10" style="left: 71.4286%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="11" style="left: 78.5714%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="12" style="left: 85.7143%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="13" style="left: 92.8571%; top: 78.5714%;"></div><div class="cell" data-row="11" data-col="14" style="left: 100%; top: 78.5714%;"></div><div class="cell" data-row="12" data-col="0" style="left: 0%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="1" style="left: 7.14286%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="2" style="left: 14.2857%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="3" style="left: 21.4286%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="4" style="left: 28.5714%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="5" style="left: 35.7143%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="6" style="left: 42.8571%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="7" style="left: 50%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="8" style="left: 57.1429%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="9" style="left: 64.2857%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="10" style="left: 71.4286%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="11" style="left: 78.5714%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="12" style="left: 85.7143%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="13" style="left: 92.8571%; top: 85.7143%;"></div><div class="cell" data-row="12" data-col="14" style="left: 100%; top: 85.7143%;"></div><div class="cell" data-row="13" data-col="0" style="left: 0%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="1" style="left: 7.14286%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="2" style="left: 14.2857%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="3" style="left: 21.4286%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="4" style="left: 28.5714%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="5" style="left: 35.7143%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="6" style="left: 42.8571%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="7" style="left: 50%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="8" style="left: 57.1429%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="9" style="left: 64.2857%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="10" style="left: 71.4286%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="11" style="left: 78.5714%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="12" style="left: 85.7143%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="13" style="left: 92.8571%; top: 92.8571%;"></div><div class="cell" data-row="13" data-col="14" style="left: 100%; top: 92.8571%;"></div><div class="cell" data-row="14" data-col="0" style="left: 0%; top: 100%;"></div><div class="cell" data-row="14" data-col="1" style="left: 7.14286%; top: 100%;"></div><div class="cell" data-row="14" data-col="2" style="left: 14.2857%; top: 100%;"></div><div class="cell" data-row="14" data-col="3" style="left: 21.4286%; top: 100%;"></div><div class="cell" data-row="14" data-col="4" style="left: 28.5714%; top: 100%;"></div><div class="cell" data-row="14" data-col="5" style="left: 35.7143%; top: 100%;"></div><div class="cell" data-row="14" data-col="6" style="left: 42.8571%; top: 100%;"></div><div class="cell" data-row="14" data-col="7" style="left: 50%; top: 100%;"></div><div class="cell" data-row="14" data-col="8" style="left: 57.1429%; top: 100%;"></div><div class="cell" data-row="14" data-col="9" style="left: 64.2857%; top: 100%;"></div><div class="cell" data-row="14" data-col="10" style="left: 71.4286%; top: 100%;"></div><div class="cell" data-row="14" data-col="11" style="left: 78.5714%; top: 100%;"></div><div class="cell" data-row="14" data-col="12" style="left: 85.7143%; top: 100%;"></div><div class="cell" data-row="14" data-col="13" style="left: 92.8571%; top: 100%;"></div><div class="cell" data-row="14" data-col="14" style="left: 100%; top: 100%;"></div></div>
+        </div>
+        <div class="leaderboard">
+            <h3>🏆 排行榜</h3>
+            <ol id="leaderboard-list"><li>匿名 <span class="time">00:00:08</span></li><li>=. = <span class="time">00:00:09</span></li><li>張婉屏Rola <span class="time">00:00:11</span></li><li>張婉屏Rola <span class="time">00:00:12</span></li><li>=. = <span class="time">00:00:12</span></li><li>匿名 <span class="time">00:00:12</span></li><li>YAMA <span class="time">00:00:14</span></li><li>Linus <span class="time">00:00:16</span></li><li>張無忌 <span class="time">00:00:17</span></li><li>123 <span class="time">00:00:17</span></li><li>=. = <span class="time">00:00:17</span></li><li>張無忌 <span class="time">00:00:18</span></li><li>KEN <span class="time">00:00:20</span></li><li>張無忌 <span class="time">00:00:21</span></li><li>讚啦 <span class="time">00:00:22</span></li><li>巴豆夭 <span class="time">00:00:22</span></li><li>蛤 <span class="time">00:00:23</span></li><li>？ <span class="time">00:00:23</span></li><li>？ <span class="time">00:00:25</span></li><li>1 <span class="time">00:00:26</span></li></ol>
+        </div>
+    </div>
+    <div class="controls">
+        <button class="btn btn-restart" onclick="restartGame()">重新開始</button>
+        <a href="https://xj.ncc.to/" class="btn btn-home">回首頁</a>
+    </div>
+    <div class="score-info">
+        <span><div class="dot black-dot"></div> 您 (黑子)</span>
+        <span><div class="dot white-dot"></div> AI (白子)</span>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2>🎉 恭喜獲勝！</h2>
+            <p>您的時間：<span id="win-time"></span></p>
+            <input type="text" id="player-name" placeholder="輸入您的名字" maxlength="20">
+            <br>
+            <button class="btn btn-save" onclick="saveScore()">儲存成績</button>
+            <button class="btn btn-skip" onclick="skipScore()">略過</button>
+        </div>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 15;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+        const API_URL = '/api';
+
+        let board = [];
+        let currentPlayer = BLACK;
+        let gameOver = false;
+        let lastMove = null;
+        let timerInterval = null;
+        let seconds = 0;
+
+        const statusEl = document.getElementById('status');
+        const boardEl = document.getElementById('board');
+        const timerEl = document.getElementById('timer');
+
+        function initGame() {
+            board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+            currentPlayer = BLACK;
+            gameOver = false;
+            lastMove = null;
+            seconds = 0;
+            renderBoard();
+            updateStatus();
+            startTimer();
+            getLeaderboard(renderLeaderboard);
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                timerEl.textContent = formatTime(seconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function formatTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            
+            // 計算交叉點位置（15條線有14格，15個交叉點）
+            // 位置: 0%, 7.14%, 14.29%, ..., 100%
+            const cellSize = 100 / (BOARD_SIZE - 1);  // 100/14 = 7.14%
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    // 棋子放在交叉點
+                    cell.style.left = (col * cellSize) + '%';
+                    cell.style.top = (row * cellSize) + '%';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = (e) => {
+                        e.stopPropagation();
+                        handleClick(row, col);
+                    };
+
+                    if (board[row][col] !== EMPTY) {
+                        const stone = document.createElement('div');
+                        stone.className = `stone ${board[row][col] === BLACK ? 'black' : 'white'}`;
+                        cell.appendChild(stone);
+                        cell.classList.add('occupied');
+                    }
+
+                    if (lastMove && lastMove.row === row && lastMove.col === col) {
+                        const marker = document.createElement('div');
+                        marker.className = 'last-move';
+                        cell.appendChild(marker);
+                    }
+
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function handleClick(row, col) {
+            if (gameOver || currentPlayer !== BLACK) return;
+            if (board[row][col] !== EMPTY) return;
+
+            placeStone(row, col, BLACK);
+            
+            if (checkWin(row, col, BLACK)) {
+                endGame(BLACK);
+                return;
+            }
+
+            if (isBoardFull()) {
+                endGame(EMPTY);
+                return;
+            }
+
+            currentPlayer = WHITE;
+            updateStatus();
+
+            setTimeout(() => {
+                aiMove();
+            }, 300);
+        }
+
+        function placeStone(row, col, player) {
+            board[row][col] = player;
+            lastMove = { row, col };
+            renderBoard();
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+
+            const move = findBestMove();
+            placeStone(move.row, move.col, WHITE);
+
+            if (checkWin(move.row, move.col, WHITE)) {
+                endGame(WHITE);
+                return;
+            }
+
+            if (isBoardFull()) {
+                endGame(EMPTY);
+                return;
+            }
+
+            currentPlayer = BLACK;
+            updateStatus();
+        }
+
+        function findBestMove() {
+            const moves = [];
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === EMPTY) {
+                        if (hasNeighbor(row, col)) {
+                            const attackScore = evaluatePosition(row, col, WHITE);
+                            const defenseScore = evaluatePosition(row, col, BLACK);
+                            const score = Math.max(attackScore, defenseScore) + (attackScore > defenseScore ? attackScore * 0.1 : 0);
+                            moves.push({ row, col, score });
+                        }
+                    }
+                }
+            }
+
+            if (moves.length === 0) {
+                const center = Math.floor(BOARD_SIZE / 2);
+                if (board[center][center] === EMPTY) {
+                    return { row: center, col: center };
+                }
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        if (board[row][col] === EMPTY) {
+                            return { row, col };
+                        }
+                    }
+                }
+            }
+
+            moves.sort((a, b) => b.score - a.score);
+            return moves[0];
+        }
+
+        function hasNeighbor(row, col) {
+            for (let dr = -2; dr <= 2; dr++) {
+                for (let dc = -2; dc <= 2; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const nr = row + dr;
+                    const nc = col + dc;
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                        if (board[nr][nc] !== EMPTY) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function evaluatePosition(row, col, player) {
+            let score = 0;
+            const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+            for (const [dr, dc] of directions) {
+                const line = getLine(row, col, dr, dc, player);
+                score += evaluateLine(line, player);
+            }
+
+            return score;
+        }
+
+        function getLine(row, col, dr, dc, player) {
+            let line = [];
+            for (let i = -4; i <= 4; i++) {
+                const r = row + i * dr;
+                const c = col + i * dc;
+                if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    line.push(board[r][c]);
+                } else {
+                    line.push(-1);
+                }
+            }
+            return line;
+        }
+
+        function evaluateLine(line, player) {
+            let score = 0;
+            const opponent = player === BLACK ? WHITE : BLACK;
+            
+            for (let i = 0; i <= line.length - 5; i++) {
+                const segment = line.slice(i, i + 5);
+                const playerCount = segment.filter(c => c === player).length;
+                const emptyCount = segment.filter(c => c === EMPTY).length;
+                const opponentCount = segment.filter(c => c === opponent).length;
+
+                if (opponentCount === 0) {
+                    if (playerCount === 5) score += 100000;
+                    else if (playerCount === 4) score += 10000;
+                    else if (playerCount === 3) score += 1000;
+                    else if (playerCount === 2) score += 100;
+                    else if (playerCount === 1) score += 10;
+                }
+            }
+
+            return score;
+        }
+
+        function checkWin(row, col, player) {
+            const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+            for (const [dr, dc] of directions) {
+                let count = 1;
+
+                let r = row + dr, c = col + dc;
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+                    count++;
+                    r += dr;
+                    c += dc;
+                }
+
+                r = row - dr;
+                c = col - dc;
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+                    count++;
+                    r -= dr;
+                    c -= dc;
+                }
+
+                if (count >= 5) return true;
+            }
+
+            return false;
+        }
+
+        function isBoardFull() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === EMPTY) return false;
+                }
+            }
+            return true;
+        }
+
+        function endGame(winner) {
+            gameOver = true;
+            stopTimer();
+            if (winner === BLACK) {
+                statusEl.textContent = '🎉 恭喜！您獲勝了！';
+                showWinModal();
+            } else if (winner === WHITE) {
+                statusEl.textContent = '💻 AI 獲勝了！';
+            } else {
+                statusEl.textContent = '🤝 平局！';
+            }
+            statusEl.classList.add('winner');
+        }
+
+        function showWinModal() {
+            document.getElementById('win-time').textContent = formatTime(seconds);
+            document.getElementById('player-name').value = '';
+            document.getElementById('modal').classList.add('show');
+            document.getElementById('player-name').focus();
+        }
+
+        function saveScore() {
+            const name = document.getElementById('player-name').value.trim() || '匿名';
+            fetch(API_URL + '/leaderboard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game: 'gomoku', name, time: seconds })
+            })
+            .then(res => res.json())
+            .then(leaderboard => {
+                document.getElementById('modal').classList.remove('show');
+                renderLeaderboard(leaderboard);
+            })
+            .catch(err => {
+                console.error('儲存失敗:', err);
+                document.getElementById('modal').classList.remove('show');
+            });
+        }
+
+        function skipScore() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        function getLeaderboard(callback) {
+            fetch(API_URL + '/leaderboard?game=gomoku')
+                .then(res => res.json())
+                .then(data => callback(data))
+                .catch(err => {
+                    console.error('取得排行榜失敗:', err);
+                    callback([]);
+                });
+        }
+
+        function renderLeaderboard(leaderboard) {
+            const list = document.getElementById('leaderboard-list');
+            if (!leaderboard) {
+                getLeaderboard(renderLeaderboard);
+                return;
+            }
+            if (leaderboard.length === 0) {
+                list.innerHTML = '<li style="color: #666; text-align: center;">尚無紀錄</li>';
+                return;
+            }
+            list.innerHTML = leaderboard.map(entry => 
+                `<li>${escapeHtml(entry.name)} <span class="time">${formatTime(entry.time)}</span></li>`
+            ).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateStatus() {
+            if (!gameOver) {
+                statusEl.classList.remove('winner');
+                statusEl.textContent = currentPlayer === BLACK ? '輪到您：黑子' : 'AI 思考中...';
+            }
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        initGame();
+    </script>
+
+
+<div class="glasp-ui-wrapper" id="glasp-ui-wrapper" style="height: 0px; width: 0px; padding: 0px;"><iframe name="glasp-tooltip-iframe" id="glasp-tooltip-iframe" style="display: none;" src="./五子棋 - 人類對 AI_files/saved_resource.html"></iframe><iframe name="glasp-sidebar-iframe" id="glasp-sidebar-iframe" style="display: none !important;width: 0px !important; min-width: 0px !important; max-width: 320px; height: 100%; background: transparent; margin: auto; position: fixed; top: 0px; right: 0px; left: auto; z-index: 9000000000000000000;border: none !important;" src="./五子棋 - 人類對 AI_files/saved_resource(1).html"></iframe></div><div id="yt_article_summary_widget_wrapper" class="yt_article_summary_widget_wrapper" style="display: none; margin: auto; width: fit-content; padding: 0px; border-radius: 100%;">
+        <div id="yt_article_summary_widget" class="yt_article_summary_widget"><svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1.40123 27.3686C-0.44103 25.5284 -0.441033 22.5449 1.4012 20.7047L16.5971 5.52573L24.0098 12.9301L5.47818 31.4409L1.40123 27.3686Z" fill="#FF4E74"></path>
+        <path d="M35.1286 24.0367L16.5972 5.5258L20.6741 1.45341C22.5164 -0.386772 25.5033 -0.386775 27.3455 1.45341L42.5415 16.6323L35.1286 24.0367Z" fill="#FFF85E"></path>
+        <path d="M24.0099 35.143L42.5416 16.6323L46.6183 20.7046C48.4606 22.5448 48.4606 25.5284 46.6183 27.3686L31.4224 42.5476L24.0099 35.143Z" fill="#76FF54"></path>
+        <path d="M27.3454 46.6198C25.5032 48.4601 22.5163 48.4601 20.674 46.6198L5.47815 31.4409L12.8908 24.0366L31.4223 42.5476L27.3454 46.6198Z" fill="#5C94FF"></path>
+    </svg></div>
+        <div id="yt_article_summary_close_button" class="yt_article_summary_close_button">×</div>
+    </div><div id="glasp-extension-toast-container" style="position: fixed; top: 32px; right: 16px; z-index: 2147483647; display: none; flex-direction: column; align-items: flex-end; height: 0px; width: auto; margin: 0px; padding: 0px;"></div><div class="glasp-extension-toaster" style="display: block; width: 320px; margin: unset; padding: unset; border: unset; border-radius: unset; outline: unset; background-color: unset; box-shadow: unset; position: fixed; top: 40px; right: 24px; z-index: 9999;"><template shadowrootmode="open"><div class="glasp-extension" style="font-family: inherit;"></div></template></div></body><div class="glasp-extension" style="display: block; width: unset; margin: unset; padding: unset; border: unset; border-radius: unset; outline: unset; background-color: unset; box-shadow: unset; position: fixed; bottom: 16px; right: 16px; z-index: 9999;"><div class="glasp-extension" style="font-family: inherit;"></div></div></html>

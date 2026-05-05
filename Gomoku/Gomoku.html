@@ -637,7 +637,7 @@ function triggerLegacyAI() {
         const remain = Math.max(0, currentAiTimeLimit - (Date.now() - aiStartTime));
         document.getElementById('msg').innerText = t.thinking + ' ' + t.countdown + ' ' + (remain / 1000).toFixed(1) + 's';
     }, 100);
-    worker.postMessage({ bd: bd, limit: levelConfig, turn: turn });
+    worker.postMessage({ bd: bd, limit: levelConfig, turn: turn, diffKey: diffKey });
 }
 
 /* === Web Worker：回歸原始 AI 演算法 === */
@@ -723,6 +723,125 @@ function genMoves(bd, turn) {
     return moves.map(x => x.m);
 }
 
+/**
+ * 快速 AI：是否有鄰居（半徑 2）。
+ * @param {number[]} bd 棋盤
+ * @param {number} row 列
+ * @param {number} col 欄
+ * @returns {boolean}
+ */
+function hasNeighborFast(bd, row, col) {
+    for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = row + dr, nc = col + dc;
+            if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
+            if (bd[nr * SIZE + nc] !== 0) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * 快速 AI：取得九連線（中心前後各 4 格）。
+ * @param {number[]} bd 棋盤
+ * @param {number} row 列
+ * @param {number} col 欄
+ * @param {number} dr 方向 row delta
+ * @param {number} dc 方向 col delta
+ * @returns {number[]}
+ */
+function getLineFast(bd, row, col, dr, dc) {
+    const line = [];
+    for (let i = -4; i <= 4; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+        if (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
+            line.push(bd[r * SIZE + c]);
+        } else {
+            line.push(2);
+        }
+    }
+    return line;
+}
+
+/**
+ * 快速 AI：單線段評分（5 格視窗）。
+ * @param {number[]} line 單條線資料
+ * @param {number} player 目前評估方
+ * @returns {number}
+ */
+function evaluateLineFast(line, player) {
+    let score = 0;
+    const opponent = -player;
+    for (let i = 0; i <= line.length - 5; i++) {
+        const segment = line.slice(i, i + 5);
+        let playerCount = 0, opponentCount = 0;
+        for (let j = 0; j < 5; j++) {
+            if (segment[j] === player) playerCount++;
+            else if (segment[j] === opponent || segment[j] === 2) opponentCount++;
+        }
+        if (opponentCount === 0) {
+            if (playerCount === 5) score += 100000;
+            else if (playerCount === 4) score += 10000;
+            else if (playerCount === 3) score += 1000;
+            else if (playerCount === 2) score += 100;
+            else if (playerCount === 1) score += 10;
+        }
+    }
+    return score;
+}
+
+/**
+ * 快速 AI：落點總評分（四方向）。
+ * @param {number[]} bd 棋盤
+ * @param {number} row 列
+ * @param {number} col 欄
+ * @param {number} player 目前評估方
+ * @returns {number}
+ */
+function evaluatePositionFast(bd, row, col, player) {
+    let score = 0;
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (let i = 0; i < dirs.length; i++) {
+        const dr = dirs[i][0], dc = dirs[i][1];
+        score += evaluateLineFast(getLineFast(bd, row, col, dr, dc), player);
+    }
+    return score;
+}
+
+/**
+ * 快速 AI：單步貪婪選點（只用於 easy / medium / hard）。
+ * @param {number[]} bd 棋盤
+ * @param {number} turn 目前 AI 下子方
+ * @returns {number}
+ */
+function findBestMoveFast(bd, turn) {
+    const moves = [];
+    for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
+            const idx = row * SIZE + col;
+            if (bd[idx] !== 0) continue;
+            if (!hasNeighborFast(bd, row, col)) continue;
+            bd[idx] = turn;
+            const attackScore = evaluatePositionFast(bd, row, col, turn);
+            bd[idx] = -turn;
+            const defenseScore = evaluatePositionFast(bd, row, col, -turn);
+            bd[idx] = 0;
+            const score = Math.max(attackScore, defenseScore) + (attackScore > defenseScore ? attackScore * 0.1 : 0);
+            moves.push({ m: idx, s: score });
+        }
+    }
+    if (moves.length === 0) {
+        const center = Math.floor(SIZE / 2) * SIZE + Math.floor(SIZE / 2);
+        if (bd[center] === 0) return center;
+        for (let i = 0; i < SIZE * SIZE; i++) if (bd[i] === 0) return i;
+        return 0;
+    }
+    moves.sort((a, b) => b.s - a.s);
+    return moves[0].m;
+}
+
 function alphaBeta(bd, depth, alpha, beta, turn, isMax, startTime, timeLimit) {
     if (Date.now() - startTime >= timeLimit) return 0;
     
@@ -758,7 +877,11 @@ function alphaBeta(bd, depth, alpha, beta, turn, isMax, startTime, timeLimit) {
 }
 
 self.onmessage = function(e) {
-    const { bd, limit, turn } = e.data;
+    const { bd, limit, turn, diffKey } = e.data;
+    if (diffKey === 'easy' || diffKey === 'medium' || diffKey === 'hard') {
+        self.postMessage(findBestMoveFast(bd, turn));
+        return;
+    }
     const timeLimit = limit.time;
     const maxDepth = limit.maxDepth;
     const startTime = Date.now();
