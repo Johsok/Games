@@ -356,6 +356,8 @@ document.getElementById('manifest-placeholder').setAttribute('href', 'data:appli
  */
 /** @type {Worker | null} Rapfi Web Worker 實例 */
 let rapfiWorker = null;
+/** @type {string} 目前使用的 Rapfi Worker 腳本名稱（multi / single） */
+let rapfiWorkerScriptUsed = '';
 /** @type {string}  stdout 列緩衝（逐字累加後依換行切分） */
 let rapfiStdoutBuf = '';
 /** @type {{ type: 'OK'|'MOVE', resolve: Function, reject: Function } | null} 目前等待引擎回覆狀態 */
@@ -366,6 +368,8 @@ let rapfiSessionReady = false;
 let rapfiInitFailed = false;
 /** @type {Promise<void>} 串行化所有送給 Rapfi 的非同步操作，避免 stdin 交錯 */
 let rapfiChain = Promise.resolve();
+/** @type {string[]} Rapfi Worker 載入候選（先嘗試 multi，失敗才回退 single） */
+const RAPFI_WORKER_CANDIDATES = ['rapfi-multi.js', 'rapfi-single.js'];
 
 /**
  * 將 Rapfi 相關操作排入單一序列，避免同時寫入多組 Gomocup 指令造成死結。
@@ -448,39 +452,85 @@ function rapfiWaitMove(cmd) {
 }
 
 /**
+ * 以「軟倒數」等待 Rapfi 回覆：
+ * - UI 倒數只作顯示用途，歸零後仍允許引擎在短暫緩衝期內回傳最佳步。
+ * - 避免把世界級引擎因顯示倒數歸零就提前降級到 legacy AI，造成強度下降。
+ * @param {string} cmd 完整指令字串
+ * @param {number} timeoutMs 難度設定秒數（毫秒）
+ * @returns {Promise<{ x: number, y: number }>}
+ */
+function rapfiWaitMoveWithSoftTimeout(cmd, timeoutMs) {
+    const softGraceMs = 1200;
+    return Promise.race([
+        rapfiWaitMove(cmd),
+        new Promise(function (_, reject) {
+            setTimeout(function () {
+                reject(new Error('Rapfi move timeout (soft limit exceeded)'));
+            }, Math.max(0, timeoutMs) + softGraceMs);
+        })
+    ]);
+}
+
+/**
  * 建立 Worker、執行 START 15 與 INFO（規則為標準五連珠），完成後 {@link rapfiSessionReady} = true。
  * @returns {Promise<void>}
  */
 function initRapfiEngine() {
     return new Promise(function (resolve) {
-        try {
-            /** 與 Gomoku.html 同層之 rapfi-single.js（內建 importScripts 時之 Bridge / gomocupLoopOnce） */
-            rapfiWorker = new Worker('rapfi-single.js');
-        } catch (e) {
-            console.error('無法建立 Rapfi Worker（若以 file:// 開啟，請改用具 http 之本機伺服器）', e);
-            rapfiInitFailed = true;
-            resolve();
-            return;
-        }
-        rapfiWorker.onmessage = function (e) {
-            if (e.data && e.data.ready) {
-                rapfiStartupSequence().then(function () {
-                    rapfiSessionReady = true;
-                    resolve();
-                }).catch(function (err) {
-                    console.error('Rapfi 初始化序列失敗', err);
-                    rapfiInitFailed = true;
-                    resolve();
-                });
+        /**
+         * 依序嘗試 multi -> single，確保 world 模式會「實際呼叫 rapfi-multi.*」。
+         * @param {number} idx 候選腳本索引
+         * @returns {void}
+         */
+        function bootByCandidate(idx) {
+            if (idx >= RAPFI_WORKER_CANDIDATES.length) {
+                console.error('Rapfi 所有 Worker 候選皆啟動失敗');
+                rapfiInitFailed = true;
+                resolve();
                 return;
             }
-            if (e.data && e.data.output) rapfiAppendStdout(e.data.output);
-        };
-        rapfiWorker.onerror = function (err) {
-            console.error('Rapfi Worker 執行錯誤', err);
-            rapfiInitFailed = true;
-            resolve();
-        };
+            const scriptName = RAPFI_WORKER_CANDIDATES[idx];
+            let readyArrived = false;
+            try {
+                rapfiWorker = new Worker(scriptName);
+                rapfiWorkerScriptUsed = scriptName;
+            } catch (e) {
+                console.error('無法建立 Rapfi Worker：' + scriptName, e);
+                bootByCandidate(idx + 1);
+                return;
+            }
+            rapfiWorker.onmessage = function (e) {
+                if (e.data && e.data.ready) {
+                    readyArrived = true;
+                    rapfiStartupSequence().then(function () {
+                        rapfiSessionReady = true;
+                        console.log('Rapfi 啟動成功：' + rapfiWorkerScriptUsed);
+                        resolve();
+                    }).catch(function (err) {
+                        console.error('Rapfi 初始化序列失敗：' + rapfiWorkerScriptUsed, err);
+                        try { rapfiWorker.terminate(); } catch (_) {}
+                        rapfiWorker = null;
+                        rapfiSessionReady = false;
+                        bootByCandidate(idx + 1);
+                    });
+                    return;
+                }
+                if (e.data && e.data.output) rapfiAppendStdout(e.data.output);
+            };
+            rapfiWorker.onerror = function (err) {
+                console.error('Rapfi Worker 執行錯誤：' + scriptName, err);
+                try { rapfiWorker.terminate(); } catch (_) {}
+                rapfiWorker = null;
+                rapfiSessionReady = false;
+                if (!readyArrived) {
+                    bootByCandidate(idx + 1);
+                    return;
+                }
+                rapfiInitFailed = true;
+                resolve();
+            };
+        }
+        bootByCandidate(0);
     });
 }
 
@@ -536,7 +586,9 @@ function triggerRapfiAI() {
     document.getElementById('msg').style.color = '#e74c3c';
     aiTimer = setInterval(function () {
         const remain = Math.max(0, currentAiTimeLimit - (Date.now() - aiStartTime));
-        document.getElementById('msg').innerText = t.thinking + ' ' + t.countdown + ' ' + (remain / 1000).toFixed(1) + 's';
+        const remainText = (remain / 1000).toFixed(1) + 's';
+        /** 倒數僅作顯示；時間歸零後仍等待 Rapfi 最終輸出，避免過早降級。 */
+        document.getElementById('msg').innerText = t.thinking + ' ' + t.countdown + ' ' + remainText;
     }, 100);
 
     rapfiEnqueue(function () {
@@ -550,9 +602,9 @@ function triggerRapfiAI() {
                 let stones = 0;
                 for (let i = 0; i < bd.length; i++) if (bd[i] !== 0) stones++;
                 if (stones === 0 && turn === aiColor) {
-                    move = await rapfiWaitMove('BEGIN\n');
+                    move = await rapfiWaitMoveWithSoftTimeout('BEGIN\n', timeoutMs);
                 } else {
-                    move = await rapfiWaitMove(rapfiBuildBoardCommand(aiColor));
+                    move = await rapfiWaitMoveWithSoftTimeout(rapfiBuildBoardCommand(aiColor), timeoutMs);
                 }
                 const idx = move.y * SIZE + move.x;
                 if (idx < 0 || idx >= SIZE * SIZE || bd[idx] !== 0) throw new Error('Rapfi illegal move index');
