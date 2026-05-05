@@ -368,8 +368,8 @@ let rapfiSessionReady = false;
 let rapfiInitFailed = false;
 /** @type {Promise<void>} 串行化所有送給 Rapfi 的非同步操作，避免 stdin 交錯 */
 let rapfiChain = Promise.resolve();
-/** @type {string[]} Rapfi Worker 載入候選（先嘗試 multi，失敗才回退 single） */
-const RAPFI_WORKER_CANDIDATES = ['rapfi-multi.js', 'rapfi-single.js'];
+/** @type {string[]} GitHub Pages 最強可行版：固定使用 single，避免 multi 在頁面標頭限制下失敗 */
+const RAPFI_WORKER_CANDIDATES = ['rapfi-single.js'];
 
 /**
  * 將 Rapfi 相關操作排入單一序列，避免同時寫入多組 Gomocup 指令造成死結。
@@ -478,7 +478,7 @@ function rapfiWaitMoveWithSoftTimeout(cmd, timeoutMs) {
 function initRapfiEngine() {
     return new Promise(function (resolve) {
         /**
-         * 依序嘗試 multi -> single，確保 world 模式會「實際呼叫 rapfi-multi.*」。
+         * 依序嘗試候選腳本；GitHub Pages 版固定為 single。
          * @param {number} idx 候選腳本索引
          * @returns {void}
          */
@@ -541,7 +541,7 @@ function initRapfiEngine() {
 function rapfiStartupSequence() {
     return rapfiWaitOk('START 15').then(function () {
         if (!rapfiWorker) return;
-        rapfiWorker.postMessage('INFO timeout_turn 8000\n');
+        rapfiWorker.postMessage('INFO timeout_turn 15000\n');
         rapfiWorker.postMessage('INFO rule 1\n');
         rapfiWorker.postMessage('INFO max_memory 0\n');
     });
@@ -944,7 +944,7 @@ const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContex
 
 const LEVELS = {
     /** world：Rapfi WASM；maxDepth 僅在退回內建 Worker 時有意義 */
-    'world': { time: 8000, maxDepth: 15 },
+    'world': { time: 15000, maxDepth: 15 },
     'easy': { time: 2000, maxDepth: 4 }, 'medium': { time: 3000, maxDepth: 6 },
     'hard': { time: 4000, maxDepth: 8 }, 'expert': { time: 5000, maxDepth: 10 },
     'master': { time: 8000, maxDepth: 15 }
@@ -1086,6 +1086,7 @@ function restart() {
     } else {
         if (needOpeningAi) triggerAI();
     }
+    changeDifficulty();
 }
 
 function render() {
@@ -1156,7 +1157,7 @@ function updateStatus() {
 }
 
 /**
- * 難度切換時更新狀態說明：僅在「世界級」顯示 Rapfi multi 載入結果。
+ * 難度切換時更新狀態說明：在 GitHub Pages 版本顯示 Rapfi single 載入結果。
  * @returns {void}
  */
 function changeDifficulty() {
@@ -1167,8 +1168,8 @@ function changeDifficulty() {
         return;
     }
     const msg = document.getElementById('msg');
-    if (rapfiSessionReady && !rapfiInitFailed && rapfiWorkerScriptUsed === 'rapfi-multi.js') {
-        msg.innerText = '載入成功';
+    if (rapfiSessionReady && !rapfiInitFailed && rapfiWorkerScriptUsed === 'rapfi-single.js') {
+        msg.innerText = 'GitHub Pages 最強可行版：Rapfi single 載入成功';
         msg.style.color = '#2ecc71';
         return;
     }
