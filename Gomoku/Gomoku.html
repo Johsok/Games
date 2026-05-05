@@ -251,7 +251,7 @@
     <div class="set-row flex-split">
         <div>
             <label id="lbl-diff">電腦難度 (單人)</label>
-            <select id="diff-sel">
+            <select id="diff-sel" onchange="changeDifficulty()">
                 <!-- world：同目錄 rapfi-single.js / .wasm / .data，Gomocup 協定世界級 Rapfi 引擎 -->
                 <option value="world">🏆 世界級 (Rapfi AI)</option>
                 <option value="easy" selected>簡單 (2秒)</option>
@@ -1153,6 +1153,27 @@ function updateStatus() {
     const msg = document.getElementById('msg'), t = TRANSLATIONS[currentLang];
     msg.innerText = turn === 1 ? t.blackTurn : t.whiteTurn;
     msg.style.color = turn === 1 ? "#f1c40f" : "#ccc"; 
+}
+
+/**
+ * 難度切換時更新狀態說明：僅在「世界級」顯示 Rapfi multi 載入結果。
+ * @returns {void}
+ */
+function changeDifficulty() {
+    if (over || isAiThinking) return;
+    const diffKey = document.getElementById('diff-sel').value;
+    if (diffKey !== 'world') {
+        updateStatus();
+        return;
+    }
+    const msg = document.getElementById('msg');
+    if (rapfiSessionReady && !rapfiInitFailed && rapfiWorkerScriptUsed === 'rapfi-multi.js') {
+        msg.innerText = '載入成功';
+        msg.style.color = '#2ecc71';
+        return;
+    }
+    msg.innerText = '初始化Rapfi 載入失敗，已退回內建 AI';
+    msg.style.color = '#e74c3c';
 }
 
 function endGame(txt) { over = true; clearInterval(aiTimer); playSfx(800, 'win'); const ol = document.getElementById('win-overlay'); ol.innerText = txt; ol.classList.add('show'); }
