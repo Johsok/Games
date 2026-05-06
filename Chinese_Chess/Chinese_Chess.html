@@ -344,9 +344,9 @@
                 <option value="easy">簡單 (菜鳥)</option>
                 <option value="medium">中等 (正常)</option>
                 <option value="hard">困難 (高手)</option>
-                <option value="expert" selected>專家 (職業)</option>
+                <option value="expert">專家 (職業)</option>
                 <option value="master">大師 (宗師)</option>
-                <option value="god">神 (不可戰勝)</option>
+                <option value="god"  selected>神 (不可戰勝)</option>
             </select>
         </div>
         <div>
@@ -496,6 +496,7 @@ function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) 
 // 【核心修正】：結合高效能節點計數器與優雅退出的全域標記
 let checkNodes = 0; 
 let timeOutFlag = false; 
+const OTHER_MIND_LEVEL_DEPTHS = { expert: 2, master: 3, god: 4 };
 
 self.onmessage = function(e) { 
     const { fen, bd, limit, targetEndTime, turn, level } = e.data; 
@@ -506,12 +507,13 @@ self.onmessage = function(e) {
     timeOutFlag = false; 
 
     /**
-     * 「專家」難度指定改用「象棋別人的」來源 AI 的思維：
-     * 使用該 AI 的棋子位置價值表與固定深度 alpha-beta 搜尋。
-     * 其他難度不進入此分支，完整保留原本雙引擎邏輯。
+     * 指定難度改用「象棋別人的」來源 AI 思維。
+     *
+     * 使用該 AI 的棋子位置價值表與固定深度 alpha-beta 搜尋；
+     * 未列入的難度完整保留原本雙引擎邏輯。
      */
-    if (level === 'expert') {
-        best = getBestMoveOtherMindNative(bd.slice(), limit.depth, turn);
+    if (OTHER_MIND_LEVEL_DEPTHS[level]) {
+        best = getBestMoveOtherMindNative(bd.slice(), OTHER_MIND_LEVEL_DEPTHS[level], turn);
         self.postMessage(best);
         return;
     }
@@ -698,12 +700,13 @@ function evaluateOtherMind(bd, side) {
 }
 
 /**
- * 專家難度使用的來源 AI alpha-beta 搜尋。
- * 深度固定上限為 4，對齊原始 play.depth 常用設定，同時沿用本遊戲合法步過濾避免走出自殺步。
+ * 指定難度使用的來源 AI alpha-beta 搜尋。
+ *
+ * 深度由難度設定固定指定，同時沿用本遊戲合法步過濾避免走出自殺步。
  * 不使用倒數或時間截止，讓移植來源 AI 依固定深度完整思考後再回傳著法。
  */
 function getBestMoveOtherMindNative(bd, maxDepth, turn) {
-    const sourceDepth = Math.min(4, maxDepth);
+    const sourceDepth = Math.max(1, maxDepth);
     const rootMoves = genMovesNat(bd, turn);
     let bestMove = null;
     let bestValue = -99999;
@@ -1123,7 +1126,8 @@ let baseBoardW = 0;
 let baseBoardH = 0; 
 
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const LEVELS = { 'easy': { depth: 4, time: 500 }, 'medium': { depth: 8, time: 1000 }, 'hard': { depth: 12, time: 2000 }, 'expert': { depth: 16, time: 3000 }, 'master': { depth: 20, time: 5000 }, 'god': { depth: 40, time: 7000 } };
+const LEVELS = { 'easy': { depth: 4, time: 500 }, 'medium': { depth: 8, time: 1000 }, 'hard': { depth: 12, time: 2000 }, 'expert': { depth: 2, time: 3000 }, 'master': { depth: 3, time: 5000 }, 'god': { depth: 4, time: 7000 } };
+const OTHER_MIND_LEVELS = new Set(['expert', 'master', 'god']);
 
 /* 座標系統轉換工具 */
 function idxToSq(i) {
@@ -1864,12 +1868,13 @@ function makeMove(from, to) {
         isAiThinking = true; 
         const diffKey = document.getElementById('diff-sel').value;
         const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
+        const useOtherMind = OTHER_MIND_LEVELS.has(diffKey);
         
         /**
-         * 專家難度改用「象棋別人的」固定深度思考方式，不顯示倒數也不以倒數截斷搜尋；
+         * 使用「象棋別人的」固定深度思考方式時，不顯示倒數也不以倒數截斷搜尋；
          * 其他難度仍維持原本 AI 倒數與時間限制。
          */
-        if (diffKey === 'expert') {
+        if (useOtherMind) {
             stopAiTimer();
         } else {
             startAiTimer(levelConfig.time);
@@ -1877,8 +1882,8 @@ function makeMove(from, to) {
         
         let fenStr = xqGame ? xqGame.fen() : null;
         
-        // 非專家難度才需要倒數截止時間；專家難度在 Worker 內會忽略時間截止，完整算完固定深度。
-        const targetEndTime = diffKey === 'expert' ? Number.POSITIVE_INFINITY : Date.now() + levelConfig.time;
+        // 非來源 AI 難度才需要倒數截止時間；來源 AI 難度會完整算完固定深度。
+        const targetEndTime = useOtherMind ? Number.POSITIVE_INFINITY : Date.now() + levelConfig.time;
 
         setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, targetEndTime: targetEndTime, turn: turn, level: diffKey }), 50); 
     } else { 
