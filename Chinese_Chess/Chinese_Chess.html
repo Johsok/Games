@@ -511,7 +511,7 @@ self.onmessage = function(e) {
      * 其他難度不進入此分支，完整保留原本雙引擎邏輯。
      */
     if (level === 'expert') {
-        best = getBestMoveOtherMindNative(bd.slice(), limit.depth, targetEndTime, turn);
+        best = getBestMoveOtherMindNative(bd.slice(), limit.depth, turn);
         self.postMessage(best);
         return;
     }
@@ -700,8 +700,9 @@ function evaluateOtherMind(bd, side) {
 /**
  * 專家難度使用的來源 AI alpha-beta 搜尋。
  * 深度固定上限為 4，對齊原始 play.depth 常用設定，同時沿用本遊戲合法步過濾避免走出自殺步。
+ * 不使用倒數或時間截止，讓移植來源 AI 依固定深度完整思考後再回傳著法。
  */
-function getBestMoveOtherMindNative(bd, maxDepth, targetEndTime, turn) {
+function getBestMoveOtherMindNative(bd, maxDepth, turn) {
     const sourceDepth = Math.min(4, maxDepth);
     const rootMoves = genMovesNat(bd, turn);
     let bestMove = null;
@@ -713,10 +714,9 @@ function getBestMoveOtherMindNative(bd, maxDepth, targetEndTime, turn) {
         if (Math.abs(captured) === 7) return move;
 
         makeNat(bd, move);
-        const value = -alphaBetaOtherMind(bd, -99999, 99999, sourceDepth - 1, -turn, targetEndTime);
+        const value = -alphaBetaOtherMind(bd, -99999, 99999, sourceDepth - 1, -turn);
         unmakeNat(bd, move);
 
-        if (timeOutFlag) break;
         if (value > bestValue) {
             bestValue = value;
             bestMove = move;
@@ -728,13 +728,10 @@ function getBestMoveOtherMindNative(bd, maxDepth, targetEndTime, turn) {
 
 /**
  * 移植來源 AI 的負極大 alpha-beta 結構。
- * 加入時間檢查是為了配合現有倒數條，避免專家分支長時間占用 Worker。
+ * 保留來源 AI 固定深度完整搜尋的思考方式，不套用本遊戲其他難度的倒數時間限制。
  */
-function alphaBetaOtherMind(bd, alpha, beta, depth, side, targetEndTime) {
-    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) {
-        timeOutFlag = true;
-        return evaluateOtherMind(bd, side);
-    }
+function alphaBetaOtherMind(bd, alpha, beta, depth, side) {
+    checkNodes++;
     if (depth <= 0) return evaluateOtherMind(bd, side);
 
     const moves = genMovesNat(bd, side);
@@ -749,11 +746,10 @@ function alphaBetaOtherMind(bd, alpha, beta, depth, side, targetEndTime) {
             value = 8888;
         } else {
             makeNat(bd, move);
-            value = -alphaBetaOtherMind(bd, -beta, -alpha, depth - 1, -side, targetEndTime);
+            value = -alphaBetaOtherMind(bd, -beta, -alpha, depth - 1, -side);
             unmakeNat(bd, move);
         }
 
-        if (timeOutFlag) return alpha;
         if (value >= beta) return beta;
         if (value > alpha) alpha = value;
     }
@@ -1869,12 +1865,20 @@ function makeMove(from, to) {
         const diffKey = document.getElementById('diff-sel').value;
         const levelConfig = LEVELS[diffKey] || LEVELS['expert'];
         
-        startAiTimer(levelConfig.time); 
+        /**
+         * 專家難度改用「象棋別人的」固定深度思考方式，不顯示倒數也不以倒數截斷搜尋；
+         * 其他難度仍維持原本 AI 倒數與時間限制。
+         */
+        if (diffKey === 'expert') {
+            stopAiTimer();
+        } else {
+            startAiTimer(levelConfig.time);
+        }
         
         let fenStr = xqGame ? xqGame.fen() : null;
         
-        // 為了抵銷 setTimeout 的延遲，並在倒數 0 秒立刻中止思考，精準算出結束的時間戳
-        const targetEndTime = Date.now() + levelConfig.time;
+        // 非專家難度才需要倒數截止時間；專家難度在 Worker 內會忽略時間截止，完整算完固定深度。
+        const targetEndTime = diffKey === 'expert' ? Number.POSITIVE_INFINITY : Date.now() + levelConfig.time;
 
         setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, targetEndTime: targetEndTime, turn: turn, level: diffKey }), 50); 
     } else { 
