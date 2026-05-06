@@ -180,10 +180,10 @@
         select, input[type=range] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #555; background: #222; color: #fff; box-sizing: border-box; font-size: 0.9rem; outline: none; height: 38px; }
 
         /* === 遊戲容器 === */
-        /* 加上 overflow: auto 允許縮放後捲動，並加上 touch-action: none 徹底防止瀏覽器原生手勢干擾此區塊 */
+        /* 鎖住容器捲動軸，棋子或手動拖曳超出邊界時不讓整個棋盤被 scrollbar 推動 */
         #game-container { 
             flex-shrink: 1; flex-grow: 1; display: flex; 
-            overflow: auto; position: relative; box-sizing: border-box; touch-action: none;
+            overflow: hidden; position: relative; box-sizing: border-box; touch-action: none;
         }
         body.is-landscape #game-container { width: auto; height: 100vh; padding: 0; flex-grow: 0; justify-content: center; }
         
@@ -497,9 +497,57 @@ function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) 
 let checkNodes = 0; 
 let timeOutFlag = false; 
 const OTHER_MIND_LEVEL_DEPTHS = { expert: 2, master: 3, god: 4 };
+const AI_REPEAT_PENALTY = 5000;
+
+/**
+ * 將 xiangqi.js 棋格座標轉成 UI 使用的一維索引。
+ *
+ * @param {string} sq - 例如 a0 到 i9 的棋格座標。
+ * @returns {number} 對應的 0 到 89 一維索引。
+ */
+function sqToIdxWorker(sq) {
+    return (9 - parseInt(sq[1])) * 9 + (sq.charCodeAt(0) - 97);
+}
+
+/**
+ * 判斷候選步是否正在延續電腦近期的來回重複。
+ *
+ * @param {number} from - 起點索引。
+ * @param {number} to - 終點索引。
+ * @param {Array<{from:number,to:number,key:string}>} recentAiMoves - 近期電腦走法。
+ * @returns {boolean} 若此步應被降權，回傳 true。
+ */
+function shouldAvoidAiRepeatMove(from, to, recentAiMoves) {
+    if (!Array.isArray(recentAiMoves) || recentAiMoves.length === 0) return false;
+
+    const key = from + '-' + to;
+    let sameMoveCount = 0;
+    for (let i = 0; i < recentAiMoves.length; i++) {
+        if (recentAiMoves[i].key === key) sameMoveCount++;
+    }
+    if (sameMoveCount >= 2) return true;
+
+    const last = recentAiMoves[recentAiMoves.length - 1];
+    const prev = recentAiMoves[recentAiMoves.length - 2];
+    return !!(last && prev && last.from === to && last.to === from && prev.from === from && prev.to === to);
+}
+
+/**
+ * 對非吃子的重複候選步加上懲罰，保留必要吃子與戰術步。
+ *
+ * @param {number} from - 起點索引。
+ * @param {number} to - 終點索引。
+ * @param {boolean} isCapture - 是否為吃子步。
+ * @param {Array<{from:number,to:number,key:string}>} recentAiMoves - 近期電腦走法。
+ * @returns {number} 應扣除的分數。
+ */
+function getRepeatPenalty(from, to, isCapture, recentAiMoves) {
+    if (isCapture) return 0;
+    return shouldAvoidAiRepeatMove(from, to, recentAiMoves) ? AI_REPEAT_PENALTY : 0;
+}
 
 self.onmessage = function(e) { 
-    const { fen, bd, limit, targetEndTime, turn, level } = e.data; 
+    const { fen, bd, limit, targetEndTime, turn, level, recentAiMoves } = e.data; 
     let best = null;
     
     // 每次思考前重置標記與計數器
@@ -513,16 +561,16 @@ self.onmessage = function(e) {
      * 未列入的難度完整保留原本雙引擎邏輯。
      */
     if (OTHER_MIND_LEVEL_DEPTHS[level]) {
-        best = getBestMoveOtherMindNative(bd.slice(), OTHER_MIND_LEVEL_DEPTHS[level], turn);
+        best = getBestMoveOtherMindNative(bd.slice(), OTHER_MIND_LEVEL_DEPTHS[level], turn, recentAiMoves);
         self.postMessage(best);
         return;
     }
     
     if (useXq && fen) {
         game.load(fen);
-        best = getBestMoveIterativeXq(limit.depth, targetEndTime, turn, level); 
+        best = getBestMoveIterativeXq(limit.depth, targetEndTime, turn, level, recentAiMoves); 
     } else {
-        best = getBestMoveIterativeNative(bd, limit.depth, targetEndTime, turn, level);
+        best = getBestMoveIterativeNative(bd, limit.depth, targetEndTime, turn, level, recentAiMoves);
     }
     self.postMessage(best); 
 };
@@ -554,7 +602,7 @@ function evalBdXq(turn) {
     } return s * turn; 
 }
 
-function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level) { 
+function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level, recentAiMoves) { 
     const startTime = Date.now(); let globalBestMove = null; 
     let rootMoves = game.moves({ verbose: true }); 
     let actualMaxDepth = maxDepth; 
@@ -575,6 +623,9 @@ function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level) {
             game.move(m); 
             let score = -alphaBetaXq(d - 1, -beta, -alpha, -turn, 1, targetEndTime); 
             game.undo(); 
+            const fromIdx = sqToIdxWorker(m.from);
+            const toIdx = sqToIdxWorker(m.to);
+            score -= getRepeatPenalty(fromIdx, toIdx, !!m.captured, recentAiMoves);
             
             if (timeOutFlag || Date.now() >= targetEndTime) { outOfTime = true; timeOutFlag = true; break; }
             if (score > alpha) { alpha = score; currentDepthBest = m; } 
@@ -705,7 +756,7 @@ function evaluateOtherMind(bd, side) {
  * 深度由難度設定固定指定，同時沿用本遊戲合法步過濾避免走出自殺步。
  * 不使用倒數或時間截止，讓移植來源 AI 依固定深度完整思考後再回傳著法。
  */
-function getBestMoveOtherMindNative(bd, maxDepth, turn) {
+function getBestMoveOtherMindNative(bd, maxDepth, turn, recentAiMoves) {
     const sourceDepth = Math.max(1, maxDepth);
     const rootMoves = genMovesNat(bd, turn);
     let bestMove = null;
@@ -717,7 +768,7 @@ function getBestMoveOtherMindNative(bd, maxDepth, turn) {
         if (Math.abs(captured) === 7) return move;
 
         makeNat(bd, move);
-        const value = -alphaBetaOtherMind(bd, -99999, 99999, sourceDepth - 1, -turn);
+        const value = -alphaBetaOtherMind(bd, -99999, 99999, sourceDepth - 1, -turn) - getRepeatPenalty(move.from, move.to, captured !== 0, recentAiMoves);
         unmakeNat(bd, move);
 
         if (value > bestValue) {
@@ -759,7 +810,7 @@ function alphaBetaOtherMind(bd, alpha, beta, depth, side) {
     return alpha;
 }
 
-function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level) { 
+function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level, recentAiMoves) { 
     const startTime = Date.now(); let globalBestMove = null; 
     let rootMoves = genMovesNat(bd, turn); killerTable.fill(0); 
     let actualMaxDepth = maxDepth; 
@@ -770,9 +821,11 @@ function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level) {
         let alpha = -INFINITY, beta = INFINITY, currentDepthBest = null; let outOfTime = false;
         rootMoves = sortMovesNat(rootMoves, bd, turn, 0, globalBestMove); 
         for (let m of rootMoves) { 
+            const captured = bd[m.to];
             makeNat(bd, m); 
             let score = -alphaBetaNat(bd, d - 1, -beta, -alpha, -turn, 1, targetEndTime, computeHash(bd)); 
             unmakeNat(bd, m); 
+            score -= getRepeatPenalty(m.from, m.to, captured !== 0, recentAiMoves);
             
             if (timeOutFlag || Date.now() >= targetEndTime) { outOfTime = true; timeOutFlag = true; break; }
             if (score > alpha) { alpha = score; currentDepthBest = m; } 
@@ -1120,6 +1173,8 @@ let showGhost = true, showAiProgress = true;
 let currentLang = 'tw'; 
 let viewSide = 1; 
 let dragEl = null;
+let aiMoveHistory = [];
+const MAX_AI_MOVE_HISTORY = 12;
 
 let currentZoom = 1.0; 
 let baseBoardW = 0; 
@@ -1139,6 +1194,19 @@ function sqToIdx(sq) {
     let file = sq.charCodeAt(0) - 97;
     let rank = 9 - parseInt(sq[1]);
     return rank * 9 + file;
+}
+
+/**
+ * 記錄近期電腦走法，供 AI 避免同一顆棋反覆來回。
+ *
+ * @param {number} from - 起點索引。
+ * @param {number} to - 終點索引。
+ * @param {number} piece - 移動棋子的代碼。
+ * @returns {void}
+ */
+function rememberAiMove(from, to, piece) {
+    aiMoveHistory.push({ from, to, piece, key: from + '-' + to });
+    if (aiMoveHistory.length > MAX_AI_MOVE_HISTORY) aiMoveHistory.shift();
 }
 
 /* 將 xiangqi.js 的二維陣列盤面無縫同步為原本的 1D ui 渲染陣列 (加入完美防呆機制) */
@@ -1509,7 +1577,7 @@ function restart() {
     syncBd(); 
 
     turn = viewSide; 
-    sel = -1; moves = []; over = false; historyStack = []; lastMoveIdx = -1; 
+    sel = -1; moves = []; over = false; historyStack = []; aiMoveHistory = []; lastMoveIdx = -1; 
     lastMoveFrom = -1; lastMovePieceType = 0; 
     dragEl = null;
     
@@ -1588,6 +1656,7 @@ function undo() {
     lastMoveIdx = state.lastMoveIdx; 
     lastMoveFrom = state.lastMoveFrom; 
     lastMovePieceType = state.lastMovePieceType;
+    aiMoveHistory = state.aiMoveHistory || [];
 
     if (xqGame) syncBd();
     
@@ -1785,13 +1854,18 @@ function showCheckOverlay() {
 function makeMove(from, to) {
     let fromSq = idxToSq(from);
     let toSq = idxToSq(to);
+    let actualFrom = from;
+    let actualTo = to;
+    let movingPieceType = bd[from];
+    const isAiMove = !isPVP && turn !== viewSide;
 
     historyStack.push({ 
         bd: [...bd],
         turn: turn,
         lastMoveIdx: lastMoveIdx, 
         lastMoveFrom: lastMoveFrom, 
-        lastMovePieceType: lastMovePieceType 
+        lastMovePieceType: lastMovePieceType,
+        aiMoveHistory: [...aiMoveHistory]
     });
     
     let isKingCapture = (bd[to] === 7 || bd[to] === -7);
@@ -1805,29 +1879,34 @@ function makeMove(from, to) {
     } else if (xqGame) {
         let moveObj = xqGame.move({ from: fromSq, to: toSq });
         if (!moveObj) { 
-        historyStack.pop(); 
-        console.warn("AI 嘗試了不合法步，強制走合法步防卡死");
-        let validMoves = xqGame.moves({verbose: true});
-        if (validMoves.length > 0) {
-            let fallback = validMoves[0];
-            eat = fallback.captured ? true : false;
-            xqGame.move(fallback);
-            syncBd();
+            console.warn("AI 嘗試了不合法步，強制走合法步防卡死");
+            let validMoves = xqGame.moves({verbose: true});
+            if (validMoves.length > 0) {
+                let fallback = validMoves[0];
+                actualFrom = sqToIdx(fallback.from);
+                actualTo = sqToIdx(fallback.to);
+                movingPieceType = bd[actualFrom];
+                moveObj = xqGame.move(fallback);
+                eat = moveObj && moveObj.captured ? true : false;
+                syncBd();
+            } else {
+                historyStack.pop(); 
+                return;
+            }
         } else {
-            return;
+            eat = moveObj.captured ? true : false;
+            syncBd(); 
         }
-    }
-        eat = moveObj.captured ? true : false;
-        syncBd(); 
     } else {
         eat = bd[to] !== 0;
         bd[to] = bd[from];
         bd[from] = 0;
     }
 
-    lastMoveFrom = from; 
-    lastMovePieceType = bd[from];
-    lastMoveIdx = to;
+    lastMoveFrom = actualFrom; 
+    lastMovePieceType = movingPieceType;
+    lastMoveIdx = actualTo;
+    if (isAiMove) rememberAiMove(actualFrom, actualTo, movingPieceType);
 
     playSfx(eat ? 600 : 300);
     const t = TRANSLATIONS[currentLang];
@@ -1885,7 +1964,7 @@ function makeMove(from, to) {
         // 非來源 AI 難度才需要倒數截止時間；來源 AI 難度會完整算完固定深度。
         const targetEndTime = useOtherMind ? Number.POSITIVE_INFINITY : Date.now() + levelConfig.time;
 
-        setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, targetEndTime: targetEndTime, turn: turn, level: diffKey }), 50); 
+        setTimeout(() => worker.postMessage({ fen: fenStr, bd: bd, limit: levelConfig, targetEndTime: targetEndTime, turn: turn, level: diffKey, recentAiMoves: aiMoveHistory }), 50); 
     } else { 
         updateStatus(); 
         if (!xqGame) {
