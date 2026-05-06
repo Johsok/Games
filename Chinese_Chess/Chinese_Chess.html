@@ -504,6 +504,17 @@ self.onmessage = function(e) {
     // 每次思考前重置標記與計數器
     checkNodes = 0; 
     timeOutFlag = false; 
+
+    /**
+     * 「專家」難度指定改用「象棋別人的」來源 AI 的思維：
+     * 使用該 AI 的棋子位置價值表與固定深度 alpha-beta 搜尋。
+     * 其他難度不進入此分支，完整保留原本雙引擎邏輯。
+     */
+    if (level === 'expert') {
+        best = getBestMoveOtherMindNative(bd.slice(), limit.depth, targetEndTime, turn);
+        self.postMessage(best);
+        return;
+    }
     
     if (useXq && fen) {
         game.load(fen);
@@ -649,6 +660,104 @@ function evalBdNat(bd, turn) {
         if (type === 1 && rRow < 5) val += (5 - rRow) * 15;
         s += (color === 1 ? val : -val); 
     } return s * turn; 
+}
+
+/**
+ * 由「象棋別人的/中國象棋 in html5_files/common.js.下載」移植的棋子位置價值表。
+ * 原始 AI 主要依靠這些表評估局面，紅方使用原表，黑方使用上下反轉表。
+ */
+const OTHER_AI_PST = {
+    c: [[206,208,207,213,214,213,207,208,206],[206,212,209,216,233,216,209,212,206],[206,208,207,214,216,214,207,208,206],[206,213,213,216,216,216,213,213,206],[208,211,211,214,215,214,211,211,208],[208,212,212,214,215,214,212,212,208],[204,209,204,212,214,212,204,209,204],[198,208,204,212,212,212,204,208,198],[200,208,206,212,200,212,206,208,200],[194,206,204,212,200,212,204,206,194]],
+    m: [[90,90,90,96,90,96,90,90,90],[90,96,103,97,94,97,103,96,90],[92,98,99,103,99,103,99,98,92],[93,108,100,107,100,107,100,108,93],[90,100,99,103,104,103,99,100,90],[90,98,101,102,103,102,101,98,90],[92,94,98,95,98,95,98,94,92],[93,92,94,95,92,95,94,92,93],[85,90,92,93,78,93,92,90,85],[88,85,90,88,90,88,90,85,88]],
+    x: [[0,0,20,0,0,0,20,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,23,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,20,0,0,0,20,0,0],[0,0,20,0,0,0,20,0,0],[0,0,0,0,0,0,0,0,0],[18,0,0,0,23,0,0,0,18],[0,0,0,0,0,0,0,0,0],[0,0,20,0,0,0,20,0,0]],
+    s: [[0,0,0,20,0,20,0,0,0],[0,0,0,0,23,0,0,0,0],[0,0,0,20,0,20,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,20,0,20,0,0,0],[0,0,0,0,23,0,0,0,0],[0,0,0,20,0,20,0,0,0]],
+    j: [[0,0,0,8888,8888,8888,0,0,0],[0,0,0,8888,8888,8888,0,0,0],[0,0,0,8888,8888,8888,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,8888,8888,8888,0,0,0],[0,0,0,8888,8888,8888,0,0,0],[0,0,0,8888,8888,8888,0,0,0]],
+    p: [[100,100,96,91,90,91,96,100,100],[98,98,96,92,89,92,96,98,98],[97,97,96,91,92,91,96,97,97],[96,99,99,98,100,98,99,99,96],[96,96,96,96,100,96,96,96,96],[95,96,99,96,100,96,99,96,95],[96,96,96,96,96,96,96,96,96],[97,96,100,99,101,99,100,96,97],[96,97,98,98,98,98,98,97,96],[96,96,97,99,99,99,97,96,96]],
+    z: [[9,9,9,11,13,11,9,9,9],[19,24,34,42,44,42,34,24,19],[19,24,32,37,37,37,32,24,19],[19,23,27,29,30,29,27,23,19],[14,18,20,27,29,27,20,18,14],[7,0,13,0,16,0,13,0,7],[7,0,7,0,15,0,7,0,7],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
+};
+const OTHER_AI_TYPE = { 1: 'z', 2: 'p', 3: 'c', 4: 'm', 5: 'x', 6: 's', 7: 'j' };
+
+/**
+ * 依照來源 AI 的評分方式計算局面分數。
+ * side 代表目前搜尋方，回傳值越大表示目前搜尋方越有利。
+ */
+function evaluateOtherMind(bd, side) {
+    let val = 0;
+    for (let i = 0; i < 90; i++) {
+        const piece = bd[i];
+        if (piece === 0) continue;
+
+        const color = piece > 0 ? 1 : -1;
+        const type = OTHER_AI_TYPE[Math.abs(piece)];
+        const table = OTHER_AI_PST[type];
+        const row = Math.floor(i / 9);
+        const col = i % 9;
+        val += table[color === 1 ? row : 9 - row][col] * color;
+    }
+    return val * side;
+}
+
+/**
+ * 專家難度使用的來源 AI alpha-beta 搜尋。
+ * 深度固定上限為 4，對齊原始 play.depth 常用設定，同時沿用本遊戲合法步過濾避免走出自殺步。
+ */
+function getBestMoveOtherMindNative(bd, maxDepth, targetEndTime, turn) {
+    const sourceDepth = Math.min(4, maxDepth);
+    const rootMoves = genMovesNat(bd, turn);
+    let bestMove = null;
+    let bestValue = -99999;
+
+    for (let i = 0; i < rootMoves.length; i++) {
+        const move = rootMoves[i];
+        const captured = bd[move.to];
+        if (Math.abs(captured) === 7) return move;
+
+        makeNat(bd, move);
+        const value = -alphaBetaOtherMind(bd, -99999, 99999, sourceDepth - 1, -turn, targetEndTime);
+        unmakeNat(bd, move);
+
+        if (timeOutFlag) break;
+        if (value > bestValue) {
+            bestValue = value;
+            bestMove = move;
+        }
+    }
+
+    return bestMove || rootMoves[0] || null;
+}
+
+/**
+ * 移植來源 AI 的負極大 alpha-beta 結構。
+ * 加入時間檢查是為了配合現有倒數條，避免專家分支長時間占用 Worker。
+ */
+function alphaBetaOtherMind(bd, alpha, beta, depth, side, targetEndTime) {
+    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) {
+        timeOutFlag = true;
+        return evaluateOtherMind(bd, side);
+    }
+    if (depth <= 0) return evaluateOtherMind(bd, side);
+
+    const moves = genMovesNat(bd, side);
+    if (moves.length === 0) return inCheckNatWorker(bd, side) ? -8888 : 0;
+
+    for (let i = 0; i < moves.length; i++) {
+        const move = moves[i];
+        const captured = bd[move.to];
+        let value;
+
+        if (Math.abs(captured) === 7) {
+            value = 8888;
+        } else {
+            makeNat(bd, move);
+            value = -alphaBetaOtherMind(bd, -beta, -alpha, depth - 1, -side, targetEndTime);
+            unmakeNat(bd, move);
+        }
+
+        if (timeOutFlag) return alpha;
+        if (value >= beta) return beta;
+        if (value > alpha) alpha = value;
+    }
+    return alpha;
 }
 
 function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level) { 
