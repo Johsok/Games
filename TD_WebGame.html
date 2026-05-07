@@ -401,8 +401,29 @@
         hsl(calc(var(--map-hue) + 40), var(--map-sat), 28%);
       border: 1px solid rgba(120, 170, 210, 0.25);
     }
+    /*
+     * 路徑方向箭頭：由 JS 依 `pathOrder` 每格推算下一格方向後插入。
+     * 使用獨立子節點避免覆蓋 spawn／goal 既有 `::after` 圖示，並以微光提示玩家敵人行進方向。
+     */
+    .cell.path .path-arrow {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #dbeafe;
+      font-size: clamp(0.72rem, 2.2vmin, 1.05rem);
+      font-weight: 900;
+      line-height: 1;
+      text-shadow:
+        0 0 6px rgba(96, 165, 250, 0.85),
+        0 1px 3px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+      transform: translateZ(6px);
+    }
     .cell.spawn::after {
-      content: "▶";
+      content: var(--spawn-arrow, "▶");
       position: absolute;
       inset: 0;
       display: flex;
@@ -1876,6 +1897,12 @@
         { id: 'bomber', name: '轟炸機', hp: 100, speed: 0.032, reward: 20, img: 'TD_Photo/enemy_bomber.png' }
       ];
 
+      /** 敵人血量在既有 `base.hp * hpScale * 2` 基礎上再加強 1.5 倍。 */
+      const ENEMY_HP_EXTRA_MUL = 1.5;
+
+      /** 敵人實際移動速度提升為 2 倍，於生怪佇列計算後由 `gameLoop` 套用。 */
+      const ENEMY_SPEED_EXTRA_MUL = 2;
+
       /**
        * @param {number} seed
        * @returns {() => number}
@@ -1905,6 +1932,133 @@
           if (dr1 !== dr2 || dc1 !== dc2) bends++;
         }
         return bends;
+      }
+
+      /**
+       * 計算非連續路徑格彼此相鄰的懲罰分數；分數越低，路線越分散、不易形成貼邊平行路。
+       * @param {[number,number][]} path
+       * @returns {number}
+       */
+      function countPathAdjacencyPenalty(path) {
+        const indexByKey = new Map();
+        for (let i = 0; i < path.length; i++) {
+          indexByKey.set(path[i][0] + ',' + path[i][1], i);
+        }
+        let penalty = 0;
+        const dirs = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ];
+        for (let i = 0; i < path.length; i++) {
+          const r = path[i][0];
+          const c = path[i][1];
+          for (let d = 0; d < dirs.length; d++) {
+            const j = indexByKey.get(r + dirs[d][0] + ',' + (c + dirs[d][1]));
+            if (j != null && Math.abs(j - i) > 1) penalty++;
+          }
+        }
+        return penalty / 2;
+      }
+
+      /**
+       * 將折線控制點展開為逐格路徑，若撞到已走過格子則視為失敗。
+       * @param {[number,number][]} points
+       * @returns {[number,number][]|null}
+       */
+      function expandPolylinePath(points) {
+        const path = [];
+        const used = new Set();
+        /**
+         * @param {number} r
+         * @param {number} c
+         * @returns {boolean}
+         */
+        function pushCell(r, c) {
+          const key = r + ',' + c;
+          if (used.has(key)) return false;
+          used.add(key);
+          path.push([r, c]);
+          return true;
+        }
+        if (!points.length || !pushCell(points[0][0], points[0][1])) return null;
+        for (let i = 1; i < points.length; i++) {
+          let r = points[i - 1][0];
+          let c = points[i - 1][1];
+          const tr = points[i][0];
+          const tc = points[i][1];
+          while (r !== tr || c !== tc) {
+            if (r < tr) r++;
+            else if (r > tr) r--;
+            else if (c < tc) c++;
+            else if (c > tc) c--;
+            if (!pushCell(r, c)) return null;
+          }
+        }
+        return path;
+      }
+
+      /**
+       * 產生「彎折數精準等於關卡數」的隨機折線路徑候選。
+       * 垂直段採遞增列座標，避免繞回重疊；水平段每次重新抽欄位，讓同關卡重進時外觀不同。
+       * @param {number} rows
+       * @param {number} cols
+       * @param {() => number} rng
+       * @param {number} targetBends
+       * @returns {[number,number][]|null}
+       */
+      function buildExactBendCandidate(rows, cols, rng, targetBends) {
+        if (targetBends <= 0) {
+          const c = Math.max(1, Math.min(cols - 2, Math.floor(cols / 2)));
+          return expandPolylinePath([[0, c], [rows - 1, c]]);
+        }
+        const segments = targetBends + 1;
+        const startVertical = rng() < 0.5;
+        /** @type {('V'|'H')[]} */
+        const segDirs = [];
+        for (let i = 0; i < segments; i++) {
+          const vertical = startVertical ? i % 2 === 0 : i % 2 === 1;
+          segDirs.push(vertical ? 'V' : 'H');
+        }
+        const verticalCount = segDirs.filter((x) => x === 'V').length;
+        if (verticalCount <= 0 || rows - 2 < verticalCount - 1) return null;
+        const innerCols = Math.max(1, cols - 2);
+        let curR = 0;
+        let curC = 1 + Math.floor(rng() * innerCols);
+        /** @type {[number,number][]} */
+        const points = [[curR, curC]];
+        /** @type {number[]} */
+        const rowTargets = [];
+        for (let i = 0; i < verticalCount - 1; i++) {
+          const t = (i + 1) / verticalCount;
+          const base = 1 + Math.floor(t * (rows - 2));
+          const jitter = Math.floor((rng() - 0.5) * 3);
+          rowTargets.push(Math.max(1, Math.min(rows - 2, base + jitter)));
+        }
+        rowTargets.sort(function (a, b) {
+          return a - b;
+        });
+        for (let i = 1; i < rowTargets.length; i++) {
+          if (rowTargets[i] <= rowTargets[i - 1]) rowTargets[i] = rowTargets[i - 1] + 1;
+        }
+        if (rowTargets.length && rowTargets[rowTargets.length - 1] >= rows - 1) return null;
+        rowTargets.push(rows - 1);
+        let vr = 0;
+        for (let i = 0; i < segDirs.length; i++) {
+          if (segDirs[i] === 'V') {
+            curR = rowTargets[vr++];
+          } else {
+            let nextC = curC;
+            for (let guard = 0; guard < 16 && Math.abs(nextC - curC) < 1; guard++) {
+              nextC = 1 + Math.floor(rng() * innerCols);
+            }
+            if (nextC === curC) nextC = curC < cols - 2 ? curC + 1 : curC - 1;
+            curC = Math.max(0, Math.min(cols - 1, nextC));
+          }
+          points.push([curR, curC]);
+        }
+        return expandPolylinePath(points);
       }
 
       /**
@@ -1964,8 +2118,8 @@
       }
 
       /**
-       * 依關卡強制「彎折數 = 關卡編號」（Lv.1 一個彎折點、Lv.2 兩個…）並拉長路徑：
-       * 先多種子嘗試較鬆的 greedy；不足則 Serpentine 折線保證彎折數。
+       * 依關卡強制「彎折數 = 關卡編號」（Lv.1 一個彎折點、Lv.2 兩個…）並拉長路徑。
+       * 每次進入關卡會收到新的 seed；同時挑選相鄰懲罰最低者，讓路徑盡量分散、不貼邊並排。
        * @param {number} rows
        * @param {number} cols
        * @param {number} seed
@@ -1976,18 +2130,30 @@
         const targetBends = levelIndex + 1;
         const maxBendsFit = Math.max(0, rows + cols - 4);
         const needBends = Math.min(targetBends, maxBendsFit);
-        for (let attempt = 0; attempt < 260; attempt++) {
+        let best = null;
+        let bestPenalty = Infinity;
+        for (let attempt = 0; attempt < 360; attempt++) {
           const rngA = mulberry32(seed ^ 1337 ^ attempt * 7919);
-          const innerW = Math.max(1, cols - 2);
-          const sc = 1 + Math.floor(rngA() * innerW);
-          const gc = 1 + Math.floor(rngA() * innerW);
-          const spawn = /** @type {[number,number]} */ ([0, sc]);
-          const goal = /** @type {[number,number]} */ ([rows - 1, gc]);
-          const loosenessExtra = Math.floor(attempt / 12) * 2;
-          const path = greedyRandomPath(rows, cols, spawn, goal, rngA, loosenessExtra);
-          if (path && countPathBends(path) >= needBends) {
-            return { pathOrder: path, spawn, goal };
+          const path = buildExactBendCandidate(rows, cols, rngA, needBends);
+          if (path && countPathBends(path) === needBends) {
+            const penalty = countPathAdjacencyPenalty(path);
+            if (
+              !best ||
+              penalty < bestPenalty ||
+              (penalty === bestPenalty && path.length > best.length)
+            ) {
+              best = path;
+              bestPenalty = penalty;
+            }
+            if (penalty === 0 && attempt > 24) break;
           }
+        }
+        if (best) {
+          return {
+            pathOrder: best,
+            spawn: /** @type {[number,number]} */ (best[0]),
+            goal: /** @type {[number,number]} */ (best[best.length - 1])
+          };
         }
         return buildSerpentinePath(rows, cols, seed, needBends);
       }
@@ -2111,7 +2277,8 @@
         const cols = 12 + levelIndex * 2;
         /* 難度調高：波數 +2、起始金略減、成長係數提高，後期敵血更厚；另依需求全關初始資金 +100 */
         const waves = 8 + levelIndex;
-        const startGold = 118 + levelIndex * 30 + 100;
+        /* 難度調高：波數 +2、起始金略減、成長係數提高，後期敵血更厚；另依需求全關初始資金 +100；再加 100；再加 100 */
+        const startGold = 118 + levelIndex * 30 + 100 + 100 + 100;
         const diff = 1 + levelIndex * 0.13;
         return { rows, cols, waves, startGold, diff, seed: 10007 + levelIndex * 7919 };
       }
@@ -2223,11 +2390,12 @@
       }
 
       /**
-       * 依關卡套用 CSS 變數，讓地圖配色隨機感（色相／飽和／紋理強度）。
+       * 依關卡與本次進入關卡的隨機 seed 套用 CSS 變數，讓地圖配色與路徑一樣每次有變化。
        * @param {number} levelIndex
+       * @param {number} runSeed
        */
-      function applyMapTheme(levelIndex) {
-        const rng = mulberry32(5000 + levelIndex * 997);
+      function applyMapTheme(levelIndex, runSeed) {
+        const rng = mulberry32(runSeed ^ 5000 ^ levelIndex * 997);
         const hue = Math.floor(160 + rng() * 80 + levelIndex * 6);
         const sat = 12 + Math.floor(rng() * 18);
         const pat = (0.05 + rng() * 0.1).toFixed(3);
@@ -2375,6 +2543,26 @@
       }
 
       /**
+       * 依指定路徑格的下一格位置回傳方向箭頭文字；終點不顯示箭頭。
+       * @param {number} r
+       * @param {number} c
+       * @returns {string}
+       */
+      function getPathArrowText(r, c) {
+        const key = r + ',' + c;
+        for (let i = 0; i < pathOrder.length - 1; i++) {
+          if (pathOrder[i][0] + ',' + pathOrder[i][1] !== key) continue;
+          const nr = pathOrder[i + 1][0];
+          const nc = pathOrder[i + 1][1];
+          if (nr > r) return '↓';
+          if (nr < r) return '↑';
+          if (nc > c) return '→';
+          if (nc < c) return '←';
+        }
+        return '';
+      }
+
+      /**
        * 依目前網格與路徑重繪棋盤 DOM。
        */
       function renderMap() {
@@ -2391,7 +2579,25 @@
             cell.className = 'cell ' + (onPath ? 'path' : 'field');
             cell.dataset.r = String(r);
             cell.dataset.c = String(c);
-            if (onPath && spawnCell[0] === r && spawnCell[1] === c) cell.classList.add('spawn');
+            if (onPath && spawnCell[0] === r && spawnCell[1] === c) {
+              cell.classList.add('spawn');
+              const spawnArrow = getPathArrowText(r, c);
+              if (spawnArrow) cell.style.setProperty('--spawn-arrow', '"' + spawnArrow + '"');
+            }
+            if (
+              onPath &&
+              !(spawnCell[0] === r && spawnCell[1] === c) &&
+              !(goalCell[0] === r && goalCell[1] === c)
+            ) {
+              const arrowText = getPathArrowText(r, c);
+              if (arrowText) {
+                const arrow = document.createElement('span');
+                arrow.className = 'path-arrow';
+                arrow.setAttribute('aria-hidden', 'true');
+                arrow.textContent = arrowText;
+                cell.appendChild(arrow);
+              }
+            }
             if (onPath && goalCell[0] === r && goalCell[1] === c) {
               cell.classList.add('goal');
               const goalHud = document.createElement('div');
@@ -2503,6 +2709,21 @@
       }
 
       /**
+       * 建立單次進入關卡使用的隨機地圖 seed。
+       * 混合固定關卡 seed、目前時間與 `Math.random()`，使同一關每次重進都重新生成不同路徑。
+       * @param {number} baseSeed
+       * @param {number} levelIndex
+       * @returns {number}
+       */
+      function createLevelRunSeed(baseSeed, levelIndex) {
+        return (
+          baseSeed ^
+          ((Date.now() & 0x7fffffff) + Math.floor(Math.random() * 0x7fffffff)) ^
+          ((levelIndex + 1) * 0x45d9f3b)
+        ) >>> 0;
+      }
+
+      /**
        * @param {number} levelIndex
        */
       function startLevel(levelIndex) {
@@ -2521,9 +2742,10 @@
         enemies = [];
         towers = [];
         projectiles = [];
-        applyMapTheme(levelIndex);
+        const runSeed = createLevelRunSeed(cfg.seed, levelIndex);
+        applyMapTheme(levelIndex, runSeed);
         selectedTowerId = null;
-        const built = buildPath(rows, cols, cfg.seed, levelIndex);
+        const built = buildPath(rows, cols, runSeed, levelIndex);
         pathOrder = built.pathOrder;
         pathSet = new Set(pathOrder.map((p) => p[0] + ',' + p[1]));
         spawnCell = built.spawn;
@@ -2558,15 +2780,15 @@
           const base = ENEMY_TYPES[pick];
           const hpScale = levelDiff * (1 + waveIndex * 0.165);
           /**
-           * 全關卡／全波次敵人血量：在原有 `base.hp * hpScale` 上再乘以 2（需求：各關血量兩倍）。
+           * 全關卡／全波次敵人血量：保留既有 2 倍強化，再依本次需求額外乘以 1.5 倍。
            * @type {number}
            */
-          const hpFinal = base.hp * hpScale * 2;
+          const hpFinal = base.hp * hpScale * 2 * ENEMY_HP_EXTRA_MUL;
           q.push({
             typeId: base.id,
             hp: hpFinal,
             maxHp: hpFinal,
-            speed: base.speed * (1 + currentLevel * 0.042),
+            speed: base.speed * (1 + currentLevel * 0.042) * ENEMY_SPEED_EXTRA_MUL,
             reward: Math.floor(base.reward * (1 + currentLevel * 0.05)),
             seg: 0,
             t: 0,
@@ -2742,7 +2964,12 @@
           if (!def) continue;
           const slowSafe =
             en.slowMul != null && isFinite(en.slowMul) && en.slowMul > 0 ? en.slowMul : 1;
-          en.t += (def.speed * slowSafe * dt) / 14;
+          /**
+           * 使用入場時寫入的 `en.speed`，讓關卡速度成長與本次 2 倍速度需求確實作用；
+           * 若舊資料缺少 speed，才退回敵種原始速度。
+           */
+          const moveSpeed = en.speed != null && isFinite(en.speed) ? en.speed : def.speed;
+          en.t += (moveSpeed * slowSafe * dt) / 14;
           let segSteps = 0;
           const maxSegSteps = pathOrder.length + 6;
           while (en.t >= 1 && en.seg < pathOrder.length - 1 && segSteps < maxSegSteps) {
