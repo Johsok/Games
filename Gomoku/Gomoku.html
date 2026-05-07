@@ -252,8 +252,6 @@
         <div>
             <label id="lbl-diff">電腦難度 (單人)</label>
             <select id="diff-sel" onchange="changeDifficulty()">
-                <!-- world：同目錄 rapfi-single.js / .wasm / .data，Gomocup 協定世界級 Rapfi 引擎 -->
-                <option value="world">🏆 世界級 (Rapfi AI)</option>
                 <option value="easy" selected>簡單 (2秒)</option>
                 <option value="medium">中等 (3秒)</option>
                 <option value="hard">困難 (4秒)</option>
@@ -349,280 +347,8 @@ const manifestJSON = {
 };
 document.getElementById('manifest-placeholder').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
 
-/* === Rapfi 世界級 AI（WASM + Gomocup 文字協定）===
- * 使用與本頁同目錄之 rapfi-single.js（由 Emscripten 編譯），執行緒內載入 rapfi-single.wasm
- * 與 rapfi-single.data（內含模型與設定）。通訊符合 Gomocup：START、INFO、RESTART、BEGIN、BOARD/DONE。
- * 參考協定說明：https://plastovicka.github.io/protocl2en.htm
- */
-/** @type {Worker | null} Rapfi Web Worker 實例 */
-let rapfiWorker = null;
-/** @type {string} 目前使用的 Rapfi Worker 腳本名稱（multi / single） */
-let rapfiWorkerScriptUsed = '';
-/** @type {string}  stdout 列緩衝（逐字累加後依換行切分） */
-let rapfiStdoutBuf = '';
-/** @type {{ type: 'OK'|'MOVE', resolve: Function, reject: Function } | null} 目前等待引擎回覆狀態 */
-let rapfiPending = null;
-/** @type {boolean} START/INFO 完成後為 true，表示可向引擎送棋局指令 */
-let rapfiSessionReady = false;
-/** @type {boolean} Worker 建立失敗或序例錯誤時改走內建 Worker AI */
-let rapfiInitFailed = false;
-/** @type {Promise<void>} 串行化所有送給 Rapfi 的非同步操作，避免 stdin 交錯 */
-let rapfiChain = Promise.resolve();
-/** @type {string[]} GitHub Pages 最強可行版：固定使用 single，避免 multi 在頁面標頭限制下失敗 */
-const RAPFI_WORKER_CANDIDATES = ['rapfi-single.js'];
-
 /**
- * 將 Rapfi 相關操作排入單一序列，避免同時寫入多組 Gomocup 指令造成死結。
- * @param {() => void | Promise<void>} fn 要執行的函式
- * @returns {Promise<void>}
- */
-function rapfiEnqueue(fn) {
-    rapfiChain = rapfiChain.then(fn).catch(function (err) { console.error('[Rapfi]', err); });
-    return rapfiChain;
-}
-
-/**
- * 累加 Worker 傳回之 stdout，拆成完整行後交給 {@link rapfiDispatchLine}。
- * @param {string} text 一段輸出文字
- * @returns {void}
- */
-function rapfiAppendStdout(text) {
-    rapfiStdoutBuf += text;
-    let nl;
-    while ((nl = rapfiStdoutBuf.indexOf('\n')) >= 0) {
-        const line = rapfiStdoutBuf.slice(0, nl).replace(/\r$/, '').trim();
-        rapfiStdoutBuf = rapfiStdoutBuf.slice(nl + 1);
-        rapfiDispatchLine(line);
-    }
-}
-
-/**
- * 依目前等待類型解析單行輸出（OK、座標、ERROR）。
- * @param {string} line 已 trim 的一行
- * @returns {void}
- */
-function rapfiDispatchLine(line) {
-    if (!line) return;
-    if (line.startsWith('DEBUG') || line.startsWith('MESSAGE')) return;
-    if (!rapfiPending) return;
-    if (rapfiPending.type === 'OK') {
-        if (line === 'OK') {
-            rapfiPending.resolve();
-            rapfiPending = null;
-        } else if (line.indexOf('ERROR') === 0 || line.indexOf('UNKNOWN') === 0) {
-            rapfiPending.reject(new Error(line));
-            rapfiPending = null;
-        }
-        return;
-    }
-    if (rapfiPending.type === 'MOVE') {
-        const m = line.match(/^(\d+)\s*,\s*(\d+)/);
-        if (m) {
-            rapfiPending.resolve({ x: +m[1], y: +m[2] });
-            rapfiPending = null;
-        } else if (line.indexOf('ERROR') === 0 || line.indexOf('UNKNOWN') === 0) {
-            rapfiPending.reject(new Error(line));
-            rapfiPending = null;
-        }
-    }
-}
-
-/**
- * 送出一行指令並等待回覆 `OK`（用於 START、RESTART）。
- * @param {string} cmd 須以換行結尾或由此函式補上
- * @returns {Promise<void>}
- */
-function rapfiWaitOk(cmd) {
-    return new Promise(function (resolve, reject) {
-        rapfiPending = { type: 'OK', resolve: resolve, reject: reject };
-        if (rapfiWorker) rapfiWorker.postMessage(cmd.slice(-1) === '\n' ? cmd : cmd + '\n');
-    });
-}
-
-/**
- * 送出一道需要「座標回覆」的指令（BEGIN 或 BOARD…DONE），等待 `x,y`。
- * @param {string} cmd 完整指令字串
- * @returns {Promise<{ x: number, y: number }>}
- */
-function rapfiWaitMove(cmd) {
-    return new Promise(function (resolve, reject) {
-        rapfiPending = { type: 'MOVE', resolve: resolve, reject: reject };
-        if (rapfiWorker) rapfiWorker.postMessage(cmd.slice(-1) === '\n' ? cmd : cmd + '\n');
-    });
-}
-
-/**
- * 以「軟倒數」等待 Rapfi 回覆：
- * - UI 倒數只作顯示用途，歸零後仍允許引擎在短暫緩衝期內回傳最佳步。
- * - 避免把世界級引擎因顯示倒數歸零就提前降級到 legacy AI，造成強度下降。
- * @param {string} cmd 完整指令字串
- * @param {number} timeoutMs 難度設定秒數（毫秒）
- * @returns {Promise<{ x: number, y: number }>}
- */
-function rapfiWaitMoveWithSoftTimeout(cmd, timeoutMs) {
-    const softGraceMs = 1200;
-    return Promise.race([
-        rapfiWaitMove(cmd),
-        new Promise(function (_, reject) {
-            setTimeout(function () {
-                reject(new Error('Rapfi move timeout (soft limit exceeded)'));
-            }, Math.max(0, timeoutMs) + softGraceMs);
-        })
-    ]);
-}
-
-/**
- * 建立 Worker、執行 START 15 與 INFO（規則為標準五連珠），完成後 {@link rapfiSessionReady} = true。
- * @returns {Promise<void>}
- */
-function initRapfiEngine() {
-    return new Promise(function (resolve) {
-        /**
-         * 依序嘗試候選腳本；GitHub Pages 版固定為 single。
-         * @param {number} idx 候選腳本索引
-         * @returns {void}
-         */
-        function bootByCandidate(idx) {
-            if (idx >= RAPFI_WORKER_CANDIDATES.length) {
-                console.error('Rapfi 所有 Worker 候選皆啟動失敗');
-                rapfiInitFailed = true;
-                resolve();
-                return;
-            }
-            const scriptName = RAPFI_WORKER_CANDIDATES[idx];
-            let readyArrived = false;
-            try {
-                rapfiWorker = new Worker(scriptName);
-                rapfiWorkerScriptUsed = scriptName;
-            } catch (e) {
-                console.error('無法建立 Rapfi Worker：' + scriptName, e);
-                bootByCandidate(idx + 1);
-                return;
-            }
-            rapfiWorker.onmessage = function (e) {
-                if (e.data && e.data.ready) {
-                    readyArrived = true;
-                    rapfiStartupSequence().then(function () {
-                        rapfiSessionReady = true;
-                        console.log('Rapfi 啟動成功：' + rapfiWorkerScriptUsed);
-                        resolve();
-                    }).catch(function (err) {
-                        console.error('Rapfi 初始化序列失敗：' + rapfiWorkerScriptUsed, err);
-                        try { rapfiWorker.terminate(); } catch (_) {}
-                        rapfiWorker = null;
-                        rapfiSessionReady = false;
-                        bootByCandidate(idx + 1);
-                    });
-                    return;
-                }
-                if (e.data && e.data.output) rapfiAppendStdout(e.data.output);
-            };
-            rapfiWorker.onerror = function (err) {
-                console.error('Rapfi Worker 執行錯誤：' + scriptName, err);
-                try { rapfiWorker.terminate(); } catch (_) {}
-                rapfiWorker = null;
-                rapfiSessionReady = false;
-                if (!readyArrived) {
-                    bootByCandidate(idx + 1);
-                    return;
-                }
-                rapfiInitFailed = true;
-                resolve();
-            };
-        }
-        bootByCandidate(0);
-    });
-}
-
-/**
- * 引擎載入後送 START、棋鐘與規則資訊（INFO 無須讀回覆）。
- * @returns {Promise<void>}
- */
-function rapfiStartupSequence() {
-    return rapfiWaitOk('START 15').then(function () {
-        if (!rapfiWorker) return;
-        rapfiWorker.postMessage('INFO timeout_turn 15000\n');
-        rapfiWorker.postMessage('INFO rule 1\n');
-        rapfiWorker.postMessage('INFO max_memory 0\n');
-    });
-}
-
-/**
- * 是否選用「世界級」難度（走 Rapfi；失敗時自動退回內建 AI）。
- * @returns {boolean}
- */
-function isRapfiDifficulty() {
-    return document.getElementById('diff-sel').value === 'world';
-}
-
-/**
- * 依 Gomocup BOARD：對 AI 而言 field 1 為己方、2 為對手。
- * @param {number} aiColor 本局 AI 棋子值（1 黑 / -1 白）
- * @returns {string}
- */
-function rapfiBuildBoardCommand(aiColor) {
-    let s = 'BOARD\n';
-    for (let i = 0; i < SIZE * SIZE; i++) {
-        if (bd[i] === 0) continue;
-        const x = i % SIZE, y = Math.floor(i / SIZE);
-        const field = bd[i] === aiColor ? 1 : 2;
-        s += x + ',' + y + ',' + field + '\n';
-    }
-    s += 'DONE\n';
-    return s;
-}
-
-/**
- * 呼叫 Rapfi 取得下一步；失敗時改呼叫 {@link triggerLegacyAI}。
- * @returns {void}
- */
-function triggerRapfiAI() {
-    isAiThinking = true;
-    aiStartTime = Date.now();
-    const t = TRANSLATIONS[currentLang];
-    const diffKey = document.getElementById('diff-sel').value;
-    const levelConfig = LEVELS[diffKey] || LEVELS.expert;
-    currentAiTimeLimit = levelConfig.time;
-    document.getElementById('msg').style.color = '#e74c3c';
-    aiTimer = setInterval(function () {
-        const remain = Math.max(0, currentAiTimeLimit - (Date.now() - aiStartTime));
-        const remainText = (remain / 1000).toFixed(1) + 's';
-        /** 倒數僅作顯示；時間歸零後仍等待 Rapfi 最終輸出，避免過早降級。 */
-        document.getElementById('msg').innerText = t.thinking + ' ' + t.countdown + ' ' + remainText;
-    }, 100);
-
-    rapfiEnqueue(function () {
-        return (async function () {
-            const timeoutMs = levelConfig.time;
-            const aiColor = -viewSide;
-            let move;
-            try {
-                if (!rapfiWorker || !rapfiSessionReady || rapfiInitFailed) throw new Error('Rapfi not ready');
-                rapfiWorker.postMessage('INFO timeout_turn ' + timeoutMs + '\n');
-                let stones = 0;
-                for (let i = 0; i < bd.length; i++) if (bd[i] !== 0) stones++;
-                if (stones === 0 && turn === aiColor) {
-                    move = await rapfiWaitMoveWithSoftTimeout('BEGIN\n', timeoutMs);
-                } else {
-                    move = await rapfiWaitMoveWithSoftTimeout(rapfiBuildBoardCommand(aiColor), timeoutMs);
-                }
-                const idx = move.y * SIZE + move.x;
-                if (idx < 0 || idx >= SIZE * SIZE || bd[idx] !== 0) throw new Error('Rapfi illegal move index');
-                clearInterval(aiTimer);
-                isAiThinking = false;
-                makeMove(idx, true);
-            } catch (e) {
-                console.error('Rapfi 思考失敗，改為內建 AI', e);
-                clearInterval(aiTimer);
-                isAiThinking = false;
-                triggerLegacyAI();
-            }
-        })();
-    });
-}
-
-/**
- * 原本 Web Worker 之 alpha-beta AI（與 world 難度後備相同）。
+ * 內建 Web Worker 之 alpha-beta AI。
  * @returns {void}
  */
 function triggerLegacyAI() {
@@ -876,10 +602,62 @@ function alphaBeta(bd, depth, alpha, beta, turn, isMax, startTime, timeLimit) {
     }
 }
 
+/**
+ * 使用迭代加深 Alpha-Beta 搜尋最佳落點，讓中等與困難難度具備多步預判。
+ * @param {number[]} bd 棋盤
+ * @param {number} turn 目前 AI 下子方
+ * @param {{ time: number, maxDepth: number }} limit 難度時間與深度設定
+ * @param {number} candidateLimit 候選步上限，0 表示不限制
+ * @returns {number}
+ */
+function searchBestMoveDepthLimited(bd, turn, limit, candidateLimit) {
+    const timeLimit = Math.max(1, limit.time - 200);
+    const maxDepth = limit.maxDepth;
+    const startTime = Date.now();
+    let bestMoveGlobal = null;
+    let moves = genMoves(bd, turn);
+    if (candidateLimit > 0) moves = moves.slice(0, candidateLimit);
+    if (moves.length === 0) return findBestMoveFast(bd, turn);
+    if (moves.length === 1) return moves[0];
+
+    for (let d = 1; d <= maxDepth; d++) {
+        let bestScore = -Infinity;
+        let currentBestMove = null;
+        let alpha = -Infinity;
+        const beta = Infinity;
+
+        for (let m of moves) {
+            bd[m] = turn;
+            const score = alphaBeta(bd, d - 1, alpha, beta, turn, false, startTime, timeLimit);
+            bd[m] = 0;
+
+            if (Date.now() - startTime >= timeLimit) break;
+            if (score > bestScore) {
+                bestScore = score;
+                currentBestMove = m;
+            }
+            alpha = Math.max(alpha, bestScore);
+        }
+        if (currentBestMove !== null) bestMoveGlobal = currentBestMove;
+        if (Date.now() - startTime >= timeLimit) break;
+        if (bestScore >= 500000) break;
+    }
+
+    return bestMoveGlobal !== null ? bestMoveGlobal : moves[0];
+}
+
 self.onmessage = function(e) {
     const { bd, limit, turn, diffKey } = e.data;
-    if (diffKey === 'easy' || diffKey === 'medium' || diffKey === 'hard') {
+    if (diffKey === 'easy') {
         self.postMessage(findBestMoveFast(bd, turn));
+        return;
+    }
+    if (diffKey === 'medium') {
+        self.postMessage(searchBestMoveDepthLimited(bd, turn, limit, 0));
+        return;
+    }
+    if (diffKey === 'hard') {
+        self.postMessage(searchBestMoveDepthLimited(bd, turn, limit, 15));
         return;
     }
     const timeLimit = limit.time;
@@ -943,10 +721,8 @@ let baseBoardSize = 0;
 const audio = document.getElementById('bgm'), audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const LEVELS = {
-    /** world：Rapfi WASM；maxDepth 僅在退回內建 Worker 時有意義 */
-    'world': { time: 15000, maxDepth: 15 },
-    'easy': { time: 2000, maxDepth: 4 }, 'medium': { time: 3000, maxDepth: 6 },
-    'hard': { time: 4000, maxDepth: 8 }, 'expert': { time: 5000, maxDepth: 10 },
+    'easy': { time: 2000, maxDepth: 4 }, 'medium': { time: 3000, maxDepth: 4 },
+    'hard': { time: 4000, maxDepth: 6 }, 'expert': { time: 5000, maxDepth: 10 },
     'master': { time: 8000, maxDepth: 15 }
 };
 
@@ -991,8 +767,7 @@ document.addEventListener('touchstart', unlockAudio, {once:true, capture:true});
 window.onload = () => {
     resizeBoard(); drawGrid(); initWorker();
     audio.src = getMp3Path(document.getElementById('music-sel').value);
-    /** Rapfi 模組載入完成後再 restart，以便 RESTART/BEGIN 可送達引擎 */
-    initRapfiEngine().then(() => { restart(); });
+    restart();
     window.addEventListener('resize', () => { setTimeout(resizeBoard, 100); });
 };
 
@@ -1074,18 +849,7 @@ function restart() {
     document.getElementById('win-overlay').classList.remove('show');
     render(); updateStatus();
     const needOpeningAi = !isPVP && viewSide === -1;
-    if (isRapfiDifficulty() && rapfiSessionReady && !rapfiInitFailed) {
-        rapfiEnqueue(async () => {
-            try {
-                await rapfiWaitOk('RESTART');
-            } catch (e) {
-                console.error('Rapfi RESTART', e);
-            }
-            if (needOpeningAi && !over) triggerRapfiAI();
-        });
-    } else {
-        if (needOpeningAi) triggerAI();
-    }
+    if (needOpeningAi) triggerAI();
     changeDifficulty();
 }
 
@@ -1133,10 +897,6 @@ function makeMove(i, isAi = false) {
 }
 
 function triggerAI() {
-    if (isRapfiDifficulty() && rapfiSessionReady && !rapfiInitFailed) {
-        triggerRapfiAI();
-        return;
-    }
     triggerLegacyAI();
 }
 
@@ -1157,24 +917,12 @@ function updateStatus() {
 }
 
 /**
- * 難度切換時更新狀態說明：在 GitHub Pages 版本顯示 Rapfi single 載入結果。
+ * 難度切換時更新目前走棋狀態。
  * @returns {void}
  */
 function changeDifficulty() {
     if (over || isAiThinking) return;
-    const diffKey = document.getElementById('diff-sel').value;
-    if (diffKey !== 'world') {
-        updateStatus();
-        return;
-    }
-    const msg = document.getElementById('msg');
-    if (rapfiSessionReady && !rapfiInitFailed && rapfiWorkerScriptUsed === 'rapfi-single.js') {
-        msg.innerText = 'GitHub Pages 最強可行版：Rapfi single 載入成功';
-        msg.style.color = '#2ecc71';
-        return;
-    }
-    msg.innerText = '初始化Rapfi 載入失敗，已退回內建 AI';
-    msg.style.color = '#e74c3c';
+    updateStatus();
 }
 
 function endGame(txt) { over = true; clearInterval(aiTimer); playSfx(800, 'win'); const ol = document.getElementById('win-overlay'); ol.innerText = txt; ol.classList.add('show'); }
