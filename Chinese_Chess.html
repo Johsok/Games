@@ -489,6 +489,18 @@ try {
 /* 原生引擎資料結構 (作為 xiangqi.js 載入失敗的完美後備) */
 let tt = {}; let historyTable = new Int32Array(90 * 90); let killerTable = new Int32Array(150 * 2); let zobristTable = []; 
 const MATE_VAL = 30000; const INFINITY = 999999;
+const LEVEL_PROFILE = {
+    easy:   { timeUse: 0.45, useTT: false, lmr: false, lmrMove: 99, checkExtendPly: 0, qChecks: false, qCheckDepth: 0, checkOrder: false },
+    medium: { timeUse: 0.50, useTT: false, lmr: false, lmrMove: 99, checkExtendPly: 0, qChecks: false, qCheckDepth: 0, checkOrder: false },
+    hard:   { timeUse: 0.62, useTT: true,  lmr: true,  lmrMove: 7,  checkExtendPly: 2, qChecks: false, qCheckDepth: 0, checkOrder: true },
+    expert: { timeUse: 0.72, useTT: true,  lmr: true,  lmrMove: 6,  checkExtendPly: 4, qChecks: true,  qCheckDepth: 1, checkOrder: true },
+    master: { timeUse: 0.88, useTT: true,  lmr: true,  lmrMove: 4,  checkExtendPly: 7, qChecks: true,  qCheckDepth: 2, checkOrder: true },
+    god:    { timeUse: 0.95, useTT: true,  lmr: true,  lmrMove: 3,  checkExtendPly: 10,qChecks: true,  qCheckDepth: 3, checkOrder: true }
+};
+let searchProfile = LEVEL_PROFILE.expert;
+let xqTT = {};
+let xqHistoryTable = new Int32Array(90 * 90);
+let xqKillerTable = new Int32Array(150 * 2);
 function initZobrist() { for(let i=0; i<90; i++) { zobristTable[i] = {}; [-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7].forEach(p => { zobristTable[i][p] = Math.floor(Math.random() * 0xFFFFFFFF); }); } }
 initZobrist();
 function computeHash(bd) { let h = 0; for(let i=0; i<90; i++) { if(bd[i] !== 0) h ^= zobristTable[i][bd[i]]; } return h; }
@@ -500,10 +512,13 @@ let timeOutFlag = false;
 self.onmessage = function(e) { 
     const { fen, bd, limit, targetEndTime, turn, level } = e.data; 
     let best = null;
+    searchProfile = LEVEL_PROFILE[level] || LEVEL_PROFILE.expert;
     
     // 每次思考前重置標記與計數器
     checkNodes = 0; 
     timeOutFlag = false; 
+    tt = {};
+    xqTT = {};
     
     if (useXq && fen) {
         game.load(fen);
@@ -522,6 +537,39 @@ const PST_XQ = {
     'p': [0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 30,40,50,60,70,60,50,40,30, 20,30,40,50,60,50,40,30,20, 10,20,30,40,50,40,30,20,10, 2,0,4,0,6,0,4,0,2, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0] 
 };
 const VALS_XQ = { 'p':100, 'c':450, 'r':900, 'n':400, 'b':200, 'e':200, 'a':200, 'k':100000 };
+
+function xqPieceVal(piece) {
+    if (!piece) return 0;
+    let type = (typeof piece === 'string' ? piece : piece.type || '').toLowerCase();
+    if (type === 'e') type = 'b';
+    return VALS_XQ[type] || 0;
+}
+function xqSqIdx(sq) { return (9 - parseInt(sq.slice(1), 10)) * 9 + (sq.charCodeAt(0) - 97); }
+function sameXqMove(a, b) { return !!a && !!b && a.from === b.from && a.to === b.to; }
+function xqHistoryKey(m) { return xqSqIdx(m.from) * 90 + xqSqIdx(m.to); }
+function xqKillerCode(m) { return xqSqIdx(m.from) * 100 + xqSqIdx(m.to); }
+function fenKeyXq() { return game.fen().split(' ').slice(0, 2).join(' '); }
+function moveGivesCheckXq(m) {
+    game.move(m);
+    let givesCheck = game.in_check();
+    game.undo();
+    return givesCheck;
+}
+function sortMovesXq(moves, ply, bestMove, principalMove) {
+    return moves.map(m => {
+        let score = 0;
+        if (sameXqMove(m, principalMove)) score = 2200000;
+        else if (sameXqMove(m, bestMove)) score = 2000000;
+        else if (m.captured) score = 120000 + (xqPieceVal(m.captured) * 10 - xqPieceVal(m.piece));
+        else {
+            const code = xqKillerCode(m);
+            if (xqKillerTable[ply * 2] === code || xqKillerTable[ply * 2 + 1] === code) score = 95000;
+            else if (searchProfile.checkOrder && moveGivesCheckXq(m)) score = 90000;
+            else score = xqHistoryTable[xqHistoryKey(m)];
+        }
+        return { m, score };
+    }).sort((a, b) => b.score - a.score).map(o => o.m);
+}
 
 function evalBdXq(turn) { 
     let s = 0; let b = game.board(); 
@@ -544,19 +592,14 @@ function evalBdXq(turn) {
 function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level) { 
     const startTime = Date.now(); let globalBestMove = null; 
     let rootMoves = game.moves({ verbose: true }); 
+    xqKillerTable.fill(0);
     let actualMaxDepth = maxDepth; 
     if (level === 'easy') actualMaxDepth = Math.min(2, maxDepth); 
     if (level === 'medium') actualMaxDepth = Math.min(4, maxDepth); 
 
     for (let d = 1; d <= actualMaxDepth; d++) { 
         let alpha = -INFINITY, beta = INFINITY; let currentDepthBest = null; let outOfTime = false;
-        if (globalBestMove) {
-            rootMoves.sort((a, b) => {
-                if (a.from === globalBestMove.from && a.to === globalBestMove.to) return -1;
-                if (b.from === globalBestMove.from && b.to === globalBestMove.to) return 1;
-                return (b.captured ? 1 : 0) - (a.captured ? 1 : 0);
-            });
-        } else { rootMoves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0)); }
+        rootMoves = sortMovesXq(rootMoves, 0, null, globalBestMove);
 
         for (let m of rootMoves) { 
             game.move(m); 
@@ -569,38 +612,90 @@ function getBestMoveIterativeXq(maxDepth, targetEndTime, turn, level) {
         
         if (outOfTime) break; 
         if (currentDepthBest) globalBestMove = currentDepthBest; 
-        if (Date.now() - startTime > (targetEndTime - startTime) * 0.5) break; 
+        if (Date.now() - startTime > (targetEndTime - startTime) * searchProfile.timeUse) break; 
     } 
 
     if (!globalBestMove && rootMoves.length > 0) globalBestMove = rootMoves[0];
     if (globalBestMove) {
-        let fromIdx = (9 - parseInt(globalBestMove.from[1])) * 9 + (globalBestMove.from.charCodeAt(0) - 97);
-        let toIdx = (9 - parseInt(globalBestMove.to[1])) * 9 + (globalBestMove.to.charCodeAt(0) - 97);
+        let fromIdx = xqSqIdx(globalBestMove.from);
+        let toIdx = xqSqIdx(globalBestMove.to);
         return { from: fromIdx, to: toIdx, mObj: globalBestMove };
     } return null;
 }
 
 function alphaBetaXq(depth, alpha, beta, turn, ply, targetEndTime) { 
     if (timeOutFlag) return alpha;
-    if (timeOutFlag || Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; }
+    if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; }
 
     if (game.game_over()) { if (game.in_checkmate()) return -MATE_VAL + ply; return 0; }
-    if (depth <= 0) return quiescenceXq(alpha, beta, turn, targetEndTime);
+    const inCheck = game.in_check();
+    if (inCheck && depth > 0 && ply <= searchProfile.checkExtendPly) depth++;
+    if (depth <= 0) return quiescenceXq(alpha, beta, turn, targetEndTime, 0);
+
+    let key = null, ttBest = null, originalAlpha = alpha, bestM = null;
+    if (searchProfile.useTT) {
+        key = fenKeyXq();
+        const ttEntry = xqTT[key];
+        if (ttEntry && ttEntry.depth >= depth) {
+            if (ttEntry.flag === 0) return ttEntry.val;
+            if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta;
+            if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha;
+            ttBest = ttEntry.best;
+        }
+    }
+
     let moves = game.moves({ verbose: true }); 
-    if (moves.length === 0) return -MATE_VAL + ply; 
-    moves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
+    if (moves.length === 0) return inCheck ? -MATE_VAL + ply : 0; 
+    moves = sortMovesXq(moves, ply, ttBest, null);
+    let moveCount = 0;
     for (let m of moves) { 
+        let isCapture = !!m.captured;
         game.move(m); 
-        let score = -alphaBetaXq(depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime); 
+        let givesCheck = game.in_check();
+        let nextDepth = depth - 1;
+        if (givesCheck && ply <= searchProfile.checkExtendPly) nextDepth++;
+
+        let reduction = 0;
+        if (searchProfile.lmr && depth >= 3 && moveCount >= searchProfile.lmrMove && !isCapture && !inCheck && !givesCheck) {
+            reduction = (depth >= 6 && moveCount >= 10) ? 2 : 1;
+        }
+
+        let score;
+        if (moveCount === 0) {
+            score = -alphaBetaXq(nextDepth, -beta, -alpha, -turn, ply + 1, targetEndTime);
+        } else {
+            const reducedDepth = Math.max(0, nextDepth - reduction);
+            score = -alphaBetaXq(reducedDepth, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime);
+            if (reduction && score > alpha && !timeOutFlag) {
+                score = -alphaBetaXq(nextDepth, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime);
+            }
+            if (score > alpha && score < beta && !timeOutFlag) {
+                score = -alphaBetaXq(nextDepth, -beta, -alpha, -turn, ply + 1, targetEndTime);
+            }
+        }
         game.undo(); 
+        moveCount++;
         
         if (timeOutFlag) return alpha; 
-        if (score > alpha) alpha = score; 
-        if (alpha >= beta) return beta; 
-    } return alpha; 
+        if (score > alpha) {
+            alpha = score;
+            bestM = m;
+            if (!isCapture) xqHistoryTable[xqHistoryKey(m)] += depth * depth;
+        } 
+        if (alpha >= beta) {
+            if (!isCapture) {
+                xqKillerTable[ply * 2 + 1] = xqKillerTable[ply * 2];
+                xqKillerTable[ply * 2] = xqKillerCode(m);
+            }
+            if (searchProfile.useTT && key) xqTT[key] = { depth: depth, val: beta, flag: 1, best: m };
+            return beta;
+        } 
+    }
+    if (searchProfile.useTT && key) xqTT[key] = (alpha > originalAlpha) ? { depth: depth, val: alpha, flag: 0, best: bestM } : { depth: depth, val: alpha, flag: 2, best: null };
+    return alpha; 
 }
 
-function quiescenceXq(alpha, beta, turn, targetEndTime) { 
+function quiescenceXq(alpha, beta, turn, targetEndTime, qPly = 0) { 
     if (timeOutFlag) return alpha;
     if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
 
@@ -621,10 +716,13 @@ function quiescenceXq(alpha, beta, turn, targetEndTime) {
         moves = moves.filter(m => m.captured); // 安全時僅看吃子步
     }
     
-    moves.sort((a,b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
+    if (!inCheck && searchProfile.qChecks && qPly < searchProfile.qCheckDepth) {
+        moves = game.moves({ verbose: true }).filter(m => m.captured || moveGivesCheckXq(m));
+    }
+    moves = sortMovesXq(moves, 0, null, null);
     for (let m of moves) { 
         game.move(m); 
-        let score = -quiescenceXq(-beta, -alpha, -turn, targetEndTime); 
+        let score = -quiescenceXq(-beta, -alpha, -turn, targetEndTime, qPly + 1); 
         game.undo(); 
         
         if (timeOutFlag) return alpha; 
@@ -671,7 +769,7 @@ function getBestMoveIterativeNative(bd, maxDepth, targetEndTime, turn, level) {
         } 
         if (outOfTime) break; 
         if (currentDepthBest) globalBestMove = currentDepthBest; 
-        if (Date.now() - startTime > (targetEndTime - startTime) * 0.5) break; 
+        if (Date.now() - startTime > (targetEndTime - startTime) * searchProfile.timeUse) break; 
     } 
     
     return globalBestMove || rootMoves[0]; 
@@ -681,17 +779,21 @@ function alphaBetaNat(bd, depth, alpha, beta, turn, ply, targetEndTime, hash) {
     if (timeOutFlag) return alpha;
     if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
 
-    const ttEntry = tt[hash]; let ttBest = null;
+    const inCheck = inCheckNatWorker(bd, turn);
+    if (inCheck && depth > 0 && ply <= searchProfile.checkExtendPly) depth++;
+
+    const ttKey = hash ^ (turn > 0 ? 0x4d2 : 0x9e3779b9);
+    const ttEntry = tt[ttKey]; let ttBest = null;
     if (ttEntry && ttEntry.depth >= depth) { 
         if (ttEntry.flag === 0) return ttEntry.val; 
         if (ttEntry.flag === 1 && ttEntry.val >= beta) return beta; 
         if (ttEntry.flag === 2 && ttEntry.val <= alpha) return alpha; ttBest = ttEntry.best;
     } 
-    if (depth <= 0) return quiescenceNat(bd, alpha, beta, turn, targetEndTime);
+    if (depth <= 0) return quiescenceNat(bd, alpha, beta, turn, targetEndTime, 0);
     let moves = genMovesNat(bd, turn); 
     if (moves.length === 0) {
         // 【核心修正】：判斷是將死還是困斃
-        if (inCheckNatWorker(bd, turn)) return -MATE_VAL + ply;
+        if (inCheck) return -MATE_VAL + ply;
         return 0; // 困斃和局
     } 
     moves = sortMovesNat(moves, bd, turn, ply, ttBest); 
@@ -699,10 +801,21 @@ function alphaBetaNat(bd, depth, alpha, beta, turn, ply, targetEndTime, hash) {
 
     for (let m of moves) { 
         let isCapture = (bd[m.to] !== 0); makeNat(bd, m); let newHash = computeHash(bd), score; 
-        if (moveCount === 0) { score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); } 
+        let givesCheck = inCheckNatWorker(bd, -turn);
+        let nextDepth = depth - 1;
+        if (givesCheck && ply <= searchProfile.checkExtendPly) nextDepth++;
+
+        let reduction = 0;
+        if (searchProfile.lmr && depth >= 3 && moveCount >= searchProfile.lmrMove && !isCapture && !inCheck && !givesCheck) {
+            reduction = (depth >= 6 && moveCount >= 10) ? 2 : 1;
+        }
+
+        if (moveCount === 0) { score = -alphaBetaNat(bd, nextDepth, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); } 
         else { 
-            score = -alphaBetaNat(bd, depth - 1, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime, newHash); 
-            if (score > alpha && score < beta) score = -alphaBetaNat(bd, depth - 1, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); 
+            const reducedDepth = Math.max(0, nextDepth - reduction);
+            score = -alphaBetaNat(bd, reducedDepth, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime, newHash); 
+            if (reduction && score > alpha && !timeOutFlag) score = -alphaBetaNat(bd, nextDepth, -alpha - 1, -alpha, -turn, ply + 1, targetEndTime, newHash);
+            if (score > alpha && score < beta && !timeOutFlag) score = -alphaBetaNat(bd, nextDepth, -beta, -alpha, -turn, ply + 1, targetEndTime, newHash); 
         } 
         unmakeNat(bd, m); moveCount++; 
         
@@ -710,14 +823,14 @@ function alphaBetaNat(bd, depth, alpha, beta, turn, ply, targetEndTime, hash) {
         if (score > alpha) { alpha = score; bestM = m; historyTable[m.from * 90 + m.to] += depth * depth; } 
         if (alpha >= beta) { 
             if (!isCapture) { killerTable[ply * 2 + 1] = killerTable[ply * 2]; killerTable[ply * 2] = m.from * 100 + m.to; } 
-            tt[hash] = { depth: depth, val: beta, flag: 1, best: m }; return beta; 
+            tt[ttKey] = { depth: depth, val: beta, flag: 1, best: m }; return beta; 
         } 
     } 
-    tt[hash] = (alpha > originalAlpha) ? { depth: depth, val: alpha, flag: 0, best: bestM } : { depth: depth, val: alpha, flag: 2, best: null }; 
+    tt[ttKey] = (alpha > originalAlpha) ? { depth: depth, val: alpha, flag: 0, best: bestM } : { depth: depth, val: alpha, flag: 2, best: null }; 
     return alpha; 
 }
 
-function quiescenceNat(bd, alpha, beta, turn, targetEndTime) { 
+function quiescenceNat(bd, alpha, beta, turn, targetEndTime, qPly = 0) { 
     if (timeOutFlag) return alpha;
     if ((++checkNodes & 63) === 0 && Date.now() >= targetEndTime) { timeOutFlag = true; return alpha; } 
 
@@ -733,17 +846,34 @@ function quiescenceNat(bd, alpha, beta, turn, targetEndTime) {
     // 【核心修正】：處於將軍狀態時展開所有合法步（不限於吃子步）來尋找解法
     let moves = genMovesNat(bd, turn, !inCheck); 
     if (inCheck && moves.length === 0) return -MATE_VAL;
+    if (!inCheck && searchProfile.qChecks && qPly < searchProfile.qCheckDepth) {
+        moves = genMovesNat(bd, turn, false).filter(m => bd[m.to] !== 0 || moveGivesCheckNat(bd, m, turn));
+    }
 
     moves = sortMovesNat(moves, bd, turn, 0, null); 
     for (let m of moves) { 
-        makeNat(bd, m); let score = -quiescenceNat(bd, -beta, -alpha, -turn, targetEndTime); unmakeNat(bd, m); 
+        makeNat(bd, m); let score = -quiescenceNat(bd, -beta, -alpha, -turn, targetEndTime, qPly + 1); unmakeNat(bd, m); 
         if (timeOutFlag) return alpha; 
         if (score >= beta) return beta; if (score > alpha) alpha = score; 
     } return alpha; 
 }
 function makeNat(bd, m) { m.capture = bd[m.to]; bd[m.to] = bd[m.from]; bd[m.from] = 0; } 
 function unmakeNat(bd, m) { bd[m.from] = bd[m.to]; bd[m.to] = m.capture; } 
-function sortMovesNat(moves, bd, turn, ply, bestMove) { return moves.map(m => { let score = 0; if (bestMove && m.from === bestMove.from && m.to === bestMove.to) { score = 2000000; } else if (bd[m.to] !== 0) { score = 100000 + (VALS_NAT[Math.abs(bd[m.to])] * 10 - VALS_NAT[Math.abs(bd[m.from])]); } else { let kCode = m.from * 100 + m.to; if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) { score = 90000; } else { score = historyTable[m.from * 90 + m.to]; } } return { m, score }; }).sort((a,b) => b.score - a.score).map(o => o.m); } 
+function moveGivesCheckNat(bd, m, turn) { makeNat(bd, m); let givesCheck = inCheckNatWorker(bd, -turn); unmakeNat(bd, m); return givesCheck; }
+function sortMovesNat(moves, bd, turn, ply, bestMove) {
+    return moves.map(m => {
+        let score = 0;
+        if (bestMove && m.from === bestMove.from && m.to === bestMove.to) score = 2000000;
+        else if (bd[m.to] !== 0) score = 120000 + (VALS_NAT[Math.abs(bd[m.to])] * 10 - VALS_NAT[Math.abs(bd[m.from])]);
+        else {
+            let kCode = m.from * 100 + m.to;
+            if (killerTable[ply * 2] === kCode || killerTable[ply * 2 + 1] === kCode) score = 95000;
+            else if (searchProfile.checkOrder && moveGivesCheckNat(bd, m, turn)) score = 90000;
+            else score = historyTable[m.from * 90 + m.to];
+        }
+        return { m, score };
+    }).sort((a,b) => b.score - a.score).map(o => o.m);
+} 
 
 // 【核心修正】：新增專供 Web Worker 使用的將軍判斷，用來嚴格過濾非法步
 function inCheckNatWorker(b, color) {
@@ -1333,6 +1463,7 @@ function initWorker() {
 }
 
 function startAiTimer(totalTime) { 
+    clearInterval(aiTimer);
     aiStartTime = Date.now(); 
     const progressBar = document.getElementById('ai-progress-bar');
     
