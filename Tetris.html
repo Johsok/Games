@@ -922,9 +922,9 @@ function restart() {
     
     // 平滑溫和的速度曲線
     const diffMap = { 
-        'easy':   {q:5, startSpeed: 1200, accel: 0.9995, minSpeed: 300}, 
-        'medium': {q:3, startSpeed: 800,  accel: 0.9990, minSpeed: 200}, 
-        'hard':   {q:1, startSpeed: 400,  accel: 0.9980, minSpeed: 100} 
+        'easy':   {q:5, startSpeed: 950, accel: 0.9990, minSpeed: 240}, 
+        'medium': {q:3, startSpeed: 600, accel: 0.9982, minSpeed: 140}, 
+        'hard':   {q:1, startSpeed: 280, accel: 0.9965, minSpeed: 70} 
     };
     
     const diff = document.getElementById('diff-sel').value;

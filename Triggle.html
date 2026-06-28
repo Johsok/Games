@@ -443,21 +443,89 @@ function generateTopology() {
 
 TOPOLOGY = generateTopology();
 
+const AI_LEVELS = {
+    easy: { depth: 2, noise: 4, threatWeight: 650, setupWeight: 75, moveLimit: 18 },
+    medium: { depth: 3, noise: 2, threatWeight: 800, setupWeight: 120, moveLimit: 26 },
+    hard: { depth: 5, noise: 0.4, threatWeight: 950, setupWeight: 170, moveLimit: 30 }
+};
+let AI_CONFIG = AI_LEVELS.medium;
+
 function evaluate(state, aiPlayer) {
     let myScore = state.scores[aiPlayer] || 0;
     let oppScore = state.scores[3 - aiPlayer] || 0; 
     let score = (myScore - oppScore) * 1000;
     
     let freeTriangles = 0;
+    let setupTriangles = 0;
     TOPOLOGY.triangles.forEach(t => {
         if (!state.claimed[t.id]) {
             let c = state.covered[t.segs[0]] + state.covered[t.segs[1]] + state.covered[t.segs[2]];
             if(c === 2) freeTriangles++;
+            else if(c === 1) setupTriangles++;
         }
     });
-    if (state.turn !== aiPlayer) score -= freeTriangles * 500;
-    else score += freeTriangles * 500;
-    return score + (Math.random() * 10);
+    let pressure = freeTriangles * AI_CONFIG.threatWeight + setupTriangles * AI_CONFIG.setupWeight;
+    if (state.turn !== aiPlayer) score -= pressure;
+    else score += pressure;
+    return score + (Math.random() * AI_CONFIG.noise);
+}
+
+function applyMove(state, moveIndex) {
+    let move = TOPOLOGY.moves[moveIndex];
+    let s1 = move.segs[0], s2 = move.segs[1], s3 = move.segs[2];
+    let undo = {
+        moveIndex,
+        s1, s2, s3,
+        old_s1: state.covered[s1],
+        old_s2: state.covered[s2],
+        old_s3: state.covered[s3],
+        oldTurn: state.turn,
+        scoredCount: 0,
+        newlyClaimed: []
+    };
+
+    state.played[moveIndex] = 1;
+    state.playedCount++;
+    state.covered[s1] = 1; state.covered[s2] = 1; state.covered[s3] = 1;
+
+    TOPOLOGY.triangles.forEach(t => {
+        if(!state.claimed[t.id] && state.covered[t.segs[0]] && state.covered[t.segs[1]] && state.covered[t.segs[2]]) {
+            state.claimed[t.id] = 1;
+            undo.newlyClaimed.push(t.id);
+            undo.scoredCount++;
+        }
+    });
+
+    if (undo.scoredCount > 0) state.scores[state.turn] += undo.scoredCount;
+    state.turn = (state.turn % numPlayers) + 1;
+    return undo;
+}
+
+function undoMove(state, undo) {
+    state.played[undo.moveIndex] = 0;
+    state.playedCount--;
+    state.covered[undo.s1] = undo.old_s1;
+    state.covered[undo.s2] = undo.old_s2;
+    state.covered[undo.s3] = undo.old_s3;
+    undo.newlyClaimed.forEach(tid => state.claimed[tid] = 0);
+    if (undo.scoredCount > 0) state.scores[undo.oldTurn] -= undo.scoredCount;
+    state.turn = undo.oldTurn;
+}
+
+function getOrderedMoves(state, aiPlayer) {
+    let isMaxTurn = state.turn === aiPlayer;
+    let rankedMoves = [];
+    for (let i = 0; i < TOPOLOGY.moves.length; i++) {
+        if (!state.played[i]) {
+            let undo = applyMove(state, i);
+            let score = evaluate(state, aiPlayer);
+            rankedMoves.push({ id: i, score });
+            undoMove(state, undo);
+        }
+    }
+    rankedMoves.sort((a, b) => isMaxTurn ? b.score - a.score : a.score - b.score);
+    if (AI_CONFIG.moveLimit && rankedMoves.length > AI_CONFIG.moveLimit) rankedMoves.length = AI_CONFIG.moveLimit;
+    return rankedMoves.map(m => m.id);
 }
 
 function alphaBeta(state, depth, alpha, beta, aiPlayer) {
@@ -469,53 +537,22 @@ function alphaBeta(state, depth, alpha, beta, aiPlayer) {
     }
     
     let bestScore = state.turn === aiPlayer ? -Infinity : Infinity;
+    let candidates = getOrderedMoves(state, aiPlayer);
     
-    for (let i = 0; i < TOPOLOGY.moves.length; i++) {
-        if (!state.played[i]) {
-            let move = TOPOLOGY.moves[i];
-            
-            // 快速回溯優化 (不分配新記憶體)
-            state.played[i] = 1;
-            state.playedCount++;
-            
-            let s1 = move.segs[0], s2 = move.segs[1], s3 = move.segs[2];
-            let old_s1 = state.covered[s1], old_s2 = state.covered[s2], old_s3 = state.covered[s3];
-            state.covered[s1] = 1; state.covered[s2] = 1; state.covered[s3] = 1;
-            
-            let scoredCount = 0;
-            let newlyClaimed = [];
-            
-            TOPOLOGY.triangles.forEach(t => {
-                if(!state.claimed[t.id] && state.covered[t.segs[0]] && state.covered[t.segs[1]] && state.covered[t.segs[2]]) {
-                    state.claimed[t.id] = 1;
-                    newlyClaimed.push(t.id);
-                    scoredCount++;
-                }
-            });
-            
-            let oldTurn = state.turn;
-            if (scoredCount > 0) state.scores[state.turn] += scoredCount;
-            state.turn = (state.turn % numPlayers) + 1;
-            
-            let score = alphaBeta(state, depth - 1, alpha, beta, aiPlayer);
-            
-            // Undo (完美回溯)
-            state.played[i] = 0;
-            state.playedCount--;
-            state.covered[s1] = old_s1; state.covered[s2] = old_s2; state.covered[s3] = old_s3;
-            newlyClaimed.forEach(tid => state.claimed[tid] = 0);
-            if (scoredCount > 0) state.scores[oldTurn] -= scoredCount;
-            state.turn = oldTurn;
-            
-            if (state.turn === aiPlayer) {
-                if (score > bestScore) bestScore = score;
-                if (bestScore > alpha) alpha = bestScore;
-                if (alpha >= beta) break;
-            } else {
-                if (score < bestScore) bestScore = score;
-                if (bestScore < beta) beta = bestScore;
-                if (alpha >= beta) break;
-            }
+    for (let idx = 0; idx < candidates.length; idx++) {
+        let i = candidates[idx];
+        let undo = applyMove(state, i);
+        let score = alphaBeta(state, depth - 1, alpha, beta, aiPlayer);
+        undoMove(state, undo);
+        
+        if (state.turn === aiPlayer) {
+            if (score > bestScore) bestScore = score;
+            if (bestScore > alpha) alpha = bestScore;
+            if (alpha >= beta) break;
+        } else {
+            if (score < bestScore) bestScore = score;
+            if (bestScore < beta) beta = bestScore;
+            if (alpha >= beta) break;
         }
     }
     return bestScore;
@@ -523,7 +560,8 @@ function alphaBeta(state, depth, alpha, beta, aiPlayer) {
 
 self.onmessage = function(e) {
     const { playedMoves, scores, claimedTriangles, turn, level, playersCount } = e.data;
-    let depth = level === 'easy' ? 1 : (level === 'medium' ? 2 : 4);
+    AI_CONFIG = AI_LEVELS[level] || AI_LEVELS.medium;
+    let depth = AI_CONFIG.depth;
     numPlayers = playersCount; 
 
     // 使用 Uint8Array 陣列極大化執行速度
@@ -544,52 +582,16 @@ self.onmessage = function(e) {
 
     let bestMove = -1;
     let bestScore = -Infinity;
-    
-    // 快速吃子檢查 (必走步)
-    let scoringMoves = [];
-    for(let i=0; i<TOPOLOGY.moves.length; i++){
-        if(!state.played[i]){
-            let s1 = TOPOLOGY.moves[i].segs[0], s2 = TOPOLOGY.moves[i].segs[1], s3 = TOPOLOGY.moves[i].segs[2];
-            let old1 = state.covered[s1], old2 = state.covered[s2], old3 = state.covered[s3];
-            state.covered[s1] = 1; state.covered[s2] = 1; state.covered[s3] = 1;
-            
-            let count = 0;
-            TOPOLOGY.triangles.forEach(t => {
-                if(!state.claimed[t.id] && state.covered[t.segs[0]] && state.covered[t.segs[1]] && state.covered[t.segs[2]]) count++;
-            });
-            if(count > 0) scoringMoves.push({id: i, count});
-            
-            state.covered[s1] = old1; state.covered[s2] = old2; state.covered[s3] = old3;
-        }
-    }
-    if (scoringMoves.length > 0) {
-        scoringMoves.sort((a,b)=>b.count-a.count);
-        self.postMessage(scoringMoves[0].id);
-        return;
-    }
-
-    for (let i = 0; i < TOPOLOGY.moves.length; i++) {
-        if (!state.played[i]) {
-            state.played[i] = 1;
-            state.playedCount++;
-            let s1 = TOPOLOGY.moves[i].segs[0], s2 = TOPOLOGY.moves[i].segs[1], s3 = TOPOLOGY.moves[i].segs[2];
-            let old1 = state.covered[s1], old2 = state.covered[s2], old3 = state.covered[s3];
-            state.covered[s1] = 1; state.covered[s2] = 1; state.covered[s3] = 1;
-            
-            let oldTurn = state.turn;
-            state.turn = (state.turn % numPlayers) + 1;
-            
-            let score = alphaBeta(state, depth - 1, -Infinity, Infinity, turn);
-            
-            state.played[i] = 0;
-            state.playedCount--;
-            state.covered[s1] = old1; state.covered[s2] = old2; state.covered[s3] = old3;
-            state.turn = oldTurn;
-            
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = i;
-            }
+    let candidates = getOrderedMoves(state, turn);
+    for (let idx = 0; idx < candidates.length; idx++) {
+        let i = candidates[idx];
+        let undo = applyMove(state, i);
+        let score = alphaBeta(state, depth - 1, -Infinity, Infinity, turn);
+        undoMove(state, undo);
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = i;
         }
     }
     self.postMessage(bestMove !== -1 ? bestMove : TOPOLOGY.moves.findIndex((v,i)=>!state.played[i]));

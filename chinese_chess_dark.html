@@ -661,7 +661,7 @@
             if (preferred.length > 0 && hCnt > 20) { cands = preferred; } 
             else { for(let i=0; i<32; i++) if(b[i] && b[i].hidden) cands.push(i); }
             
-            let tryCnt = Math.min(5, cands.length);
+            let tryCnt = Math.min(cfg.flipCandidates || 5, cands.length);
             for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
 
             // 基礎翻牌分數
@@ -715,7 +715,8 @@
                             // 模擬翻開這顆棋子
                             b[m.from] = { name: pDef.name, rank: pDef.rank, color: pDef.color, hidden: false };
                             // 對手視角的淺層估值
-                            let simV = -ab(1, -beta, -alpha, c==='red'?'black':'red', st, lim, b, cfg);
+                            let flipDepth = Math.min(cfg.flipDepth || 1, Math.max(1, d - 1));
+                            let simV = -ab(flipDepth, -beta, -alpha, c==='red'?'black':'red', st, lim, b, cfg);
                             expectedValue += simV * prob;
                         }
                         b[m.from] = { hidden: true }; // 復原
@@ -1107,12 +1108,12 @@ const SCORES = {
     7: 1500, 6: 600, 5: 500, 4: 400, 3: 300, 2: 1000, 1: 200 
 };
 const LEVELS = {
-    'easy':   { time: 500,  depth: 6, errorRate: 0.25, expect: false, enhanced: false, qs: false },
-    'medium': { time: 1000, depth: 9, errorRate: 0.1, expect: false, enhanced: false, qs: true },
-    'hard':   { time: 2000, depth: 15, errorRate: 0.0, expect: true,  enhanced: true, qs: true },
-    'expert': { time: 3000, depth: 25, errorRate: 0.0, expect: true,  enhanced: true,  qs: true },
-    'master': { time: 4000, depth: 40, errorRate: 0.0, expect: true,  enhanced: true,  qs: true },
-    'god':    { time: 7000, depth: 99, errorRate: 0.0, expect: true,  enhanced: true,  qs: true } 
+    'easy':   { time: 800,   depth: 8,  errorRate: 0.15, expect: false, enhanced: true,  qs: true, flipCandidates: 5,  flipDepth: 1 },
+    'medium': { time: 1500,  depth: 12, errorRate: 0.04, expect: true,  enhanced: true,  qs: true, flipCandidates: 6,  flipDepth: 1 },
+    'hard':   { time: 3000,  depth: 18, errorRate: 0.0,  expect: true,  enhanced: true,  qs: true, flipCandidates: 7,  flipDepth: 1 },
+    'expert': { time: 4500,  depth: 30, errorRate: 0.0,  expect: true,  enhanced: true,  qs: true, flipCandidates: 8,  flipDepth: 2 },
+    'master': { time: 6500,  depth: 55, errorRate: 0.0,  expect: true,  enhanced: true,  qs: true, flipCandidates: 10, flipDepth: 2 },
+    'god':    { time: 10000, depth: 99, errorRate: 0.0,  expect: true,  enhanced: true,  qs: true, flipCandidates: 12, flipDepth: 2 } 
 };
 
 const audio = document.getElementById('bgm');
