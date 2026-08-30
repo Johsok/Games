@@ -565,30 +565,31 @@
       filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
     }
 
-    /* 戰場砲塔：使用 TD_Photo 預渲染 3D PNG，逆向斜視以免被棋盤壓扁 */
+    /* 戰場砲塔：以格子最終尺寸的正方形直接顯示 3D PNG，避免先壓扁再拉高 */
     .tower-icon-wrap {
       position: absolute;
-      left: 4%;
-      right: 4%;
+      left: 50%;
       bottom: 0;
-      top: auto;
-      height: 140%;
+      width: var(--unit-size, 84px);
+      height: var(--unit-size, 84px);
+      margin-left: calc(var(--unit-size, 84px) / -2);
       pointer-events: none;
       z-index: 2;
       display: flex;
       align-items: flex-end;
       justify-content: center;
       filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
-      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(12px);
+      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(var(--unit-lift, 18px));
       transform-origin: 50% 100%;
     }
     .tower-sprite {
-      width: 100%;
-      height: 100%;
+      width: var(--unit-size, 84px);
+      height: var(--unit-size, 84px);
       object-fit: contain;
       object-position: center bottom;
       pointer-events: none;
       image-rendering: auto;
+      flex-shrink: 0;
     }
     /* 敵人精靈：尺寸跟格子走（--unit-size），並 billboard 直立以免被棋盤壓扁 */
     .enemy-sprite {
@@ -960,6 +961,7 @@
       width: 48px;
       height: 48px;
       object-position: center;
+      transform: none;
     }
 
     /* 立體子彈：雙層 preserve-3d 菱錐感 + 外光暈 */
@@ -1247,7 +1249,7 @@
         <h3>金幣</h3>
         <div class="stat-row">
           <img src="TD_Photo/ui_gold.png" alt="" />
-          <span class="stat-big" id="ui-gold">200</span>
+          <span class="stat-big" id="ui-gold">240</span>
         </div>
       </aside>
 
@@ -1306,7 +1308,7 @@
           name: '機槍塔',
           cost: 38,
           range: 5.6,
-          damage: 9,
+          damage: 11,
           cooldown: 240,
           projSpeed: 5.5,
           bullet: '#fbbf24',
@@ -1319,7 +1321,7 @@
           name: '重砲塔',
           cost: 88,
           range: 5.0,
-          damage: 36,
+          damage: 43,
           cooldown: 900,
           projSpeed: 3.2,
           bullet: '#94a3b8',
@@ -1332,7 +1334,7 @@
           name: '寒冰塔',
           cost: 72,
           range: 5.4,
-          damage: 13,
+          damage: 16,
           cooldown: 580,
           projSpeed: 3.8,
           bullet: '#67e8f9',
@@ -1345,12 +1347,11 @@
           name: '狙擊塔',
           cost: 122,
           range: 8.2,
-          damage: 78,
+          damage: 94,
           cooldown: 1580,
           projSpeed: 8.5,
           bullet: '#fb7185',
-          img: 'TD_Photo/tower_missile.png',
-          desc: '極遠程單體',
+          img: 'TD_Photo/tower_sniper.png',
           special: ''
         },
         {
@@ -1358,7 +1359,7 @@
           name: '火箭塔',
           cost: 128,
           range: 6.2,
-          damage: 46,
+          damage: 55,
           cooldown: 1280,
           projSpeed: 3.6,
           bullet: '#fb923c',
@@ -1371,7 +1372,7 @@
           name: '雷電塔',
           cost: 102,
           range: 5.6,
-          damage: 16,
+          damage: 19,
           cooldown: 350,
           projSpeed: 6.2,
           bullet: '#fde047',
@@ -1384,12 +1385,11 @@
           name: '攻城砲',
           cost: 108,
           range: 5.2,
-          damage: 44,
+          damage: 53,
           cooldown: 1020,
           projSpeed: 2.6,
           bullet: '#cbd5e1',
-          img: 'TD_Photo/tower_heavy.png',
-          desc: '大中範圍溅射',
+          img: 'TD_Photo/tower_siege.png',
           special: 'splash'
         },
         {
@@ -1397,12 +1397,11 @@
           name: '連射塔',
           cost: 48,
           range: 5.8,
-          damage: 11,
+          damage: 13,
           cooldown: 360,
           projSpeed: 5.0,
           bullet: '#a3e635',
-          img: 'TD_Photo/tower_basic.png',
-          desc: '中速連發',
+          img: 'TD_Photo/tower_burst.png',
           special: ''
         }
       ];
@@ -1800,7 +1799,7 @@
           def.img +
           '" alt="' +
           def.name +
-          '" draggable="false" />';
+          '" decoding="async" draggable="false" />';
         if (mode === 'shop') {
           return '<div class="tower-thumb-wrap">' + img + '</div>';
         }
@@ -2808,7 +2807,7 @@
       function getLevelConfig(levelIndex) {
         const profile = getMapProfile(levelIndex);
         const waves = 8 + levelIndex;
-        const startGold = 118 + levelIndex * 30 + 100 + 100 + 100;
+        const startGold = Math.round((118 + levelIndex * 30 + 100 + 100 + 100) * 1.2);
         const diff = 1 + levelIndex * 0.13;
         return {
           rows: profile.rows,
@@ -2846,7 +2845,7 @@
 
       let unlockedMax = 0;
       let currentLevel = 0;
-      let gold = 200;
+      let gold = 240;
       let lives = 10;
       let kills = 0;
       let waveIndex = 0;
