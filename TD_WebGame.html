@@ -405,7 +405,8 @@
       position: relative;
       cursor: crosshair;
       overflow: visible;
-      transition: filter 0.15s, outline 0.15s;
+      /* 不用 filter：會把子元素的 billboard 3D 壓平，看起來像塔被壓扁再彈起 */
+      transition: outline 0.15s, box-shadow 0.15s;
       transform-style: preserve-3d;
     }
 
@@ -424,7 +425,10 @@
       border-right: 2px solid rgba(0, 0, 0, 0.16);
       pointer-events: none;
     }
-    .cell.field:hover { filter: brightness(1.12); outline: 1px solid rgba(59,130,246,0.5); }
+    .cell.field:hover {
+      outline: 1px solid rgba(59,130,246,0.5);
+      box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.06);
+    }
     .cell.path {
       background:
         linear-gradient(-45deg, rgba(255,255,255,0.08), transparent),
@@ -580,7 +584,7 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+      transform-style: preserve-3d;
       transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(var(--unit-lift, 18px));
       transform-origin: 50% 100%;
     }
@@ -594,6 +598,8 @@
       flex-shrink: 0;
       position: relative;
       z-index: 1;
+      /* 陰影放在圖片上，避免外層 filter 把 3D 立牌壓平 */
+      filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
     }
     /* 已放置塔：點選升級，游標改為 pointer */
     .cell.field:has(.tower-icon-wrap) {
@@ -603,7 +609,6 @@
     .cell.field.tower-inspect {
       outline: 2px solid #fbbf24;
       outline-offset: 0;
-      filter: brightness(1.16);
       box-shadow: 0 0 14px rgba(251, 191, 36, 0.5);
     }
     /*
@@ -675,32 +680,16 @@
     }
     .tower-sprite.tower-max-glow {
       filter:
-        drop-shadow(0 0 3px #fff)
-        drop-shadow(0 0 8px var(--tower-glow, #fbbf24))
-        drop-shadow(0 0 18px var(--tower-glow, #fbbf24));
-      animation: tower-max-sprite 1.55s ease-in-out infinite;
+        drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 6px #fff)
+        drop-shadow(0 0 12px var(--tower-glow, #fbbf24));
     }
     @keyframes tower-max-halo {
-      0%, 100% { opacity: 0.72; transform: translateX(-50%) scale(1); }
-      50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
-    }
-    @keyframes tower-max-sprite {
-      0%, 100% {
-        filter:
-          drop-shadow(0 0 3px #fff)
-          drop-shadow(0 0 8px var(--tower-glow, #fbbf24))
-          drop-shadow(0 0 16px var(--tower-glow, #fbbf24));
-      }
-      50% {
-        filter:
-          drop-shadow(0 0 5px #fff)
-          drop-shadow(0 0 14px var(--tower-glow, #fbbf24))
-          drop-shadow(0 0 28px var(--tower-glow, #fbbf24));
-      }
+      0%, 100% { opacity: 0.72; }
+      50% { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .tower-icon-wrap.tower-max::before,
-      .tower-sprite.tower-max-glow {
+      .tower-icon-wrap.tower-max::before {
         animation: none;
       }
     }
@@ -1984,12 +1973,15 @@
        * @returns {string}
        */
       function buildTowerArtHtml(def, mode) {
+        const decode = mode === 'field' ? 'sync' : 'async';
         const img =
           '<img class="tower-sprite" src="' +
           def.img +
           '" alt="' +
           def.name +
-          '" decoding="async" draggable="false" />';
+          '" decoding="' +
+          decode +
+          '" draggable="false" />';
         if (mode === 'shop') {
           return '<div class="tower-thumb-wrap">' + img + '</div>';
         }
@@ -3577,7 +3569,8 @@
       }
 
       /**
-       * 在格子上繪製砲塔圖、等級圓標、滿級發光與射程圈（可重繪）。
+       * 在格子上繪製砲塔圖、等級圓標、滿級發光與射程圈。
+       * 升級時重用既有 `<img>`，避免卸載／重載造成先壓扁再彈出。
        * @param {PlacedTower} tw
        */
       function placeTowerVisual(tw) {
@@ -3586,29 +3579,47 @@
         const idx = tw.row * cols + tw.col;
         const cell = els.mapBoard.children[idx];
         if (!cell) return;
-        clearTowerVisualInCell(cell);
         const lv = tw.level || 1;
         const atMax = lv >= TOWER_MAX_LEVEL;
-        const icon = document.createElement('div');
-        icon.className = 'tower-icon-wrap' + (atMax ? ' tower-max' : '');
+        let icon = cell.querySelector('.tower-icon-wrap');
+        if (!icon) {
+          icon = document.createElement('div');
+          icon.className = 'tower-icon-wrap';
+          const sprite = document.createElement('img');
+          sprite.className = 'tower-sprite';
+          sprite.src = def.img;
+          sprite.alt = def.name;
+          sprite.decoding = 'sync';
+          sprite.draggable = false;
+          const badge = document.createElement('span');
+          badge.className = 'tower-level-badge';
+          icon.appendChild(sprite);
+          icon.appendChild(badge);
+          cell.appendChild(icon);
+        }
+        icon.classList.toggle('tower-max', atMax);
         icon.style.setProperty('--tower-glow', def.glow || def.bullet);
-        icon.innerHTML = buildTowerArtHtml(def, 'field');
         const sprite = icon.querySelector('.tower-sprite');
-        if (sprite && atMax) sprite.classList.add('tower-max-glow');
-        const badge = document.createElement('span');
-        badge.className = 'tower-level-badge';
-        badge.dataset.lv = String(lv);
-        badge.textContent = String(lv);
-        badge.setAttribute('aria-label', def.name + ' 等級 ' + lv);
-        icon.appendChild(badge);
-        const ring = document.createElement('div');
-        ring.className = 'range-ring placed';
+        if (sprite) {
+          if (sprite.getAttribute('src') !== def.img) sprite.src = def.img;
+          sprite.classList.toggle('tower-max-glow', atMax);
+        }
+        const badge = icon.querySelector('.tower-level-badge');
+        if (badge) {
+          badge.dataset.lv = String(lv);
+          badge.textContent = String(lv);
+          badge.setAttribute('aria-label', def.name + ' 等級 ' + lv);
+        }
+        let ring = cell.querySelector('.range-ring.placed');
+        if (!ring) {
+          ring = document.createElement('div');
+          ring.className = 'range-ring placed';
+          cell.insertBefore(ring, icon);
+        }
         const effR = getEffectiveRange(def);
         const px = effR * (cell.clientWidth || 44) * 1.12;
         ring.style.width = px * 2 + 'px';
         ring.style.height = px * 2 + 'px';
-        cell.appendChild(ring);
-        cell.appendChild(icon);
       }
 
       /**
