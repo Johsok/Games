@@ -287,7 +287,8 @@
       margin-bottom: 0;
     }
     .panel.panel--right .btn-start,
-    .panel.panel--right .tip {
+    .panel.panel--right .tip,
+    .panel.panel--right .tower-upgrade-panel {
       flex-shrink: 0;
     }
     .panel.panel--right .btn-start {
@@ -575,6 +576,7 @@
       margin-left: calc(var(--unit-size, 84px) / -2);
       pointer-events: none;
       z-index: 2;
+      overflow: visible;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -590,6 +592,174 @@
       pointer-events: none;
       image-rendering: auto;
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    /* 已放置塔：點選升級，游標改為 pointer */
+    .cell.field:has(.tower-icon-wrap) {
+      cursor: pointer;
+    }
+    /* 正在檢視／準備升級的砲塔格 */
+    .cell.field.tower-inspect {
+      outline: 2px solid #fbbf24;
+      outline-offset: 0;
+      filter: brightness(1.16);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.5);
+    }
+    /*
+     * 等級圓標：置於塔圖正下方，高對比數字＋圓形底。
+     * 外層 `.tower-icon-wrap` 已做 billboard，標籤會一併直立。
+     */
+    .tower-level-badge {
+      position: absolute;
+      left: 50%;
+      bottom: -0.2em;
+      transform: translateX(-50%);
+      z-index: 4;
+      width: 1.45em;
+      height: 1.45em;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: clamp(0.72rem, 1.7vmin, 0.95rem);
+      line-height: 1;
+      color: #1a0a00;
+      background: radial-gradient(circle at 32% 28%, #fff8 0%, #fbbf24 42%, #b45309 100%);
+      border: 2px solid #fff;
+      box-shadow:
+        0 0 10px rgba(251, 191, 36, 0.95),
+        0 0 2px #fff,
+        0 2px 4px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+      user-select: none;
+      text-shadow: 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+    .tower-level-badge[data-lv="2"] {
+      color: #fff;
+      background: radial-gradient(circle at 32% 28%, #fff 0%, #fb923c 40%, #c2410c 100%);
+      box-shadow:
+        0 0 12px rgba(251, 146, 60, 0.95),
+        0 0 2px #fff,
+        0 2px 4px rgba(0, 0, 0, 0.55);
+    }
+    .tower-level-badge[data-lv="3"] {
+      color: #fff;
+      background: radial-gradient(circle at 32% 28%, #fff 0%, #e879f9 38%, #a21caf 100%);
+      box-shadow:
+        0 0 14px rgba(232, 121, 249, 1),
+        0 0 3px #fff,
+        0 2px 4px rgba(0, 0, 0, 0.55);
+    }
+    /* 滿級：塔圖輪廓外發光（顏色由 --tower-glow 依塔種設定） */
+    .tower-icon-wrap.tower-max {
+      --tower-glow: #fbbf24;
+    }
+    .tower-icon-wrap.tower-max::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 6%;
+      width: 86%;
+      height: 86%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      box-shadow:
+        0 0 10px 3px var(--tower-glow),
+        0 0 22px 8px var(--tower-glow),
+        0 0 40px 12px color-mix(in srgb, var(--tower-glow) 65%, transparent);
+      animation: tower-max-halo 1.55s ease-in-out infinite;
+    }
+    .tower-sprite.tower-max-glow {
+      filter:
+        drop-shadow(0 0 3px #fff)
+        drop-shadow(0 0 8px var(--tower-glow, #fbbf24))
+        drop-shadow(0 0 18px var(--tower-glow, #fbbf24));
+      animation: tower-max-sprite 1.55s ease-in-out infinite;
+    }
+    @keyframes tower-max-halo {
+      0%, 100% { opacity: 0.72; transform: translateX(-50%) scale(1); }
+      50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+    }
+    @keyframes tower-max-sprite {
+      0%, 100% {
+        filter:
+          drop-shadow(0 0 3px #fff)
+          drop-shadow(0 0 8px var(--tower-glow, #fbbf24))
+          drop-shadow(0 0 16px var(--tower-glow, #fbbf24));
+      }
+      50% {
+        filter:
+          drop-shadow(0 0 5px #fff)
+          drop-shadow(0 0 14px var(--tower-glow, #fbbf24))
+          drop-shadow(0 0 28px var(--tower-glow, #fbbf24));
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tower-icon-wrap.tower-max::before,
+      .tower-sprite.tower-max-glow {
+        animation: none;
+      }
+    }
+    /* 右欄：已選場上塔的升級資訊 */
+    .tower-upgrade-panel {
+      flex-shrink: 0;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      background: rgba(251, 191, 36, 0.08);
+    }
+    .tower-upgrade-panel[hidden] {
+      display: none !important;
+    }
+    .tower-upgrade-panel h3 {
+      margin: 0 0 4px;
+      color: #fbbf24;
+      font-size: 0.82rem;
+    }
+    .tower-upgrade-name {
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+    .tower-upgrade-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 4px 0 8px;
+      line-height: 1.45;
+    }
+    .tower-upgrade-meta .upgrade-next {
+      color: #86efac;
+    }
+    .btn-upgrade {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 0.65rem;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #1a0a00;
+      background: linear-gradient(180deg, #fbbf24, #d97706);
+      box-shadow: 0 3px 12px rgba(217, 119, 6, 0.45);
+    }
+    .btn-upgrade:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+    .btn-upgrade:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      box-shadow: none;
+      filter: grayscale(0.25);
+    }
+    .upgrade-cost {
+      color: #1a0a00;
+      font-weight: 900;
+    }
+    .btn-upgrade.is-short .upgrade-cost {
+      color: #7f1d1d;
     }
     /* 敵人精靈：尺寸跟格子走（--unit-size），並 billboard 直立以免被棋盤壓扁 */
     .enemy-sprite {
@@ -618,12 +788,16 @@
       opacity: 0;
       transition: opacity 0.15s;
     }
-    /* 未從商店選定塔種時：不顯示任何射程（含已蓋塔 hover） */
+    /* 未從商店選定塔種時：不顯示任何射程（含已蓋塔 hover）；檢視中的塔除外 */
     #screen-game:not(.tower-picked) .range-ring.placed {
       opacity: 0 !important;
     }
-    /* 已選塔：滑鼠移到該格才顯示該塔射程 */
-    #screen-game.tower-picked .cell:hover .range-ring.placed {
+    #screen-game:not(.tower-picked) .cell.tower-inspect .range-ring.placed {
+      opacity: 1 !important;
+    }
+    /* 已選商店塔：滑鼠移到該格才顯示該塔射程；檢視中的塔持續顯示 */
+    #screen-game.tower-picked .cell:hover .range-ring.placed,
+    #screen-game.tower-picked .cell.tower-inspect .range-ring.placed {
       opacity: 1;
     }
 
@@ -745,7 +919,8 @@
         font-size: 0.9rem;
       }
       /* 觸控無 hover：按住草地格時短暫顯示已放置塔之射程（沿用既有 .placed 圈） */
-      #screen-game.tower-picked .cell.field:active .range-ring.placed {
+      #screen-game.tower-picked .cell.field:active .range-ring.placed,
+      #screen-game .cell.tower-inspect .range-ring.placed {
         opacity: 1 !important;
       }
     }
@@ -1260,10 +1435,11 @@
       </div>
 
       <aside class="panel panel--right">
+        <div id="tower-upgrade-panel" class="tower-upgrade-panel" hidden></div>
         <h3>手牌（點選後放置於草地格）</h3>
         <div class="shop-list" id="shop-list"></div>
         <button type="button" class="btn btn-start" id="btn-start-wave">開始 Wave</button>
-        <p class="tip" id="wave-tip">地圖每次進入都會重抽。擺好塔後按「開始 Wave」</p>
+        <p class="tip" id="wave-tip">點草地放塔；點場上的塔可升級。擺好後按「開始 Wave」</p>
       </aside>
     </div>
   </section>
@@ -1292,9 +1468,15 @@
       'use strict';
 
       /**
-       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string }} TowerDef
+       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, glow: string, special?: string, desc: string }} TowerDef
        * `img`：`TD_Photo` 預渲染 3D PNG 路徑。
+       * `glow`：滿級時塔圖外圍發光色（每種塔不同）。
        * 參數設計參考常見瀏覽器 TD／Phaser 類作品（如 GamePortal 等頁遊）之塔種分工：速射、重砲、緩速、狙擊、飛彈、連鎖等。
+       */
+      /**
+       * 場上已放置的砲塔。
+       * `level` 為 1..{@link TOWER_MAX_LEVEL}；每次升級攻擊等數值 ×2。
+       * @typedef {{ id: number, row: number, col: number, typeId: string, lastShot: number, level: number }} PlacedTower
        */
       /** @typedef {{ id: string, name: string, hp: number, speed: number, reward: number, img: string }} EnemyDef */
 
@@ -1312,6 +1494,7 @@
           cooldown: 240,
           projSpeed: 5.5,
           bullet: '#fbbf24',
+          glow: '#fbbf24',
           img: 'TD_Photo/tower_basic.png',
           desc: '高射速',
           special: ''
@@ -1325,6 +1508,7 @@
           cooldown: 900,
           projSpeed: 3.2,
           bullet: '#94a3b8',
+          glow: '#e2e8f0',
           img: 'TD_Photo/tower_heavy.png',
           desc: '單發高傷+小範圍溅射',
           special: 'splash'
@@ -1338,6 +1522,7 @@
           cooldown: 580,
           projSpeed: 3.8,
           bullet: '#67e8f9',
+          glow: '#22d3ee',
           img: 'TD_Photo/tower_plasma.png',
           desc: '命中緩速',
           special: 'slow'
@@ -1351,6 +1536,7 @@
           cooldown: 1580,
           projSpeed: 8.5,
           bullet: '#fb7185',
+          glow: '#fb7185',
           img: 'TD_Photo/tower_sniper.png',
           special: ''
         },
@@ -1363,6 +1549,7 @@
           cooldown: 1280,
           projSpeed: 3.6,
           bullet: '#fb923c',
+          glow: '#fb923c',
           img: 'TD_Photo/tower_missile.png',
           desc: '爆炸溅射',
           special: 'splash'
@@ -1376,6 +1563,7 @@
           cooldown: 350,
           projSpeed: 6.2,
           bullet: '#fde047',
+          glow: '#fde047',
           img: 'TD_Photo/tower_electric.png',
           desc: '連鎖次要目標',
           special: 'chain'
@@ -1389,6 +1577,7 @@
           cooldown: 1020,
           projSpeed: 2.6,
           bullet: '#cbd5e1',
+          glow: '#818cf8',
           img: 'TD_Photo/tower_siege.png',
           special: 'splash'
         },
@@ -1401,6 +1590,7 @@
           cooldown: 360,
           projSpeed: 5.0,
           bullet: '#a3e635',
+          glow: '#a3e635',
           img: 'TD_Photo/tower_burst.png',
           special: ''
         }
@@ -1936,6 +2126,18 @@
 
       /** 全塔種實際攻擊力倍率（含溅射／連鎖衍生傷害）。 */
       const TOWER_DAMAGE_EXTRA_MUL = 1.5;
+
+      /** 砲塔最高等級（初始 Lv.1，可升至 Lv.3）。 */
+      const TOWER_MAX_LEVEL = 3;
+
+      /**
+       * 從目前等級升到下一級的建造價倍率：Lv.1→2 為 ×2.5，Lv.2→3 為 ×6（明顯遞增）。
+       * @type {Record<number, number>}
+       */
+      const TOWER_UPGRADE_COST_MUL = {
+        1: 2.5,
+        2: 6
+      };
 
       /**
        * @param {number} seed
@@ -2820,6 +3022,29 @@
       }
 
       /**
+       * 依砲塔等級回傳數值倍率：Lv.1 = 1、Lv.2 = 2、Lv.3 = 4（每升一級 ×2）。
+       * @param {number} [level=1]
+       * @returns {number}
+       */
+      function getTowerLevelMul(level) {
+        const lv = level == null ? 1 : level;
+        const clamped = Math.max(1, Math.min(TOWER_MAX_LEVEL, lv));
+        return Math.pow(2, clamped - 1);
+      }
+
+      /**
+       * 從目前等級升到下一級的金幣費用。
+       * @param {TowerDef} def
+       * @param {number} currentLevel
+       * @returns {number}
+       */
+      function getTowerUpgradeCost(def, currentLevel) {
+        const mul = TOWER_UPGRADE_COST_MUL[currentLevel];
+        if (!mul) return 0;
+        return Math.round(def.cost * mul);
+      }
+
+      /**
        * @param {TowerDef} def
        * @returns {number}
        */
@@ -2837,10 +3062,11 @@
 
       /**
        * @param {TowerDef} def
+       * @param {number} [level=1] 場上塔的等級；商店預覽視為 Lv.1
        * @returns {number}
        */
-      function getEffectiveDamage(def) {
-        return def.damage * playerMods.damageMul * TOWER_DAMAGE_EXTRA_MUL;
+      function getEffectiveDamage(def, level) {
+        return def.damage * playerMods.damageMul * TOWER_DAMAGE_EXTRA_MUL * getTowerLevelMul(level);
       }
 
       let unlockedMax = 0;
@@ -2852,6 +3078,7 @@
       let waveActive = false;
       let waveQueue = [];
       let enemies = [];
+      /** @type {PlacedTower[]} */
       let towers = [];
       let pathOrder = [];
       let pathSet = new Set();
@@ -2865,6 +3092,8 @@
       let cols = 10;
       /** @type {string|null} 未選商店塔種時為 null，不顯示射程預覽與已蓋塔範圍 */
       let selectedTowerId = null;
+      /** @type {PlacedTower | null} 點選場上塔後，供升級面板使用 */
+      let inspectedTower = null;
       /** @type {HTMLElement | null} 目前滑鼠下的可建造草地格，供換選塔時重繪預覽圈 */
       let previewHoverCell = null;
       let lastTs = 0;
@@ -2884,6 +3113,7 @@
         mapBoard: document.getElementById('map-board'),
         mapOuter: document.getElementById('map-outer'),
         shopList: document.getElementById('shop-list'),
+        upgradePanel: document.getElementById('tower-upgrade-panel'),
         uiGold: document.getElementById('ui-gold'),
         uiKills: document.getElementById('ui-kills'),
         uiLifeText: document.getElementById('ui-life-text'),
@@ -3063,12 +3293,145 @@
             } else {
               selectedTowerId = t.id;
             }
+            inspectedTower = null;
+            syncTowerInspectHighlights();
             renderShop();
+            renderUpgradePanel();
           });
           els.shopList.appendChild(b);
         });
         updateTowerPickedClass();
         refreshPlacementPreview();
+      }
+
+      /**
+       * 依 row/col 找出場上砲塔。
+       * @param {number} r
+       * @param {number} c
+       * @returns {PlacedTower | undefined}
+       */
+      function findTowerAt(r, c) {
+        for (let i = 0; i < towers.length; i++) {
+          if (towers[i].row === r && towers[i].col === c) return towers[i];
+        }
+        return undefined;
+      }
+
+      /**
+       * 同步「正在檢視」格的高亮與射程圈。
+       */
+      function syncTowerInspectHighlights() {
+        if (!els.mapBoard) return;
+        const n = rows * cols;
+        for (let i = 0; i < n; i++) {
+          const cell = els.mapBoard.children[i];
+          if (!cell || !cell.classList || !cell.classList.contains('field')) continue;
+          const r = +cell.dataset.r;
+          const c = +cell.dataset.c;
+          const on = !!(inspectedTower && inspectedTower.row === r && inspectedTower.col === c);
+          cell.classList.toggle('tower-inspect', on);
+        }
+      }
+
+      /**
+       * 將指定格子上的塔視覺（圖示、等級標、射程圈）移除，以便重繪。
+       * @param {HTMLElement} cell
+       */
+      function clearTowerVisualInCell(cell) {
+        const oldIcon = cell.querySelector('.tower-icon-wrap');
+        if (oldIcon) oldIcon.remove();
+        const oldRing = cell.querySelector('.range-ring.placed');
+        if (oldRing) oldRing.remove();
+      }
+
+      /**
+       * 升級目前檢視中的砲塔（金幣足夠且未滿級）。
+       */
+      function upgradeInspectedTower() {
+        const tw = inspectedTower;
+        if (!tw || tw.level >= TOWER_MAX_LEVEL) return;
+        const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
+        if (!def) return;
+        const cost = getTowerUpgradeCost(def, tw.level);
+        if (gold < cost) return;
+        gold -= cost;
+        tw.level += 1;
+        placeTowerVisual(tw);
+        updateHud();
+      }
+
+      /**
+       * 渲染右側「砲塔升級」面板；未選場上塔時隱藏。
+       */
+      function renderUpgradePanel() {
+        const panel = els.upgradePanel;
+        if (!panel) return;
+        if (inspectedTower && towers.indexOf(inspectedTower) < 0) {
+          inspectedTower = null;
+        }
+        syncTowerInspectHighlights();
+        const tw = inspectedTower;
+        if (!tw) {
+          panel.hidden = true;
+          panel.innerHTML = '';
+          return;
+        }
+        const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
+        if (!def) {
+          panel.hidden = true;
+          panel.innerHTML = '';
+          return;
+        }
+        panel.hidden = false;
+        const atk = Math.round(getEffectiveDamage(def, tw.level));
+        const rng = getEffectiveRange(def).toFixed(1);
+        const cd = Math.round(getEffectiveCooldown(def));
+        const maxed = tw.level >= TOWER_MAX_LEVEL;
+        let actions = '';
+        if (maxed) {
+          actions =
+            '<button type="button" class="btn-upgrade" disabled>已達最高級 · 外圍發光</button>';
+        } else {
+          const cost = getTowerUpgradeCost(def, tw.level);
+          const can = gold >= cost;
+          const nextAtk = Math.round(getEffectiveDamage(def, tw.level + 1));
+          actions =
+            '<p class="tower-upgrade-meta">下一級攻擊 <span class="upgrade-next">' +
+            atk +
+            ' → ' +
+            nextAtk +
+            '（×2）</span></p>' +
+            '<button type="button" class="btn-upgrade' +
+            (can ? '' : ' is-short') +
+            '"' +
+            (can ? '' : ' disabled') +
+            ' id="btn-upgrade-tower">升級 Lv.' +
+            (tw.level + 1) +
+            ' · <span class="upgrade-cost">💰' +
+            cost +
+            '</span></button>';
+        }
+        panel.innerHTML =
+          '<h3>砲塔升級</h3>' +
+          '<div class="tower-upgrade-name">' +
+          def.name +
+          '　Lv.' +
+          tw.level +
+          ' / ' +
+          TOWER_MAX_LEVEL +
+          '</div>' +
+          '<p class="tower-upgrade-meta">攻 ' +
+          atk +
+          ' · 距 ' +
+          rng +
+          ' · CD ' +
+          cd +
+          'ms</p>' +
+          actions;
+        const btn = document.getElementById('btn-upgrade-tower');
+        if (btn) {
+          btn.addEventListener('click', upgradeInspectedTower);
+        }
       }
 
       /**
@@ -3198,6 +3561,7 @@
           }
         }
         towers.forEach((tw) => placeTowerVisual(tw));
+        syncTowerInspectHighlights();
         const enemyLayer = document.createElement('div');
         enemyLayer.id = 'enemy-layer';
         enemyLayer.className = 'enemy-layer';
@@ -3213,7 +3577,8 @@
       }
 
       /**
-       * @param {{ row: number, col: number, typeId: string, id: number }} tw
+       * 在格子上繪製砲塔圖、等級圓標、滿級發光與射程圈（可重繪）。
+       * @param {PlacedTower} tw
        */
       function placeTowerVisual(tw) {
         const def = TOWER_TYPES.find((x) => x.id === tw.typeId);
@@ -3221,9 +3586,21 @@
         const idx = tw.row * cols + tw.col;
         const cell = els.mapBoard.children[idx];
         if (!cell) return;
+        clearTowerVisualInCell(cell);
+        const lv = tw.level || 1;
+        const atMax = lv >= TOWER_MAX_LEVEL;
         const icon = document.createElement('div');
-        icon.className = 'tower-icon-wrap';
+        icon.className = 'tower-icon-wrap' + (atMax ? ' tower-max' : '');
+        icon.style.setProperty('--tower-glow', def.glow || def.bullet);
         icon.innerHTML = buildTowerArtHtml(def, 'field');
+        const sprite = icon.querySelector('.tower-sprite');
+        if (sprite && atMax) sprite.classList.add('tower-max-glow');
+        const badge = document.createElement('span');
+        badge.className = 'tower-level-badge';
+        badge.dataset.lv = String(lv);
+        badge.textContent = String(lv);
+        badge.setAttribute('aria-label', def.name + ' 等級 ' + lv);
+        icon.appendChild(badge);
         const ring = document.createElement('div');
         ring.className = 'range-ring placed';
         const effR = getEffectiveRange(def);
@@ -3235,6 +3612,7 @@
       }
 
       /**
+       * 草地格點擊：空地且已選手牌則放置；已有塔則選取以升級；空地未選手牌則取消檢視。
        * @param {MouseEvent} e
        */
       function onCellClick(e) {
@@ -3243,13 +3621,25 @@
         const c = +t.dataset.c;
         const k = r + ',' + c;
         if (pathSet.has(k) || blockedSet.has(k)) return;
-        if (t.querySelector('.tower-icon-wrap')) return;
-        if (!selectedTowerId) return;
+        const existing = findTowerAt(r, c);
+        if (existing) {
+          inspectedTower = existing;
+          selectedTowerId = null;
+          updateHud();
+          return;
+        }
+        if (!selectedTowerId) {
+          inspectedTower = null;
+          renderUpgradePanel();
+          return;
+        }
         const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
         if (!def || gold < def.cost) return;
         gold -= def.cost;
-        const tw = { id: Date.now(), row: r, col: c, typeId: def.id, lastShot: 0 };
+        /** @type {PlacedTower} */
+        const tw = { id: Date.now(), row: r, col: c, typeId: def.id, lastShot: 0, level: 1 };
         towers.push(tw);
+        inspectedTower = tw;
         placeTowerVisual(tw);
         const prRing = t.querySelector('.range-ring.preview');
         if (prRing) prRing.remove();
@@ -3279,6 +3669,7 @@
           els.waveBar.appendChild(seg);
         }
         renderShop();
+        renderUpgradePanel();
       }
 
       /**
@@ -3314,6 +3705,7 @@
         spawnCooldownMs = 0;
         enemies = [];
         towers = [];
+        inspectedTower = null;
         projectiles = [];
         const runSeed = createLevelRunSeed(cfg.seed, levelIndex);
         applyMapTheme(levelIndex, runSeed);
@@ -3334,7 +3726,7 @@
         renderMap();
         updateTowerPickedClass();
         updateHud();
-        els.waveTip.textContent = '地圖每次進入都會重抽。擺好塔後按「開始 Wave」';
+        els.waveTip.textContent = '點草地放塔；點場上的塔可升級。擺好後按「開始 Wave」';
         stopLoop();
         setGameTurbo(false);
         /* 進入已選關卡戰場：另抽一首隨機 BGM，與關卡列表頁分開 */
@@ -3587,7 +3979,7 @@
           });
           if (!target) return;
           tw.lastShot = 0;
-          const dmg = getEffectiveDamage(def) * (0.85 + levelDiff * 0.03);
+          const dmg = getEffectiveDamage(def, tw.level) * (0.85 + levelDiff * 0.03);
           spawnProjectile(tw, target, def, dmg);
         });
 
