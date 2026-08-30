@@ -6,8 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Tower Defense — TD WebGame</title>
     <!--
-    素材：敵人、砲塔與金幣為 `TD_Photo` 資料夾之預渲染 3D PNG（透明底）。
+    素材來源：Kenney.nl「Tower Defense (top-down)」套件（CC0 1.0，可自由商用，無需署名）。
+    OpenGameArt 鏡像：https://opengameart.org/content/tower-defense-300-tilessprites
     塔種能力值為自洽平衡；靈感取向同類「瀏覽器 / Phaser」塔防（如 game.5portal.net 之 Tower Defense 遊戲型態），非逐欄位抄寫該站。
+    砲塔外觀：採用 Game-icons.net 向量圖（經 jsDelivr 載入，CC BY 3.0，作者見 https://game-icons.net ），以 CSS `mask-image` 著上與子彈同色之漸層，並直立透視呈現立體感。
     背景音樂：同資料夾 `MP3/02.MP3`（較高抽中機率）與 `MP3/04.MP3` 共三條候選隨機，於進入關卡選擇與進入戰場時延遲非同步載入。
   -->
   <style>
@@ -27,14 +29,6 @@
       --map-hue: 210;
       --map-sat: 18%;
       --tile-pattern: 0.08;
-      /* 斜視角度與逆向（單位圖直立 billboard 用）須成對維護 */
-      --iso-rx: 50deg;
-      --iso-rz: -32deg;
-      --iso-unrx: -50deg;
-      --iso-unrz: 32deg;
-      --unit-size: 84px;
-      --unit-half: 42px;
-      --unit-lift: 18px;
     }
 
     * { box-sizing: border-box; }
@@ -148,17 +142,6 @@
         0 0 2px rgba(15, 23, 42, 0.9);
     }
     .level-card .lv-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
-    .level-card .lv-diff {
-      margin-top: 6px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-    .diff-easy { color: #86efac; }
-    .diff-normal { color: #93c5fd; }
-    .diff-hard { color: #fbbf24; }
-    .diff-vhard { color: #fb923c; }
-    .diff-hell { color: #f87171; }
 
     .top-bar__center {
       justify-self: center;
@@ -306,7 +289,7 @@
       margin-bottom: 8px;
       font-size: 0.9rem;
     }
-    .stat-row img { width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.35)); }
+    .stat-row img { width: 22px; height: 22px; object-fit: contain; }
     .stat-big { font-size: 1.5rem; font-weight: 800; color: var(--gold); }
 
     .wave-bar {
@@ -377,18 +360,17 @@
     }
     .map-board {
       display: grid;
-      gap: 4px;
-      padding: 14px;
+      gap: 3px;
+      padding: 12px;
       border-radius: 16px;
       background: hsl(var(--map-hue), var(--map-sat), 11%);
       border: 1px solid rgba(255,255,255,0.1);
-      overflow: visible;
       transform-style: preserve-3d;
       /*
        * scale 由 JS 依視窗與斜視後包圍盒計算（先 rotate 再以螢幕座標 AABB 決定 --map-fit-scale），
        * 預設 1 供初次排版量測。
        */
-      transform: translateY(-8%) rotateX(var(--iso-rx)) rotateZ(var(--iso-rz)) scale(var(--map-fit-scale, 1));
+      transform: translateY(-8%) rotateX(56deg) rotateZ(-36deg) scale(var(--map-fit-scale, 1));
       transform-origin: 50% 50%;
       box-shadow:
         0 28px 60px rgba(0,0,0,0.55),
@@ -397,15 +379,13 @@
     }
 
     .cell {
-      /* 格子維持較大，讓 3D 塔／怪物有足夠站立面積；全圖再由 --map-fit-scale 塞入視窗 */
-      width: clamp(56px, min(8.6vh, 10.5vmin), 108px);
-      height: clamp(56px, min(8.6vh, 10.5vmin), 108px);
+      /* 以 vh 為主配合 vmin，使各關卡格子在垂直視窗佔比一致，再由整體縮放塞滿中央戰場區 */
+      width: clamp(40px, min(7.5vh, 9vmin), 120px);
+      height: clamp(40px, min(7.5vh, 9vmin), 120px);
       border-radius: 6px;
       position: relative;
       cursor: crosshair;
-      overflow: visible;
       transition: filter 0.15s, outline 0.15s;
-      transform-style: preserve-3d;
     }
 
     .cell.field {
@@ -414,74 +394,12 @@
         hsl(calc(var(--map-hue) + 96), 28%, 18%);
       border: 1px solid rgba(255,255,255,0.06);
     }
-    .cell.field::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      border-bottom: 3px solid rgba(0, 0, 0, 0.28);
-      border-right: 2px solid rgba(0, 0, 0, 0.16);
-      pointer-events: none;
-    }
     .cell.field:hover { filter: brightness(1.12); outline: 1px solid rgba(59,130,246,0.5); }
     .cell.path {
       background:
-        linear-gradient(-45deg, rgba(255,255,255,0.08), transparent),
-        hsl(calc(var(--map-hue) + 40), var(--map-sat), 30%);
-      border: 1px solid rgba(120, 170, 210, 0.28);
-      box-shadow: inset 0 0 10px rgba(147, 197, 253, 0.12);
-    }
-    .cell.blocked {
-      cursor: not-allowed;
-      overflow: visible;
-    }
-    .cell.block-rock {
-      background:
-        linear-gradient(160deg, rgba(255,255,255,0.14), transparent 46%),
-        hsl(calc(var(--map-hue) + 16), 14%, 20%);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .cell.block-rock::after {
-      content: "";
-      position: absolute;
-      left: 16%;
-      right: 16%;
-      bottom: 10%;
-      height: 58%;
-      border-radius: 42% 46% 28% 32%;
-      background: linear-gradient(180deg, #9aa8be 0%, #5b6578 48%, #2e3544 100%);
-      box-shadow: 0 5px 0 #1a202c, 0 9px 12px rgba(0,0,0,0.38);
-      transform: translateZ(10px);
-      pointer-events: none;
-    }
-    .cell.block-water {
-      background:
-        repeating-linear-gradient(
-          -38deg,
-          rgba(125, 211, 252, 0.16) 0 7px,
-          rgba(14, 116, 144, 0.28) 7px 14px
-        ),
-        hsl(198, 42%, 20%);
-      border: 1px solid rgba(125, 211, 252, 0.22);
-    }
-    .cell.block-ruin {
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.08), transparent 40%),
-        hsl(calc(var(--map-hue) + 4), 10%, 15%);
-      border: 1px solid rgba(255,255,255,0.07);
-    }
-    .cell.block-ruin::after {
-      content: "";
-      position: absolute;
-      left: 22%;
-      right: 18%;
-      bottom: 12%;
-      height: 48%;
-      clip-path: polygon(8% 100%, 0 42%, 28% 18%, 52% 38%, 70% 8%, 100% 46%, 86% 100%);
-      background: linear-gradient(180deg, #b7a48a, #6b5b4a 55%, #3f342c);
-      box-shadow: 0 4px 0 #231c18;
-      transform: translateZ(8px);
-      pointer-events: none;
+        linear-gradient(-45deg, rgba(255,255,255,0.06), transparent),
+        hsl(calc(var(--map-hue) + 40), var(--map-sat), 28%);
+      border: 1px solid rgba(120, 170, 210, 0.25);
     }
     /*
      * 路徑方向箭頭：由 JS 依 `pathOrder` 每格推算下一格方向後插入。
@@ -514,8 +432,6 @@
       font-size: 1rem;
       color: #bbf7d0;
       text-shadow: 0 0 8px #22c55e;
-      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(14px);
-      transform-origin: 50% 80%;
     }
     /*
      * 主堡（路徑終點格）：`::after` 顯示主堡圖案（棋塔符號）；底部 `#goal-base-hud` 顯示血量（❤ 紅色 + 數字）。
@@ -526,10 +442,9 @@
       position: absolute;
       left: 50%;
       top: 6%;
-      transform: translateX(-50%) rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(16px);
-      transform-origin: 50% 100%;
+      transform: translateX(-50%);
       z-index: 2;
-      font-size: clamp(1.05rem, 3.6vmin, 1.55rem);
+      font-size: clamp(0.95rem, 3.2vmin, 1.4rem);
       line-height: 1;
       color: #fecdd3;
       filter: drop-shadow(0 0 7px rgba(248, 113, 113, 0.8));
@@ -565,45 +480,26 @@
       filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
     }
 
-    /* 戰場砲塔：使用 TD_Photo 預渲染 3D PNG，逆向斜視以免被棋盤壓扁 */
+    /* 外層包住 3D 棱柱；原 `.tower-icon` 二維背景圖改為內層 flex 容器 */
     .tower-icon-wrap {
       position: absolute;
-      left: 4%;
-      right: 4%;
-      bottom: 0;
-      top: auto;
-      height: 140%;
+      inset: 3px;
       pointer-events: none;
       z-index: 2;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
-      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(12px);
-      transform-origin: 50% 100%;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
     }
-    .tower-sprite {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      object-position: center bottom;
-      pointer-events: none;
-      image-rendering: auto;
-    }
-    /* 敵人精靈：尺寸跟格子走（--unit-size），並 billboard 直立以免被棋盤壓扁 */
+    /* 敵人精靈：原 28px→42px→再 2 倍 → 84px（syncEnemySprites 內減半偏移同步為 42px 置中） */
     .enemy-sprite {
       position: absolute;
       inset: auto;
-      width: var(--unit-size, 84px);
-      height: var(--unit-size, 84px);
+      width: 84px;
+      height: 84px;
       background-size: contain;
       background-repeat: no-repeat;
-      background-position: center bottom;
+      background-position: center;
       pointer-events: none;
       z-index: 3;
-      filter: drop-shadow(0 6px 8px rgba(0,0,0,0.55));
-      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(var(--unit-lift, 18px));
-      transform-origin: 50% 50%;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
     }
     .range-ring {
       position: absolute;
@@ -676,8 +572,8 @@
       border-color: transparent;
     }
     .tower-card img {
-      width: 48px;
-      height: 48px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
     }
     .tower-card small { color: var(--muted); display: block; }
@@ -808,7 +704,6 @@
       pointer-events: none;
       overflow: visible;
       z-index: 3;
-      transform-style: preserve-3d;
     }
 
     /* 子彈（由塔射向怪） */
@@ -948,18 +843,77 @@
     .bonus-card strong { display: block; font-size: 1rem; margin-bottom: 8px; color: #93c5fd; }
     .bonus-card span { font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
 
+    /*
+     * --- 砲塔外觀：網路向量圖 + 直立透視 ---
+     * 圖檔來源：game-icons/icons（https://github.com/game-icons/icons ，CC BY 3.0），
+     * 經 jsDelivr 以 SVG 遮罩（mask）叠上與子彈同色之漸層；動畫採微擺＋略向上視角，使塔身接近「直立」體積感。
+     */
+    .tower-icon-wrap .tower-icon {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      perspective: 220px;
+    }
+    .tower-art-shell {
+      width: 86%;
+      height: 92%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      transform-style: preserve-3d;
+      transform-origin: 50% 92%;
+      transform: rotateX(-8deg) rotateY(18deg);
+      animation: tower-stand-sway 5.4s ease-in-out infinite;
+    }
+    @keyframes tower-stand-sway {
+      0%,
+      100% {
+        transform: rotateX(-10deg) rotateY(14deg) translateZ(0);
+      }
+      50% {
+        transform: rotateX(-4deg) rotateY(24deg) translateZ(5px);
+      }
+    }
+    .tower-art-mask {
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center bottom;
+      mask-position: center bottom;
+      -webkit-mask-mode: luminance;
+      mask-mode: luminance;
+      background: linear-gradient(
+        185deg,
+        #ffffff 0%,
+        var(--tower-tint, #94a3b8) 42%,
+        color-mix(in srgb, var(--tower-tint, #64748b) 72%, #020617) 100%
+      );
+      filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+    }
+
     .tower-thumb-wrap {
-      width: 48px;
-      height: 48px;
+      width: 40px;
+      height: 40px;
       flex-shrink: 0;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
+      perspective: 120px;
     }
-    .tower-thumb-wrap .tower-sprite {
-      width: 48px;
-      height: 48px;
-      object-position: center;
+    .tower-thumb-wrap .tower-icon {
+      width: 100%;
+      height: 100%;
+    }
+    .tower-thumb-wrap .tower-art-shell {
+      width: 92%;
+      height: 94%;
+      animation-duration: 4.2s;
     }
 
     /* 立體子彈：雙層 preserve-3d 菱錐感 + 外光暈 */
@@ -1016,21 +970,19 @@
      */
     .hit-fx-root {
       position: absolute;
-      width: var(--unit-size, 84px);
-      height: var(--unit-size, 84px);
-      margin: 0;
+      width: 84px;
+      height: 84px;
+      margin: -42px 0 0 -42px;
       pointer-events: none;
       z-index: 6;
-      transform: rotateZ(var(--iso-unrz)) rotateX(var(--iso-unrx)) translateZ(var(--unit-lift, 18px));
-      transform-origin: 50% 50%;
     }
     /**
-     * 特效幾何中心：置於單位外框正中央，子元素以 left/top:50% 或負 margin 向此點收斂。
+     * 特效幾何中心：置於 84×84 外框正中央，子元素以 left/top:50% 或負 margin 向此點收斂。
      */
     .hit-fx-inner {
       position: absolute;
-      left: 50%;
-      top: 50%;
+      left: 42px;
+      top: 42px;
       width: 0;
       height: 0;
       pointer-events: none;
@@ -1204,11 +1156,11 @@
       <span class="top-bar__spacer" aria-hidden="true"></span>
     </div>
     <h1><span class="level-select-title-zh">塔防遊戲</span> Tower Defense</h1>
-    <p class="subtitle">每次進入關卡都會隨機生成地圖；難度越高路徑越長、可建地越少</p>
+    <p class="subtitle">選擇關卡</p>
     <div class="level-grid" id="level-grid"></div>
     <p class="copyright-note">
-      敵人、砲塔與金幣圖為 `TD_Photo` 資料夾內預渲染 3D PNG。
-      攻擊音效為 Web Audio API 即時合成；背景音樂請將 `02.MP3`、`04.MP3` 置於同層 `MP3` 資料夾（程式內含兩份 02 與一份 04 之隨機池）。
+      敵人精靈等二維圖檔取自 Kenney.nl 公開領域 CC0 素材（Tower Defense top-down），檔案置於 TD_Photo 資料夾；砲塔圖示取自 Game-icons（CC BY 3.0），經 jsDelivr 熱連線 SVG 並以遮罩染色。
+      攻擊音效為 Web Audio API 即時合成；背景音樂請將 `02.MP3`、`04.MP3` 置於同層 `MP3` 資料夾（程式內含兩份 02 與一份 04 之隨機池）。砲塔圖示為 Game-icons（CC BY 3.0），使用時請保留授權頁連結於作品說明。
     </p>
   </section>
 
@@ -1261,7 +1213,7 @@
         <h3>手牌（點選後放置於草地格）</h3>
         <div class="shop-list" id="shop-list"></div>
         <button type="button" class="btn btn-start" id="btn-start-wave">開始 Wave</button>
-        <p class="tip" id="wave-tip">地圖每次進入都會重抽。擺好塔後按「開始 Wave」</p>
+        <p class="tip" id="wave-tip">擺好塔後按「開始 Wave」</p>
       </aside>
     </div>
   </section>
@@ -1290,8 +1242,8 @@
       'use strict';
 
       /**
-       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string }} TowerDef
-       * `img`：`TD_Photo` 預渲染 3D PNG 路徑。
+       * @typedef {{ id: string, name: string, cost: number, range: number, damage: number, cooldown: number, img: string, projSpeed: number, bullet: string, special?: string, desc: string, iconPath: string }} TowerDef
+       * `iconPath`：Game-icons 倉庫內相對路徑（與 `GAME_ICONS_CDN_BASE` 拼接），授權 CC BY 3.0（https://game-icons.net）。
        * 參數設計參考常見瀏覽器 TD／Phaser 類作品（如 GamePortal 等頁遊）之塔種分工：速射、重砲、緩速、狙擊、飛彈、連鎖等。
        */
       /** @typedef {{ id: string, name: string, hp: number, speed: number, reward: number, img: string }} EnemyDef */
@@ -1311,6 +1263,7 @@
           projSpeed: 5.5,
           bullet: '#fbbf24',
           img: 'TD_Photo/tower_basic.png',
+          iconPath: 'lorc/bolter-gun.svg',
           desc: '高射速',
           special: ''
         },
@@ -1324,6 +1277,7 @@
           projSpeed: 3.2,
           bullet: '#94a3b8',
           img: 'TD_Photo/tower_heavy.png',
+          iconPath: 'lorc/cannon.svg',
           desc: '單發高傷+小範圍溅射',
           special: 'splash'
         },
@@ -1337,6 +1291,7 @@
           projSpeed: 3.8,
           bullet: '#67e8f9',
           img: 'TD_Photo/tower_plasma.png',
+          iconPath: 'lorc/ice-bolt.svg',
           desc: '命中緩速',
           special: 'slow'
         },
@@ -1350,6 +1305,7 @@
           projSpeed: 8.5,
           bullet: '#fb7185',
           img: 'TD_Photo/tower_missile.png',
+          iconPath: 'lorc/laser-precision.svg',
           desc: '極遠程單體',
           special: ''
         },
@@ -1363,6 +1319,7 @@
           projSpeed: 3.6,
           bullet: '#fb923c',
           img: 'TD_Photo/tower_missile.png',
+          iconPath: 'lorc/missile-pod.svg',
           desc: '爆炸溅射',
           special: 'splash'
         },
@@ -1376,6 +1333,7 @@
           projSpeed: 6.2,
           bullet: '#fde047',
           img: 'TD_Photo/tower_electric.png',
+          iconPath: 'lorc/laser-sparks.svg',
           desc: '連鎖次要目標',
           special: 'chain'
         },
@@ -1389,6 +1347,7 @@
           projSpeed: 2.6,
           bullet: '#cbd5e1',
           img: 'TD_Photo/tower_heavy.png',
+          iconPath: 'lorc/cannon-shot.svg',
           desc: '大中範圍溅射',
           special: 'splash'
         },
@@ -1402,6 +1361,7 @@
           projSpeed: 5.0,
           bullet: '#a3e635',
           img: 'TD_Photo/tower_basic.png',
+          iconPath: 'lorc/laser-blast.svg',
           desc: '中速連發',
           special: ''
         }
@@ -1755,18 +1715,11 @@
       }
 
       /**
-       * 將絕對定位單位（敵人精靈／命中特效）的外框中心對齊正規化路徑座標。
-       * @param {HTMLElement} el
-       * @param {number} nx
-       * @param {number} ny
+       * 每幀更新黏附型命中特效位置。
        */
-      function applyUnitCenter(el, nx, ny) {
-        el.style.left = 'calc(' + nx * 100 + '% - var(--unit-half, 42px))';
-        el.style.top = 'calc(' + ny * 100 + '% - var(--unit-half, 42px))';
-      }
-
       /**
        * 每幀更新黏附型命中特效位置。
+       * 與 `syncEnemySprites` 相同採 `calc(百分比 - 42px)`，使 84×84 外框中心對齊敵人路徑座標（`_nx`／`_ny`）。
        */
       function updateBoardFollowHits() {
         for (let i = 0; i < boardFollowHits.length; i++) {
@@ -1774,7 +1727,8 @@
           if (!h.el.isConnected) continue;
           const idx = enemies.indexOf(h.en);
           if (idx < 0) continue;
-          applyUnitCenter(h.el, h.en._nx, h.en._ny);
+          h.el.style.left = 'calc(' + h.en._nx * 100 + '% - 42px)';
+          h.el.style.top = 'calc(' + h.en._ny * 100 + '% - 42px)';
         }
       }
 
@@ -1789,27 +1743,40 @@
       }
 
       /**
-       * 建立砲塔外觀 HTML：使用 `TD_Photo` 預渲染 3D PNG。
+       * Game-icons 向量圖 CDN 根路徑（與各塔 `iconPath` 拼接）。備援：GitHub raw 同路徑。
+       * 授權：CC BY 3.0（https://game-icons.net/about.html#license）。
+       * @type {string}
+       */
+      const GAME_ICONS_CDN_BASE = 'https://cdn.jsdelivr.net/gh/game-icons/icons@master/';
+
+      /**
+       * 建立砲塔外觀 HTML：遠端 SVG 作為 `-webkit-mask-image`／`mask-image`，並以 `--tower-tint` 上色。
        * @param {TowerDef} def
-       * @param {'field'|'shop'} mode 商店列使用外層 `.tower-thumb-wrap` 控制縮圖
+       * @param {'field'|'shop'} mode 商店列使用外層 `.tower-thumb-wrap` 控制 40×40 縮圖
        * @returns {string}
        */
       function buildTowerArtHtml(def, mode) {
-        const img =
-          '<img class="tower-sprite" src="' +
-          def.img +
-          '" alt="' +
-          def.name +
-          '" draggable="false" />';
+        const url = GAME_ICONS_CDN_BASE + def.iconPath;
+        const inner =
+          '<div class="tower-icon">' +
+          '<div class="tower-art-shell">' +
+          '<div class="tower-art-mask" style="-webkit-mask-image:url(\'' +
+          url +
+          '\');mask-image:url(\'' +
+          url +
+          '\');--tower-tint:' +
+          def.bullet +
+          '"></div></div></div>';
         if (mode === 'shop') {
-          return '<div class="tower-thumb-wrap">' + img + '</div>';
+          return '<div class="tower-thumb-wrap">' + inner + '</div>';
         }
-        return img;
+        return inner;
       }
 
       /**
-       * 依塔種建立命中特效 DOM（不含定位；定位由呼叫端以 {@link applyUnitCenter} 對齊敵人）。
-       * 外層 `.hit-fx-root` 以 `--unit-size` 對齊精靈，內層 `.hit-fx-inner` 為幾何中心（0×0）。
+       * 依塔種建立命中特效 DOM（不含定位；定位由呼叫端寫入 `calc(% - 42px)` 與敵人精靈置中一致）。
+       * 外層 `.hit-fx-root` 為 84×84 外框，內層 `.hit-fx-inner` 為幾何中心（0×0），避免舊版 0×0 根節點
+       * 搭配 translate(-50%,-50%) 時百分比參考寬高為 0 導致特效錨在怪物左上方。
        * @param {TowerDef} def
        * @param {string} [tintHex]
        * @returns {HTMLElement}
@@ -1906,7 +1873,8 @@
         if (!board || !enemyRef) return;
         const wrap = createHitEffectElement(def, tintHex);
         /* 與 `.enemy-sprite` 一致：外框左上角 = 路徑點中心減半寬高，特效視覺中心與怪物重合 */
-        applyUnitCenter(wrap, enemyRef._nx, enemyRef._ny);
+        wrap.style.left = 'calc(' + enemyRef._nx * 100 + '% - 42px)';
+        wrap.style.top = 'calc(' + enemyRef._ny * 100 + '% - 42px)';
         board.appendChild(wrap);
         boardFollowHits.push({ el: wrap, en: enemyRef });
         /* 預設維持較久，讓脈衝環有足夠時間黏在敵人身上移動 */
@@ -1934,9 +1902,6 @@
 
       /** 敵人實際移動速度提升為 2 倍，於生怪佇列計算後由 `gameLoop` 套用。 */
       const ENEMY_SPEED_EXTRA_MUL = 2;
-
-      /** 全塔種實際攻擊力倍率（含溅射／連鎖衍生傷害）。 */
-      const TOWER_DAMAGE_EXTRA_MUL = 1.5;
 
       /**
        * @param {number} seed
@@ -2035,660 +2000,162 @@
       }
 
       /**
-       * 關卡難度顯示（選擇畫面與戰鬥標題）。
-       * @param {number} levelIndex 0..9
-       * @returns {{ name: string, cls: string }}
-       */
-      function getDifficultyMeta(levelIndex) {
-        if (levelIndex <= 1) return { name: '簡單', cls: 'diff-easy' };
-        if (levelIndex <= 3) return { name: '普通', cls: 'diff-normal' };
-        if (levelIndex <= 5) return { name: '困難', cls: 'diff-hard' };
-        if (levelIndex <= 7) return { name: '極難', cls: 'diff-vhard' };
-        return { name: '煉獄', cls: 'diff-hell' };
-      }
-
-      /**
-       * 依關卡回傳地圖生成規格：格子維持偏小以便 3D 單位夠大；難度改走路徑長度、彎折與可建地。
-       * @param {number} levelIndex 0..9
-       * @returns {{
-       *   rows: number,
-       *   cols: number,
-       *   minBends: number,
-       *   maxBends: number,
-       *   minLen: number,
-       *   maxLen: number,
-       *   blockedRatio: number,
-       *   minPockets: number,
-       *   chokeChance: number,
-       *   wpMin: number,
-       *   wpMax: number,
-       *   sweepMin: number,
-       *   sweepMax: number,
-       *   sameEdgeChance: number,
-       *   gauntlet: boolean,
-       *   topologies: string[]
-       * }}
-       */
-      function getMapProfile(levelIndex) {
-        /** @type {Array<{ rows: number, cols: number, minBends: number, maxBends: number, minLen: number, maxLen: number, blockedRatio: number, minPockets: number, chokeChance: number, wpMin: number, wpMax: number, sweepMin: number, sweepMax: number, sameEdgeChance: number, gauntlet: boolean, topologies: string[] }>} */
-        const table = [
-          { rows: 10, cols: 10, minBends: 2, maxBends: 4, minLen: 14, maxLen: 26, blockedRatio: 0.02, minPockets: 16, chokeChance: 0.06, wpMin: 1, wpMax: 2, sweepMin: 2, sweepMax: 3, sameEdgeChance: 0, gauntlet: false, topologies: ['jog', 'lshape', 'switchback'] },
-          { rows: 10, cols: 11, minBends: 3, maxBends: 5, minLen: 16, maxLen: 30, blockedRatio: 0.04, minPockets: 14, chokeChance: 0.1, wpMin: 2, wpMax: 3, sweepMin: 2, sweepMax: 4, sameEdgeChance: 0, gauntlet: false, topologies: ['jog', 'switchback', 'wander'] },
-          { rows: 11, cols: 11, minBends: 4, maxBends: 6, minLen: 20, maxLen: 36, blockedRatio: 0.06, minPockets: 13, chokeChance: 0.16, wpMin: 2, wpMax: 4, sweepMin: 3, sweepMax: 4, sameEdgeChance: 0.05, gauntlet: false, topologies: ['switchback', 'wander', 'lshape'] },
-          { rows: 11, cols: 12, minBends: 5, maxBends: 8, minLen: 24, maxLen: 42, blockedRatio: 0.08, minPockets: 12, chokeChance: 0.22, wpMin: 3, wpMax: 4, sweepMin: 3, sweepMax: 5, sameEdgeChance: 0.08, gauntlet: false, topologies: ['switchback', 'wander', 'ring'] },
-          { rows: 12, cols: 12, minBends: 6, maxBends: 9, minLen: 28, maxLen: 48, blockedRatio: 0.11, minPockets: 11, chokeChance: 0.3, wpMin: 3, wpMax: 5, sweepMin: 4, sweepMax: 5, sameEdgeChance: 0.12, gauntlet: false, topologies: ['switchback', 'ring', 'wander'] },
-          { rows: 12, cols: 12, minBends: 7, maxBends: 11, minLen: 32, maxLen: 54, blockedRatio: 0.13, minPockets: 10, chokeChance: 0.36, wpMin: 4, wpMax: 6, sweepMin: 4, sweepMax: 6, sameEdgeChance: 0.16, gauntlet: false, topologies: ['ring', 'switchback', 'wander'] },
-          { rows: 12, cols: 13, minBends: 8, maxBends: 12, minLen: 36, maxLen: 60, blockedRatio: 0.16, minPockets: 9, chokeChance: 0.42, wpMin: 4, wpMax: 6, sweepMin: 5, sweepMax: 7, sameEdgeChance: 0.2, gauntlet: true, topologies: ['ring', 'switchback', 'wander'] },
-          { rows: 13, cols: 13, minBends: 9, maxBends: 14, minLen: 40, maxLen: 68, blockedRatio: 0.18, minPockets: 8, chokeChance: 0.48, wpMin: 5, wpMax: 7, sweepMin: 5, sweepMax: 7, sameEdgeChance: 0.24, gauntlet: true, topologies: ['switchback', 'ring', 'wander'] },
-          { rows: 13, cols: 13, minBends: 10, maxBends: 16, minLen: 44, maxLen: 74, blockedRatio: 0.21, minPockets: 7, chokeChance: 0.55, wpMin: 5, wpMax: 8, sweepMin: 6, sweepMax: 8, sameEdgeChance: 0.28, gauntlet: true, topologies: ['switchback', 'ring', 'wander'] },
-          { rows: 13, cols: 13, minBends: 11, maxBends: 18, minLen: 48, maxLen: 80, blockedRatio: 0.24, minPockets: 6, chokeChance: 0.62, wpMin: 6, wpMax: 8, sweepMin: 6, sweepMax: 8, sameEdgeChance: 0.32, gauntlet: true, topologies: ['switchback', 'ring', 'wander'] }
-        ];
-        return table[Math.max(0, Math.min(9, levelIndex))];
-      }
-
-      /**
-       * @param {number} r
-       * @param {number} c
-       * @returns {string}
-       */
-      function cellKey(r, c) {
-        return r + ',' + c;
-      }
-
-      /**
-       * @param {[number,number]} a
-       * @param {[number,number]} b
-       * @returns {number}
-       */
-      function manhattan(a, b) {
-        return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
-      }
-
-      /**
-       * @param {() => number} rng
-       * @returns {[number, number][]}
-       */
-      function shuffledDirs(rng) {
-        const dirs = [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1]
-        ];
-        for (let i = 3; i > 0; i--) {
-          const j = Math.floor(rng() * (i + 1));
-          const tmp = dirs[i];
-          dirs[i] = dirs[j];
-          dirs[j] = tmp;
-        }
-        return dirs;
-      }
-
-      /**
-       * 去除連續重複的控制點。
-       * @param {[number,number][]} points
-       * @returns {[number,number][]}
-       */
-      function uniquePoints(points) {
-        const seen = new Set();
-        const out = [];
-        for (let i = 0; i < points.length; i++) {
-          const k = cellKey(points[i][0], points[i][1]);
-          if (seen.has(k)) continue;
-          seen.add(k);
-          out.push(points[i]);
-        }
-        return out;
-      }
-
-      /**
-       * 四方向 BFS；`blocked` 為已占用格（起點可在其中）。鄰居順序可打亂以得到不同最短路徑。
+       * 產生「彎折數精準等於關卡數」的隨機折線路徑候選。
+       * 垂直段採遞增列座標，避免繞回重疊；水平段每次重新抽欄位，讓同關卡重進時外觀不同。
        * @param {number} rows
        * @param {number} cols
-       * @param {[number,number]} start
-       * @param {[number,number]} goal
-       * @param {Set<string>} blocked
-       * @param {() => number} [rng]
+       * @param {() => number} rng
+       * @param {number} targetBends
        * @returns {[number,number][]|null}
        */
-      function bfsRoute(rows, cols, start, goal, blocked, rng) {
-        const sk = cellKey(start[0], start[1]);
-        const gk = cellKey(goal[0], goal[1]);
-        if (blocked.has(gk)) return null;
-        const q = [start];
-        const prev = new Map();
-        prev.set(sk, null);
-        let qi = 0;
-        while (qi < q.length) {
-          const cur = q[qi++];
-          if (cur[0] === goal[0] && cur[1] === goal[1]) {
-            const out = [];
-            let ck = gk;
-            while (ck) {
-              const parts = ck.split(',');
-              out.push([+parts[0], +parts[1]]);
-              ck = prev.get(ck);
+      function buildExactBendCandidate(rows, cols, rng, targetBends) {
+        if (targetBends <= 0) {
+          const c = Math.max(1, Math.min(cols - 2, Math.floor(cols / 2)));
+          return expandPolylinePath([[0, c], [rows - 1, c]]);
+        }
+        const segments = targetBends + 1;
+        const startVertical = rng() < 0.5;
+        /** @type {('V'|'H')[]} */
+        const segDirs = [];
+        for (let i = 0; i < segments; i++) {
+          const vertical = startVertical ? i % 2 === 0 : i % 2 === 1;
+          segDirs.push(vertical ? 'V' : 'H');
+        }
+        const verticalCount = segDirs.filter((x) => x === 'V').length;
+        if (verticalCount <= 0 || rows - 2 < verticalCount - 1) return null;
+        const innerCols = Math.max(1, cols - 2);
+        let curR = 0;
+        let curC = 1 + Math.floor(rng() * innerCols);
+        /** @type {[number,number][]} */
+        const points = [[curR, curC]];
+        /** @type {number[]} */
+        const rowTargets = [];
+        for (let i = 0; i < verticalCount - 1; i++) {
+          const t = (i + 1) / verticalCount;
+          const base = 1 + Math.floor(t * (rows - 2));
+          const jitter = Math.floor((rng() - 0.5) * 3);
+          rowTargets.push(Math.max(1, Math.min(rows - 2, base + jitter)));
+        }
+        rowTargets.sort(function (a, b) {
+          return a - b;
+        });
+        for (let i = 1; i < rowTargets.length; i++) {
+          if (rowTargets[i] <= rowTargets[i - 1]) rowTargets[i] = rowTargets[i - 1] + 1;
+        }
+        if (rowTargets.length && rowTargets[rowTargets.length - 1] >= rows - 1) return null;
+        rowTargets.push(rows - 1);
+        let vr = 0;
+        for (let i = 0; i < segDirs.length; i++) {
+          if (segDirs[i] === 'V') {
+            curR = rowTargets[vr++];
+          } else {
+            let nextC = curC;
+            for (let guard = 0; guard < 16 && Math.abs(nextC - curC) < 1; guard++) {
+              nextC = 1 + Math.floor(rng() * innerCols);
             }
-            out.reverse();
-            return out;
+            if (nextC === curC) nextC = curC < cols - 2 ? curC + 1 : curC - 1;
+            curC = Math.max(0, Math.min(cols - 1, nextC));
           }
-          const order = rng ? shuffledDirs(rng) : [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1]
-          ];
-          for (let d = 0; d < 4; d++) {
-            const nr = cur[0] + order[d][0];
-            const nc = cur[1] + order[d][1];
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            const k = cellKey(nr, nc);
-            if (prev.has(k)) continue;
-            if (blocked.has(k) && k !== sk) continue;
-            prev.set(k, cellKey(cur[0], cur[1]));
-            q.push([nr, nc]);
-          }
+          points.push([curR, curC]);
         }
-        return null;
+        return expandPolylinePath(points);
       }
 
       /**
-       * 依序連接控制點，避開已走過格子。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {[number,number][]} points
-       * @param {() => number} rng
-       * @returns {[number,number][]|null}
-       */
-      function connectPoints(rows, cols, points, rng) {
-        const pts = uniquePoints(points);
-        if (pts.length < 2) return null;
-        /** @type {[number,number][]} */
-        const path = [pts[0]];
-        const used = new Set([cellKey(pts[0][0], pts[0][1])]);
-        for (let i = 1; i < pts.length; i++) {
-          const seg = bfsRoute(rows, cols, path[path.length - 1], pts[i], used, rng);
-          if (!seg || seg.length < 2) return null;
-          for (let j = 1; j < seg.length; j++) {
-            const k = cellKey(seg[j][0], seg[j][1]);
-            if (used.has(k)) return null;
-            used.add(k);
-            path.push(seg[j]);
-          }
-        }
-        return path;
-      }
-
-      /**
-       * @param {number} rows
-       * @param {number} cols
-       * @param {number} edge 0 上、1 右、2 下、3 左
-       * @param {() => number} rng
-       * @returns {[number,number]}
-       */
-      function pickEdgeCell(rows, cols, edge, rng) {
-        const inset = 1;
-        if (edge === 0) {
-          return [0, inset + Math.floor(rng() * Math.max(1, cols - inset * 2))];
-        }
-        if (edge === 2) {
-          return [rows - 1, inset + Math.floor(rng() * Math.max(1, cols - inset * 2))];
-        }
-        if (edge === 1) {
-          return [inset + Math.floor(rng() * Math.max(1, rows - inset * 2)), cols - 1];
-        }
-        return [inset + Math.floor(rng() * Math.max(1, rows - inset * 2)), 0];
-      }
-
-      /**
-       * 隨機出入口：前期多對邊，後期可能同邊以拉長繞路。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {number} sameEdgeChance
-       * @returns {{ spawn: [number,number], goal: [number,number] }}
-       */
-      function pickSpawnGoal(rows, cols, rng, sameEdgeChance) {
-        const e1 = Math.floor(rng() * 4);
-        let e2;
-        if (rng() < sameEdgeChance) {
-          e2 = e1;
-        } else if (rng() < 0.7) {
-          e2 = (e1 + 2) % 4;
-        } else {
-          e2 = (e1 + (rng() < 0.5 ? 1 : 3)) % 4;
-        }
-        let spawn = pickEdgeCell(rows, cols, e1, rng);
-        let goal = pickEdgeCell(rows, cols, e2, rng);
-        const need = Math.max(6, Math.floor((rows + cols) / 3));
-        let guard = 0;
-        while (
-          (spawn[0] === goal[0] && spawn[1] === goal[1] || manhattan(spawn, goal) < need) &&
-          guard++ < 24
-        ) {
-          spawn = pickEdgeCell(rows, cols, e1, rng);
-          goal = pickEdgeCell(rows, cols, e2, rng);
-        }
-        return { spawn: spawn, goal: goal };
-      }
-
-      /**
-       * 折線／L 型控制點（由上往下推進並穿插橫移）。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {number} jogs
-       * @returns {[number,number][]}
-       */
-      function jogWaypoints(rows, cols, rng, jogs) {
-        const c0 = 1 + Math.floor(rng() * (cols - 2));
-        /** @type {[number,number][]} */
-        const pts = [[0, c0]];
-        let c = c0;
-        const n = Math.max(1, jogs);
-        for (let j = 0; j < n; j++) {
-          const r = Math.floor(((j + 1) * (rows - 1)) / (n + 1));
-          pts.push([Math.max(1, Math.min(rows - 2, r)), c]);
-          let nc = c;
-          let g = 0;
-          while (Math.abs(nc - c) < 2 && g++ < 12) {
-            nc = 1 + Math.floor(rng() * (cols - 2));
-          }
-          pts.push([Math.max(1, Math.min(rows - 2, r)), nc]);
-          c = nc;
-        }
-        pts.push([rows - 1, c]);
-        return pts;
-      }
-
-      /**
-       * 之字形來回掃過棋盤。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {number} sweeps
-       * @returns {[number,number][]}
-       */
-      function switchbackWaypoints(rows, cols, rng, sweeps) {
-        const left = 1;
-        const right = cols - 2;
-        const startLeft = rng() < 0.5;
-        /** @type {[number,number][]} */
-        const pts = [[0, startLeft ? left : right]];
-        let goRight = startLeft;
-        const n = Math.max(2, sweeps);
-        const step = Math.max(2, Math.floor((rows - 2) / n));
-        let r = step;
-        for (let s = 0; s < n; s++) {
-          const rr = Math.min(rows - 2, Math.max(1, r + Math.floor((rng() - 0.5) * 2)));
-          pts.push([rr, goRight ? right : left]);
-          goRight = !goRight;
-          r += step;
-        }
-        const lastC = pts[pts.length - 1][1];
-        pts.push([rows - 1, lastC]);
-        return pts;
-      }
-
-      /**
-       * 環狀／螺旋控制點，再接到底邊出口。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {number} layers
-       * @returns {[number,number][]}
-       */
-      function ringWaypoints(rows, cols, rng, layers) {
-        const c0 = 1 + Math.floor(rng() * (cols - 2));
-        /** @type {[number,number][]} */
-        const pts = [[0, c0]];
-        const maxLayer = Math.min(layers, Math.floor(Math.min(rows, cols) / 2) - 1);
-        for (let i = 0; i < maxLayer; i++) {
-          const inset = 1 + i;
-          const T = inset;
-          const B = rows - 1 - inset;
-          const L = inset;
-          const R = cols - 1 - inset;
-          if (B - T < 2 || R - L < 2) break;
-          pts.push([T, L]);
-          pts.push([T, R]);
-          pts.push([B, R]);
-          pts.push([B, L]);
-        }
-        const last = pts[pts.length - 1];
-        pts.push([rows - 1, last[1]]);
-        return pts;
-      }
-
-      /**
-       * 先漫步拉長再 BFS 回家，製造每次都不同的彎路。
+       * 隨機漫步生成單一路徑（不重用格子）；失敗則回傳 null。
        * @param {number} rows
        * @param {number} cols
        * @param {[number,number]} spawn
        * @param {[number,number]} goal
        * @param {() => number} rng
-       * @param {number} minLen
-       * @param {number} maxLen
+       * @param {number} [loosenessExtra] 越大越偏離最短曼哈頓路徑，便於製造更多彎折
        * @returns {[number,number][]|null}
        */
-      function buildWanderPath(rows, cols, spawn, goal, rng, minLen, maxLen) {
-        const used = new Set();
-        /** @type {[number,number][]} */
+      function greedyRandomPath(rows, cols, spawn, goal, rng, loosenessExtra) {
+        const key = (rr, cc) => rr + ',' + cc;
+        const visited = new Set();
         const path = [];
-        /**
-         * @param {number} r
-         * @param {number} c
-         * @returns {boolean}
-         */
-        function push(r, c) {
-          const k = cellKey(r, c);
-          if (used.has(k)) return false;
-          used.add(k);
-          path.push([r, c]);
-          return true;
-        }
-        push(spawn[0], spawn[1]);
         let r = spawn[0];
         let c = spawn[1];
-        const target = minLen + Math.floor(rng() * Math.max(1, maxLen - minLen));
-        for (let step = 0; step < target; step++) {
+        const gr = goal[0];
+        const gc = goal[1];
+        path.push([r, c]);
+        visited.add(key(r, c));
+        const dirs = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ];
+        let guard = 0;
+        while ((r !== gr || c !== gc) && guard++ < rows * cols * 8) {
           const cand = [];
-          const dirs = shuffledDirs(rng);
-          for (let i = 0; i < 4; i++) {
-            const nr = r + dirs[i][0];
-            const nc = c + dirs[i][1];
+          for (let i = 0; i < dirs.length; i++) {
+            const dr = dirs[i][0];
+            const dc = dirs[i][1];
+            const nr = r + dr;
+            const nc = c + dc;
             if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            if (used.has(cellKey(nr, nc))) continue;
-            if (nr === goal[0] && nc === goal[1] && path.length < minLen) continue;
-            cand.push({
-              nr: nr,
-              nc: nc,
-              md: Math.abs(nr - goal[0]) + Math.abs(nc - goal[1])
-            });
+            if (visited.has(key(nr, nc))) continue;
+            const md = Math.abs(nr - gr) + Math.abs(nc - gc);
+            cand.push({ nr, nc, md });
           }
-          if (!cand.length) break;
+          if (!cand.length) return null;
           cand.sort(function (a, b) {
             return a.md - b.md;
           });
-          const mode = rng();
-          const pick =
-            mode < 0.32 ? cand[cand.length - 1] : mode < 0.72 ? cand[Math.floor(rng() * cand.length)] : cand[0];
+          const looseness = (loosenessExtra | 0) + 2 + Math.floor(rng() * 4);
+          const near = cand.filter(function (x) {
+            return x.md <= cand[0].md + looseness;
+          });
+          const pick = near[Math.floor(rng() * near.length)];
           r = pick.nr;
           c = pick.nc;
-          push(r, c);
-          if (r === goal[0] && c === goal[1]) return path;
+          visited.add(key(r, c));
+          path.push([r, c]);
         }
-        const rest = bfsRoute(rows, cols, [r, c], goal, used, rng);
-        if (!rest) return null;
-        for (let i = 1; i < rest.length; i++) {
-          if (!push(rest[i][0], rest[i][1])) return null;
-        }
-        return path;
+        return r === gr && c === gc ? path : null;
       }
 
       /**
-       * @param {[number,number][]} path
+       * 依關卡強制「彎折數 = 關卡編號」（Lv.1 一個彎折點、Lv.2 兩個…）並拉長路徑。
+       * 每次進入關卡會收到新的 seed；同時挑選相鄰懲罰最低者，讓路徑盡量分散、不貼邊並排。
        * @param {number} rows
        * @param {number} cols
-       * @param {boolean} flipH
-       * @param {boolean} flipV
-       * @returns {[number,number][]}
-       */
-      function flipPath(path, rows, cols, flipH, flipV) {
-        return path.map(function (p) {
-          return [flipV ? rows - 1 - p[0] : p[0], flipH ? cols - 1 - p[1] : p[1]];
-        });
-      }
-
-      /**
-       * @param {[number,number][]} path
-       * @returns {[number,number][]}
-       */
-      function transposePath(path) {
-        return path.map(function (p) {
-          return [p[1], p[0]];
-        });
-      }
-
-      /**
-       * 路徑相鄰的可放塔格數（不含路徑本身與障礙）。
-       * @param {[number,number][]} path
-       * @param {number} rows
-       * @param {number} cols
-       * @param {Set<string>} blockedSet
-       * @returns {number}
-       */
-      function countTowerPockets(path, rows, cols, blockedSet) {
-        const pset = new Set();
-        for (let i = 0; i < path.length; i++) {
-          pset.add(cellKey(path[i][0], path[i][1]));
-        }
-        const seen = new Set();
-        const dirs = [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1]
-        ];
-        for (let i = 0; i < path.length; i++) {
-          for (let d = 0; d < 4; d++) {
-            const nr = path[i][0] + dirs[d][0];
-            const nc = path[i][1] + dirs[d][1];
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            const k = cellKey(nr, nc);
-            if (pset.has(k) || blockedSet.has(k) || seen.has(k)) continue;
-            seen.add(k);
-          }
-        }
-        return seen.size;
-      }
-
-      /**
-       * 依難度灑不可建造障礙（岩／水／廢墟），並保留足夠的路徑旁塔位。
-       * @param {[number,number][]} path
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {ReturnType<typeof getMapProfile>} profile
-       * @returns {{ blocked: Set<string>, blockedKind: Map<string, string> }}
-       */
-      function sprinkleBlocked(path, rows, cols, rng, profile) {
-        const pset = new Set();
-        for (let i = 0; i < path.length; i++) {
-          pset.add(cellKey(path[i][0], path[i][1]));
-        }
-        /** @type {string[]} */
-        const pockets = [];
-        /** @type {string[]} */
-        const far = [];
-        const dirs = [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1]
-        ];
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const k = cellKey(r, c);
-            if (pset.has(k)) continue;
-            let adj = false;
-            for (let d = 0; d < 4; d++) {
-              if (pset.has(cellKey(r + dirs[d][0], c + dirs[d][1]))) {
-                adj = true;
-                break;
-              }
-            }
-            if (adj) pockets.push(k);
-            else far.push(k);
-          }
-        }
-        for (let i = pockets.length - 1; i > 0; i--) {
-          const j = Math.floor(rng() * (i + 1));
-          const t = pockets[i];
-          pockets[i] = pockets[j];
-          pockets[j] = t;
-        }
-        for (let i = far.length - 1; i > 0; i--) {
-          const j = Math.floor(rng() * (i + 1));
-          const t = far[i];
-          far[i] = far[j];
-          far[j] = t;
-        }
-        const reserved = new Set(pockets.slice(0, Math.min(profile.minPockets, pockets.length)));
-        const blocked = new Set();
-        const target = Math.floor(rows * cols * profile.blockedRatio);
-        const farRate = profile.gauntlet ? 0.92 : 0.72;
-        for (let i = 0; i < far.length && blocked.size < target; i++) {
-          if (rng() < farRate) blocked.add(far[i]);
-        }
-        for (let i = 0; i < pockets.length && blocked.size < target; i++) {
-          if (reserved.has(pockets[i])) continue;
-          if (rng() < profile.chokeChance) blocked.add(pockets[i]);
-        }
-        /** @type {Map<string, string>} */
-        const blockedKind = new Map();
-        blocked.forEach(function (k) {
-          const t = rng();
-          blockedKind.set(k, t < 0.46 ? 'rock' : t < 0.78 ? 'water' : 'ruin');
-        });
-        return { blocked: blocked, blockedKind: blockedKind };
-      }
-
-      /**
-       * 評估路徑是否符合該關規格（分數越高越好）。
-       * @param {[number,number][]} path
-       * @param {ReturnType<typeof getMapProfile>} profile
-       * @returns {number}
-       */
-      function scorePath(path, profile) {
-        if (!path || path.length < 4) return -1e9;
-        const bends = countPathBends(path);
-        const adj = countPathAdjacencyPenalty(path);
-        let score = Math.min(path.length, profile.maxLen) * 0.45;
-        if (path.length < profile.minLen) score -= (profile.minLen - path.length) * 4;
-        if (path.length > profile.maxLen) score -= (path.length - profile.maxLen) * 0.8;
-        if (bends < profile.minBends) score -= (profile.minBends - bends) * 6;
-        if (bends > profile.maxBends) score -= (bends - profile.maxBends) * 1.5;
-        score -= adj * 2.4;
-        return score;
-      }
-
-      /**
-       * 依拓樸抽一條候選路徑（尚未翻轉／灑障礙）。
-       * @param {number} rows
-       * @param {number} cols
-       * @param {() => number} rng
-       * @param {ReturnType<typeof getMapProfile>} profile
-       * @param {string} topo
-       * @returns {[number,number][]|null}
-       */
-      function tryTopologyPath(rows, cols, rng, profile, topo) {
-        if (topo === 'wander') {
-          const sg = pickSpawnGoal(rows, cols, rng, profile.sameEdgeChance);
-          return buildWanderPath(rows, cols, sg.spawn, sg.goal, rng, profile.minLen, profile.maxLen);
-        }
-        let pts;
-        if (topo === 'lshape') {
-          pts = jogWaypoints(rows, cols, rng, 1);
-        } else if (topo === 'jog') {
-          pts = jogWaypoints(rows, cols, rng, 2 + Math.floor(rng() * 2));
-        } else if (topo === 'ring') {
-          pts = ringWaypoints(rows, cols, rng, profile.sweepMin);
-        } else {
-          const sweeps =
-            profile.sweepMin + Math.floor(rng() * Math.max(1, profile.sweepMax - profile.sweepMin + 1));
-          pts = switchbackWaypoints(rows, cols, rng, sweeps);
-        }
-        return connectPoints(rows, cols, pts, rng);
-      }
-
-      /**
-       * 進入關卡時重建整張地圖：路徑、出入口、障礙與（可能對調的）長寬。
-       * @param {number} baseRows
-       * @param {number} baseCols
        * @param {number} seed
-       * @param {number} levelIndex
-       * @returns {{
-       *   pathOrder: [number,number][],
-       *   spawn: [number,number],
-       *   goal: [number,number],
-       *   blocked: Set<string>,
-       *   blockedKind: Map<string, string>,
-       *   rows: number,
-       *   cols: number
-       * }}
+       * @param {number} levelIndex 0..9（彎折數 = levelIndex + 1）
+       * @returns {{ pathOrder: [number,number][], spawn: [number,number], goal: [number,number] }}
        */
-      function buildBattlefield(baseRows, baseCols, seed, levelIndex) {
-        const profile = getMapProfile(levelIndex);
-        /** @type {{ path: [number,number][], score: number, rows: number, cols: number }[]} */
-        const pool = [];
-        for (let attempt = 0; attempt < 48; attempt++) {
-          const rng = mulberry32(seed ^ (attempt * 7919) ^ 0x51ed);
-          const topo = profile.topologies[Math.floor(rng() * profile.topologies.length)];
-          let path = tryTopologyPath(baseRows, baseCols, rng, profile, topo);
-          let useRows = baseRows;
-          let useCols = baseCols;
-          if (path && rng() < 0.5) {
-            path = transposePath(path);
-            useRows = baseCols;
-            useCols = baseRows;
-          }
-          if (path) {
-            path = flipPath(path, useRows, useCols, rng() < 0.5, rng() < 0.5);
-          }
-          const sc = scorePath(path, profile);
-          if (path && sc > -80) {
-            pool.push({ path: path, score: sc, rows: useRows, cols: useCols });
+      function buildPath(rows, cols, seed, levelIndex) {
+        const targetBends = levelIndex + 1;
+        const maxBendsFit = Math.max(0, rows + cols - 4);
+        const needBends = Math.min(targetBends, maxBendsFit);
+        let best = null;
+        let bestPenalty = Infinity;
+        for (let attempt = 0; attempt < 360; attempt++) {
+          const rngA = mulberry32(seed ^ 1337 ^ attempt * 7919);
+          const path = buildExactBendCandidate(rows, cols, rngA, needBends);
+          if (path && countPathBends(path) === needBends) {
+            const penalty = countPathAdjacencyPenalty(path);
+            if (
+              !best ||
+              penalty < bestPenalty ||
+              (penalty === bestPenalty && path.length > best.length)
+            ) {
+              best = path;
+              bestPenalty = penalty;
+            }
+            if (penalty === 0 && attempt > 24) break;
           }
         }
-        pool.sort(function (a, b) {
-          return b.score - a.score;
-        });
-        let bestPath = null;
-        let bestRows = baseRows;
-        let bestCols = baseCols;
-        if (pool.length) {
-          const topN = Math.min(8, pool.length);
-          const pickRng = mulberry32(seed ^ 0xc0ffee);
-          const chosen = pool[Math.floor(pickRng() * topN)];
-          bestPath = chosen.path;
-          bestRows = chosen.rows;
-          bestCols = chosen.cols;
-        }
-        if (!bestPath) {
-          const fb = buildSerpentinePath(baseRows, baseCols, seed, profile.minBends);
-          bestPath = fb.pathOrder;
-          bestRows = baseRows;
-          bestCols = baseCols;
-        }
-        const rngB = mulberry32(seed ^ 0x9e3779b9);
-        const sprinkled = sprinkleBlocked(bestPath, bestRows, bestCols, rngB, profile);
-        if (countTowerPockets(bestPath, bestRows, bestCols, sprinkled.blocked) < profile.minPockets) {
-          const light = Object.assign({}, profile, {
-            blockedRatio: profile.blockedRatio * 0.45,
-            chokeChance: profile.chokeChance * 0.4,
-            gauntlet: false
-          });
-          const retry = sprinkleBlocked(bestPath, bestRows, bestCols, rngB, light);
+        if (best) {
           return {
-            pathOrder: bestPath,
-            spawn: /** @type {[number,number]} */ (bestPath[0]),
-            goal: /** @type {[number,number]} */ (bestPath[bestPath.length - 1]),
-            blocked: retry.blocked,
-            blockedKind: retry.blockedKind,
-            rows: bestRows,
-            cols: bestCols
+            pathOrder: best,
+            spawn: /** @type {[number,number]} */ (best[0]),
+            goal: /** @type {[number,number]} */ (best[best.length - 1])
           };
         }
-        return {
-          pathOrder: bestPath,
-          spawn: /** @type {[number,number]} */ (bestPath[0]),
-          goal: /** @type {[number,number]} */ (bestPath[bestPath.length - 1]),
-          blocked: sprinkled.blocked,
-          blockedKind: sprinkled.blockedKind,
-          rows: bestRows,
-          cols: bestCols
-        };
+        return buildSerpentinePath(rows, cols, seed, needBends);
       }
 
       /**
@@ -2806,18 +2273,14 @@
        * @param {number} levelIndex 0..9
        */
       function getLevelConfig(levelIndex) {
-        const profile = getMapProfile(levelIndex);
+        const rows = 12 + levelIndex * 2;
+        const cols = 12 + levelIndex * 2;
+        /* 難度調高：波數 +2、起始金略減、成長係數提高，後期敵血更厚；另依需求全關初始資金 +100 */
         const waves = 8 + levelIndex;
+        /* 難度調高：波數 +2、起始金略減、成長係數提高，後期敵血更厚；另依需求全關初始資金 +100；再加 100；再加 100 */
         const startGold = 118 + levelIndex * 30 + 100 + 100 + 100;
         const diff = 1 + levelIndex * 0.13;
-        return {
-          rows: profile.rows,
-          cols: profile.cols,
-          waves: waves,
-          startGold: startGold,
-          diff: diff,
-          seed: 10007 + levelIndex * 7919
-        };
+        return { rows, cols, waves, startGold, diff, seed: 10007 + levelIndex * 7919 };
       }
 
       /**
@@ -2841,7 +2304,7 @@
        * @returns {number}
        */
       function getEffectiveDamage(def) {
-        return def.damage * playerMods.damageMul * TOWER_DAMAGE_EXTRA_MUL;
+        return def.damage * playerMods.damageMul;
       }
 
       let unlockedMax = 0;
@@ -2856,10 +2319,6 @@
       let towers = [];
       let pathOrder = [];
       let pathSet = new Set();
-      /** @type {Set<string>} 不可建造障礙格 */
-      let blockedSet = new Set();
-      /** @type {Map<string, string>} 障礙外觀：rock / water / ruin */
-      let blockedKind = new Map();
       let spawnCell = /** @type {[number,number]} */ ([0, 0]);
       let goalCell = /** @type {[number,number]} */ ([0, 0]);
       let rows = 10;
@@ -2931,27 +2390,14 @@
       }
 
       /**
-       * 依關卡難度與本次 seed 套用地圖色溫：前期草地、後期灰燼／熔岩，每次進入再微幅偏移。
+       * 依關卡與本次進入關卡的隨機 seed 套用 CSS 變數，讓地圖配色與路徑一樣每次有變化。
        * @param {number} levelIndex
        * @param {number} runSeed
        */
       function applyMapTheme(levelIndex, runSeed) {
         const rng = mulberry32(runSeed ^ 5000 ^ levelIndex * 997);
-        const biomes = [
-          { hue: 138, sat: 24 },
-          { hue: 118, sat: 20 },
-          { hue: 88, sat: 18 },
-          { hue: 42, sat: 20 },
-          { hue: 28, sat: 16 },
-          { hue: 200, sat: 14 },
-          { hue: 258, sat: 12 },
-          { hue: 14, sat: 22 },
-          { hue: 220, sat: 10 },
-          { hue: 8, sat: 8 }
-        ];
-        const b = biomes[Math.max(0, Math.min(9, levelIndex))];
-        const hue = (b.hue + Math.floor(rng() * 36) - 18 + 360) % 360;
-        const sat = Math.max(8, Math.min(32, b.sat + Math.floor(rng() * 8) - 3));
+        const hue = Math.floor(160 + rng() * 80 + levelIndex * 6);
+        const sat = 12 + Math.floor(rng() * 18);
         const pat = (0.05 + rng() * 0.1).toFixed(3);
         document.documentElement.style.setProperty('--map-hue', String(hue));
         document.documentElement.style.setProperty('--map-sat', sat + '%');
@@ -2967,13 +2413,11 @@
           const card = document.createElement('button');
           card.type = 'button';
           card.className = 'level-card' + (i > unlockedMax ? ' locked' : '');
-          const diff = getDifficultyMeta(i);
           card.innerHTML =
             '<span class="lv-label">Lv.' + (i + 1) + '</span>' +
             '<span class="lv-sub">' +
             (i > unlockedMax ? '🔒 鎖定' : i === unlockedMax ? '目前進度' : '可遊玩') +
-            '</span>' +
-            '<span class="lv-diff ' + diff.cls + '">' + diff.name + ' · 隨機地圖</span>';
+            '</span>';
           if (i <= unlockedMax) {
             card.addEventListener('click', () => startLevel(i));
           }
@@ -3001,20 +2445,6 @@
       }
 
       /**
-       * 依實際格子寬度設定 3D 單位尺寸，讓怪物／塔明顯大於地磚但仍跟棋盤比例。
-       */
-      function applyUnitSpriteScale() {
-        const board = els.mapBoard;
-        if (!board) return;
-        const cell = board.querySelector('.cell');
-        const cs = cell ? cell.clientWidth : 56;
-        const unit = Math.round(Math.max(52, Math.min(118, cs * 1.42)));
-        board.style.setProperty('--unit-size', unit + 'px');
-        board.style.setProperty('--unit-half', Math.round(unit / 2) + 'px');
-        board.style.setProperty('--unit-lift', Math.round(cs * 0.28) + 'px');
-      }
-
-      /**
        * 依 `#map-outer` 可視區（扣 padding）與棋盤經斜視變換後的螢幕座標包圍盒，
        * 設定 `--map-fit-scale` 使整個戰場在不出現捲軸的前提下最大化（先量測旋轉後最高／最低點所佔寬高）。
        */
@@ -3031,7 +2461,6 @@
         const pad = 0.97;
         const s = Math.min((ow * pad) / rect.width, (oh * pad) / rect.height);
         board.style.setProperty('--map-fit-scale', String(Math.max(0.06, Math.min(s, 6))));
-        applyUnitSpriteScale();
       }
 
       /**
@@ -3052,7 +2481,7 @@
           b.innerHTML =
             buildTowerArtHtml(t, 'shop') +
             '<div><strong>' + t.name + '</strong><small>💰' + t.cost +
-            ' · 攻 ' + Math.round(getEffectiveDamage(t)) +
+            ' · 攻 ' + Math.round(t.damage * playerMods.damageMul) +
             ' · 距 ' + getEffectiveRange(t).toFixed(1) +
             ' · CD ' + Math.round(getEffectiveCooldown(t)) + 'ms<br>' +
             t.desc +
@@ -3147,10 +2576,7 @@
             const cell = document.createElement('div');
             const k = r + ',' + c;
             const onPath = pathSet.has(k);
-            const isBlocked = blockedSet.has(k);
-            cell.className =
-              'cell ' +
-              (onPath ? 'path' : isBlocked ? 'blocked block-' + (blockedKind.get(k) || 'rock') : 'field');
+            cell.className = 'cell ' + (onPath ? 'path' : 'field');
             cell.dataset.r = String(r);
             cell.dataset.c = String(c);
             if (onPath && spawnCell[0] === r && spawnCell[1] === c) {
@@ -3185,7 +2611,7 @@
                 '<span class="goal-base-hud__text" id="goal-base-hud-text"></span>';
               cell.appendChild(goalHud);
             }
-            if (!onPath && !isBlocked) {
+            if (!onPath) {
               cell.addEventListener('click', onCellClick);
               cell.addEventListener('mouseenter', function onFieldEnter() {
                 previewHoverCell = cell;
@@ -3243,7 +2669,7 @@
         const r = +t.dataset.r;
         const c = +t.dataset.c;
         const k = r + ',' + c;
-        if (pathSet.has(k) || blockedSet.has(k)) return;
+        if (pathSet.has(k)) return;
         if (t.querySelector('.tower-icon-wrap')) return;
         if (!selectedTowerId) return;
         const def = TOWER_TYPES.find((x) => x.id === selectedTowerId);
@@ -3319,23 +2745,18 @@
         const runSeed = createLevelRunSeed(cfg.seed, levelIndex);
         applyMapTheme(levelIndex, runSeed);
         selectedTowerId = null;
-        const built = buildBattlefield(cfg.rows, cfg.cols, runSeed, levelIndex);
-        rows = built.rows;
-        cols = built.cols;
+        const built = buildPath(rows, cols, runSeed, levelIndex);
         pathOrder = built.pathOrder;
         pathSet = new Set(pathOrder.map((p) => p[0] + ',' + p[1]));
-        blockedSet = built.blocked;
-        blockedKind = built.blockedKind;
         spawnCell = built.spawn;
         goalCell = built.goal;
-        const diffMeta = getDifficultyMeta(levelIndex);
-        els.gameLevelTitle.textContent = 'Lv.' + (levelIndex + 1) + '　' + diffMeta.name;
+        els.gameLevelTitle.textContent = 'Lv.' + (levelIndex + 1);
         showScreen('game');
         renderShop();
         renderMap();
         updateTowerPickedClass();
         updateHud();
-        els.waveTip.textContent = '地圖每次進入都會重抽。擺好塔後按「開始 Wave」';
+        els.waveTip.textContent = '擺好塔後按「開始 Wave」';
         stopLoop();
         setGameTurbo(false);
         /* 進入已選關卡戰場：另抽一首隨機 BGM，與關卡列表頁分開 */
@@ -3725,7 +3146,9 @@
             layer.appendChild(sp);
           }
           sp.style.backgroundImage = 'url(' + def.img + ')';
-          applyUnitCenter(sp, en._nx, en._ny);
+          /* 84×84 精靈置中：減半寬高 42px（出場大小為先前 42px 之 2 倍） */
+          sp.style.left = 'calc(' + en._nx * 100 + '% - 42px)';
+          sp.style.top = 'calc(' + en._ny * 100 + '% - 42px)';
         }
       }
 
